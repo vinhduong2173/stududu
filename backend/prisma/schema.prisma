@@ -1,0 +1,438 @@
+// Prisma schema — stududu (theo docs/02-design/ERD.mermaid + data-dictionary.md)
+// Bảng/cột: snake_case (coding convention §2); field Prisma: camelCase qua @map.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Enums (giá trị theo SRS / data dictionary) =====
+
+enum UserRole {
+  member
+  admin
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+}
+
+enum LanguageRole {
+  native
+  fluent
+  learning
+}
+
+enum MatchStatus {
+  liked
+  mutual
+  skipped
+  expired
+}
+
+enum InteractionAction {
+  like
+  skip
+}
+
+enum ReportStatus {
+  open
+  reviewed
+  dismissed
+}
+
+enum ModerationActionType {
+  warn
+  suspend_3d
+  suspend_1w
+  hard_delete
+}
+
+enum MessageType {
+  text
+  image
+  schedule
+}
+
+enum VocabLabel {
+  new
+  good
+}
+
+// ===== SRS v3.0 (FS-23→28) =====
+
+enum SavedWordSource {
+  chat
+  manual
+}
+
+enum EndorsementLabel {
+  lang_proficiency
+  social_knowledge
+  niche_expertise
+  friendliness
+}
+
+enum ActivityPostType {
+  word_public
+  chat_hours_milestone
+  user_post // bài chia sẻ tự do do member đăng
+}
+
+enum ScheduleStatus {
+  pending
+  accepted
+  declined
+  expired
+}
+
+// ===== Models =====
+
+model User {
+  id             Int        @id @default(autoincrement())
+  email          String     @unique
+  passwordHash   String     @map("password_hash")
+  displayName    String     @map("display_name")
+  avatarUrl      String?    @map("avatar_url") // URL hoặc data URL (ảnh chọn từ máy, đã nén)
+  bio            String?
+  intent         String?
+  gender         String? // nam | nữ | khác — tự khai, không bắt buộc
+  dob            DateTime? // ngày sinh — hiển thị tuổi trên card/hồ sơ
+  city           String? // thành phố đang sống
+  role           UserRole   @default(member)
+  status         UserStatus @default(active)
+  suspendedUntil DateTime?  @map("suspended_until")
+  lastActive     DateTime?  @map("last_active")
+  timezone       String?    @default("VN") // mã múi giờ (VN, UK, JP…) — cho hẹn lịch chat
+  availableSlots String[]   @default([]) @map("available_slots") // id khung giờ rảnh (s1..s6), tối đa 2
+  shareActivity  Boolean    @default(true) @map("share_activity") // FS-25: cho phép tạo activity post tự động
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  languages         UserLanguage[]
+  interests         UserInterest[]
+  matchPreference   MatchPreference?
+  matchesAsMember   Match[]            @relation("MatchMember")
+  matchesAsCandidate Match[]           @relation("MatchCandidate")
+  interactions      Interaction[]
+  messages          Message[]
+  reportsSent       Report[]           @relation("Reporter")
+  reportsReceived   Report[]           @relation("Reported")
+  blocksGiven       Block[]            @relation("Blocker")
+  blocksReceived    Block[]            @relation("Blocked")
+  moderationDone    ModerationAction[] @relation("ModerationAdmin")
+  moderationReceived ModerationAction[] @relation("ModerationTarget")
+  vocabWords        VocabWord[]
+  savedWords          UserSavedWord[]
+  endorsementsGiven   Endorsement[]     @relation("EndorsementGiver")
+  endorsementsReceived Endorsement[]    @relation("EndorsementReceiver")
+  activityPosts       ActivityPost[]
+  postLikes           PostLike[]
+  scheduleRequests    ScheduleRequest[]
+
+  @@map("users")
+}
+
+model Language {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique
+  name      String
+  framework String? // CEFR | HSK | JLPT | TOPIK — MVP mặc định CEFR
+  hidden    Boolean @default(false) // US-21: ẩn khỏi hồ sơ & bộ lọc, không xóa dữ liệu
+
+  userLanguages UserLanguage[]
+  wordLibrary   WordLibrary[]
+
+  @@map("languages")
+}
+
+// Junction TRUNG TÂM — nuôi thuật toán matching
+model UserLanguage {
+  id         Int          @id @default(autoincrement())
+  userId     Int          @map("user_id")
+  languageId Int          @map("language_id")
+  role       LanguageRole
+  level      String? // learning: 1–5 · fluent: CEFR · native: null
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id])
+
+  @@unique([userId, languageId, role])
+  @@map("user_languages")
+}
+
+model Topic {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  hidden Boolean @default(false) // US-21: ẩn khỏi hồ sơ & bộ lọc
+
+  userInterests UserInterest[]
+
+  @@map("topics")
+}
+
+model UserInterest {
+  id      Int @id @default(autoincrement())
+  userId  Int @map("user_id")
+  topicId Int @map("topic_id")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id])
+
+  @@unique([userId, topicId])
+  @@map("user_interests")
+}
+
+model MatchPreference {
+  id            Int     @id @default(autoincrement())
+  userId        Int     @unique @map("user_id")
+  intent        String?
+  languageFocus String? @map("language_focus")
+  levelDesired  String? @map("level_desired")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("match_preferences")
+}
+
+// Tạo lazy khi có Like đầu tiên (US-11); expired sau 14 ngày nếu không mutual
+model Match {
+  id          Int         @id @default(autoincrement())
+  memberId    Int         @map("member_id")
+  candidateId Int         @map("candidate_id")
+  status      MatchStatus @default(liked)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  expiresAt   DateTime?   @map("expires_at")
+
+  member       User          @relation("MatchMember", fields: [memberId], references: [id])
+  candidate    User          @relation("MatchCandidate", fields: [candidateId], references: [id])
+  score        MatchScore?
+  interactions Interaction[]
+  conversation Conversation?
+
+  @@unique([memberId, candidateId])
+  @@map("matches")
+}
+
+// Điểm match — tính on-the-fly khi đọc, không cache ở MVP (US-08)
+model MatchScore {
+  id               Int     @id @default(autoincrement())
+  matchId          Int     @unique @map("match_id")
+  langComplement   Boolean @map("lang_complement") // điểm chính
+  sharedTopicCount Int     @default(0) @map("shared_topic_count") // điểm phụ
+  intentAlignment  Boolean @default(false) @map("intent_alignment")
+  total            Float   @default(0)
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@map("match_scores")
+}
+
+model Interaction {
+  id          Int               @id @default(autoincrement())
+  matchId     Int               @map("match_id")
+  userId      Int               @map("user_id")
+  action      InteractionAction
+  hiddenUntil DateTime?         @map("hidden_until") // skip: ẩn 30 ngày
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@map("interactions")
+}
+
+// Tạo khi MATCH chuyển mutual (US-13)
+model Conversation {
+  id        Int      @id @default(autoincrement())
+  matchId   Int      @unique @map("match_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  match     Match             @relation(fields: [matchId], references: [id])
+  messages  Message[]
+  schedules ScheduleRequest[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id             Int         @id @default(autoincrement())
+  conversationId Int         @map("conversation_id")
+  senderId       Int         @map("sender_id")
+  type           MessageType @default(text) // text | image (data URL) | schedule (lời mời hẹn giờ)
+  content        String // text: nội dung · image: data URL · schedule: mô tả ngắn
+  payload        Json? // schedule: { requestId, timeUtc, status } (bản cũ: slotId/labels)
+  reactions      Json? // FS-14: { "👍": [userId, ...] } — tập emoji cố định trong config
+  sentAt         DateTime    @default(now()) @map("sent_at")
+  readAt         DateTime?   @map("read_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, sentAt])
+  @@map("messages")
+}
+
+model Report {
+  id         Int          @id @default(autoincrement())
+  reporterId Int          @map("reporter_id")
+  reportedId Int          @map("reported_id")
+  reason     String
+  targetType String?      @map("target_type") // null = user · 'post' | 'word_library' (FS-24/25)
+  targetId   Int?         @map("target_id") // id của post / word_library khi targetType khác null
+  status     ReportStatus @default(open)
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  reporter User @relation("Reporter", fields: [reporterId], references: [id])
+  reported User @relation("Reported", fields: [reportedId], references: [id])
+
+  @@map("reports")
+}
+
+model Block {
+  id        Int      @id @default(autoincrement())
+  blockerId Int      @map("blocker_id")
+  blockedId Int      @map("blocked_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id])
+  blocked User @relation("Blocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+  @@map("blocks")
+}
+
+// Sổ từ vựng — lưu từ mới/từ hay trong khi chat hoặc thêm tay
+model VocabWord {
+  id          Int        @id @default(autoincrement())
+  userId      Int        @map("user_id")
+  word        String
+  translation String
+  language    String // tên ngôn ngữ hiển thị (English, Tiếng Việt…)
+  flag        String? // emoji cờ
+  label       VocabLabel @default(new)
+  note        String?
+  fromPartner String?    @map("from_partner") // tên đối tác nếu lưu từ trong chat
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("vocab_words")
+}
+
+// ===== SRS v3.0 — FS-23/24: Thư viện từ vựng =====
+
+// Kho từ chung — 1 bản ghi cho mỗi (term, language); public khi đủ 3 người lưu (BR-12)
+model WordLibrary {
+  id          Int      @id @default(autoincrement())
+  term        String   @db.VarChar(100)
+  languageId  Int      @map("language_id")
+  definition  String? // có thể null — chờ cộng đồng bổ sung (FS-24)
+  example     String?
+  saveCount   Int      @default(0) @map("save_count") // = số user khác nhau đã lưu (UNIQUE bên dưới)
+  isPublic    Boolean  @default(false) @map("is_public")
+  updatedById Int?     @map("updated_by_id") // ai bổ sung định nghĩa gần nhất — để Admin revert nếu spam
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  language Language        @relation(fields: [languageId], references: [id])
+  savedBy  UserSavedWord[]
+
+  @@unique([term, languageId])
+  @@map("word_library")
+}
+
+// Junction Member ↔ WORD_LIBRARY — sổ từ cá nhân
+model UserSavedWord {
+  id            Int             @id @default(autoincrement())
+  userId        Int             @map("user_id")
+  wordLibraryId Int             @map("word_library_id")
+  personalNote  String?         @map("personal_note") // nghĩa/ví dụ riêng của user
+  source        SavedWordSource
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word WordLibrary @relation(fields: [wordLibraryId], references: [id])
+
+  @@unique([userId, wordLibraryId])
+  @@map("user_saved_words")
+}
+
+// ===== SRS v3.0 — FS-26: Endorsement định tính (BR-13: KHÔNG có rating/điểm trung bình) =====
+model Endorsement {
+  id         Int              @id @default(autoincrement())
+  giverId    Int              @map("giver_id")
+  receiverId Int              @map("receiver_id")
+  label      EndorsementLabel
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  giver    User @relation("EndorsementGiver", fields: [giverId], references: [id], onDelete: Cascade)
+  receiver User @relation("EndorsementReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([giverId, receiverId, label])
+  @@map("endorsements")
+}
+
+// ===== SRS v3.0 — FS-25: Community feed (chỉ auto-generated, chưa có free-form post) =====
+model ActivityPost {
+  id         Int              @id @default(autoincrement())
+  userId     Int              @map("user_id")
+  type       ActivityPostType
+  contentRef String?          @map("content_ref") // word_public: wordLibraryId · milestone: số giờ mốc
+  content    String? // user_post: nội dung chia sẻ tự do
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes PostLike[]
+
+  @@map("activity_posts")
+}
+
+model PostLike {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post ActivityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_likes")
+}
+
+// ===== SRS v3.0 — FS-28: Đặt lịch hẹn (BR-15: lưu UTC, auto-expire 48h) =====
+model ScheduleRequest {
+  id              Int            @id @default(autoincrement())
+  conversationId  Int            @map("conversation_id")
+  proposerId      Int            @map("proposer_id")
+  proposedTimeUtc DateTime       @map("proposed_time_utc")
+  status          ScheduleStatus @default(pending)
+  reminderSentAt  DateTime?      @map("reminder_sent_at") // đã gửi nhắc 30 phút trước giờ hẹn chưa
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  proposer     User         @relation(fields: [proposerId], references: [id])
+
+  @@map("schedule_requests")
+}
+
+// Log kiểm duyệt = lịch sử vi phạm (đếm để xác định tái phạm — US-20)
+model ModerationAction {
+  id           Int                  @id @default(autoincrement())
+  adminId      Int                  @map("admin_id")
+  targetUserId Int                  @map("target_user_id")
+  action       ModerationActionType
+  reason       String
+  createdAt    DateTime             @default(now()) @map("created_at")
+
+  admin  User @relation("ModerationAdmin", fields: [adminId], references: [id])
+  target User @relation("ModerationTarget", fields: [targetUserId], references: [id])
+
+  @@map("moderation_actions")
+}

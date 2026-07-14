@@ -1,0 +1,190 @@
+erDiagram
+    USER ||--o{ USER_LANGUAGE : "khai"
+    LANGUAGE ||--o{ USER_LANGUAGE : "duoc khai trong"
+    USER ||--o{ USER_INTEREST : "chon"
+    TOPIC ||--o{ USER_INTEREST : "duoc chon trong"
+    USER ||--o| MATCH_PREFERENCE : "co"
+    USER ||--o{ MATCH : "la member"
+    USER ||--o{ MATCH : "la candidate"
+    MATCH ||--o| MATCH_SCORE : "duoc cham"
+    MATCH ||--o{ INTERACTION : "ghi nhan"
+    USER ||--o{ INTERACTION : "thuc hien"
+    MATCH ||--o| CONVERSATION : "mo ra"
+    CONVERSATION ||--o{ MESSAGE : "chua"
+    USER ||--o{ MESSAGE : "gui"
+    USER ||--o{ REPORT : "gui report"
+    USER ||--o{ REPORT : "bi report"
+    USER ||--o{ BLOCK : "chan"
+    USER ||--o{ BLOCK : "bi chan"
+    USER ||--o{ MODERATION_ACTION : "admin xu ly"
+    USER ||--o{ MODERATION_ACTION : "bi xu ly"
+
+    %% ===== SRS v3.0 (FS-23..28) =====
+    LANGUAGE ||--o{ WORD_LIBRARY : "thuoc ngon ngu"
+    WORD_LIBRARY ||--o{ USER_SAVED_WORD : "duoc luu boi"
+    USER ||--o{ USER_SAVED_WORD : "luu tu"
+    USER ||--o{ ENDORSEMENT : "ghi nhan (giver)"
+    USER ||--o{ ENDORSEMENT : "duoc ghi nhan (receiver)"
+    USER ||--o{ ACTIVITY_POST : "phat sinh"
+    ACTIVITY_POST ||--o{ POST_LIKE : "duoc thich"
+    USER ||--o{ POST_LIKE : "thich"
+    CONVERSATION ||--o{ SCHEDULE_REQUEST : "co lich hen"
+    USER ||--o{ SCHEDULE_REQUEST : "de xuat"
+
+    USER {
+        int id PK
+        string email UK
+        string password_hash
+        string display_name
+        string avatar_url
+        string bio
+        string intent
+        string role "member | admin"
+        string status "active | suspended | deleted"
+        datetime suspended_until "thoi diem het han khoa"
+        datetime last_active
+        datetime created_at
+    }
+    LANGUAGE {
+        int id PK
+        string code
+        string name
+        string framework "CEFR | HSK | JLPT | TOPIK"
+    }
+    USER_LANGUAGE {
+        int id PK
+        int user_id FK
+        int language_id FK
+        string role "native | fluent | learning"
+        string level "1-5 learning | CEFR fluent | null native"
+    }
+    TOPIC {
+        int id PK
+        string name
+    }
+    USER_INTEREST {
+        int id PK
+        int user_id FK
+        int topic_id FK
+    }
+    MATCH_PREFERENCE {
+        int id PK
+        int user_id FK
+        string intent
+        string language_focus
+        string level_desired
+    }
+    MATCH {
+        int id PK
+        int member_id FK
+        int candidate_id FK
+        string status "liked | mutual | skipped | expired"
+        datetime created_at
+        datetime expires_at "lazy, het han sau 14 ngay"
+    }
+    MATCH_SCORE {
+        int id PK
+        int match_id FK
+        boolean lang_complement "diem chinh"
+        int shared_topic_count "diem phu"
+        boolean intent_alignment
+        float total
+    }
+    INTERACTION {
+        int id PK
+        int match_id FK
+        int user_id FK
+        string action "like | skip"
+        datetime hidden_until "skip an 30 ngay"
+        datetime created_at
+    }
+    CONVERSATION {
+        int id PK
+        int match_id FK
+        datetime created_at
+    }
+    MESSAGE {
+        int id PK
+        int conversation_id FK
+        int sender_id FK
+        string type "text | image | schedule"
+        string content
+        json payload "schedule: requestId, timeUtc, status"
+        json reactions "FS-14: emoji -> [user_id]"
+        datetime sent_at
+        datetime read_at
+    }
+    REPORT {
+        int id PK
+        int reporter_id FK
+        int reported_id FK
+        string reason
+        string target_type "null=user | post | word_library"
+        int target_id
+        string status "open | reviewed | dismissed"
+        datetime created_at
+    }
+    BLOCK {
+        int id PK
+        int blocker_id FK
+        int blocked_id FK
+        datetime created_at
+    }
+    MODERATION_ACTION {
+        int id PK
+        int admin_id FK
+        int target_user_id FK
+        string action "warn | suspend_3d | suspend_1w | hard_delete"
+        string reason
+        datetime created_at
+    }
+
+    %% ===== SRS v3.0 — 6 entity moi =====
+    WORD_LIBRARY {
+        int id PK
+        string term "<=100 ky tu, UNIQUE(term, language_id)"
+        int language_id FK
+        string definition "nullable - cho bo sung"
+        string example
+        int save_count "so user khac nhau da luu"
+        boolean is_public "BR-12: true khi save_count >= 3"
+        int updated_by_id "ai bo sung dinh nghia - de Admin revert"
+        datetime created_at
+    }
+    USER_SAVED_WORD {
+        int id PK
+        int user_id FK "UNIQUE(user_id, word_library_id)"
+        int word_library_id FK
+        string personal_note "nghia/vi du rieng"
+        string source "chat | manual"
+        datetime created_at
+    }
+    ENDORSEMENT {
+        int id PK
+        int giver_id FK "UNIQUE(giver, receiver, label) - BR-13"
+        int receiver_id FK
+        string label "lang_proficiency | social_knowledge | niche_expertise | friendliness"
+        datetime created_at
+    }
+    ACTIVITY_POST {
+        int id PK
+        int user_id FK
+        string type "word_public | chat_hours_milestone"
+        string content_ref "word_library_id hoac so gio moc"
+        datetime created_at
+    }
+    POST_LIKE {
+        int id PK
+        int post_id FK "UNIQUE(post_id, user_id)"
+        int user_id FK
+        datetime created_at
+    }
+    SCHEDULE_REQUEST {
+        int id PK
+        int conversation_id FK
+        int proposer_id FK
+        datetime proposed_time_utc "BR-15: luu UTC"
+        string status "pending | accepted | declined | expired (48h)"
+        datetime reminder_sent_at "da nhac 30 phut truoc gio hen"
+        datetime created_at
+    }
