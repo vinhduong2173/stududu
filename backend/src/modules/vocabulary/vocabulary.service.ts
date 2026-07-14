@@ -20,7 +20,22 @@ export class VocabularyService {
     });
     if (!word) {
       word = await this.prisma.wordLibrary.create({
-        data: { term, languageId: dto.languageId },
+        data: {
+          term,
+          languageId: dto.languageId,
+          level: dto.level,
+          definition: dto.definition,
+          example: dto.example,
+        },
+      });
+    } else {
+      word = await this.prisma.wordLibrary.update({
+        where: { id: word.id },
+        data: {
+          level: dto.level || word.level,
+          definition: dto.definition || word.definition,
+          example: dto.example || word.example,
+        },
       });
     }
 

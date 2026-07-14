@@ -20,6 +20,7 @@ export type SavedWord = {
     term: string;
     definition?: string | null;
     example?: string | null;
+    level?: string | null;
     saveCount: number;
     isPublic: boolean;
     language: Language;
@@ -40,16 +41,31 @@ export function WordSaveModal({
   onSaved?: (item: SavedWord, duplicated: boolean) => void;
 }) {
   const [term, setTerm] = React.useState(initialWord);
-  const [personalNote, setPersonalNote] = React.useState("");
+  const [level, setLevel] = React.useState("");
+  const [definition, setDefinition] = React.useState("");
+  const [example, setExample] = React.useState("");
   const [languages, setLanguages] = React.useState<Language[]>([]);
   const [languageId, setLanguageId] = React.useState<number | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState("");
 
+  const getLevelsForLanguage = (langCode: string) => {
+    const code = langCode.toLowerCase();
+    if (code === "ja" || code === "jp") {
+      return ["N1", "N2", "N3", "N4", "N5"];
+    }
+    return ["A1", "A2", "B1", "B2", "C1", "C2"];
+  };
+
+  const selectedLang = languages.find((l) => l.id === languageId);
+  const levels = selectedLang ? getLevelsForLanguage(selectedLang.code) : [];
+
   React.useEffect(() => {
     if (open) {
       setTerm(initialWord.trim());
-      setPersonalNote("");
+      setLevel("");
+      setDefinition("");
+      setExample("");
       setError("");
       api<Language[]>("/languages")
         .then((langs) => {
@@ -72,7 +88,9 @@ export function WordSaveModal({
         body: {
           term: term.trim(),
           languageId,
-          personalNote: personalNote.trim() || undefined,
+          level: level || undefined,
+          definition: definition.trim() || undefined,
+          example: example.trim() || undefined,
           source,
         },
       });
@@ -113,7 +131,10 @@ export function WordSaveModal({
               {languages.map((l) => (
                 <button
                   key={l.id}
-                  onClick={() => setLanguageId(l.id)}
+                  onClick={() => {
+                    setLanguageId(l.id);
+                    setLevel(""); // Reset level when language changes
+                  }}
                   className={cn(
                     "rounded-full px-3 py-1.5 text-sm font-semibold border-2 transition-all",
                     languageId === l.id
@@ -126,6 +147,26 @@ export function WordSaveModal({
               ))}
             </div>
           </div>
+
+          {levels.length > 0 && (
+            <div>
+              <label className="text-xs font-bold text-muted uppercase tracking-wide mb-2 block">
+                Trình độ / Cấp độ
+              </label>
+              <select
+                value={level}
+                onChange={(e) => setLevel(e.target.value)}
+                className="w-full h-11 rounded-xl border-2 border-border bg-surface text-foreground px-3 text-sm font-medium focus:outline-none focus:border-primary transition-colors"
+              >
+                <option value="">-- Chọn trình độ (Tùy chọn) --</option>
+                {levels.map((lvl) => (
+                  <option key={lvl} value={lvl}>
+                    {lvl}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-bold text-muted uppercase tracking-wide mb-2 block">
@@ -143,13 +184,25 @@ export function WordSaveModal({
 
           <div>
             <label className="text-xs font-bold text-muted uppercase tracking-wide mb-2 block">
-              Ghi chú riêng (nghĩa / ví dụ của bạn)
+              Khái niệm / Định nghĩa
             </label>
             <textarea
-              value={personalNote}
-              onChange={(e) => setPersonalNote(e.target.value)}
-              placeholder="VD: nghĩa là..., dùng khi..."
+              value={definition}
+              onChange={(e) => setDefinition(e.target.value)}
+              placeholder="Giải thích khái niệm của từ..."
               className="w-full rounded-xl border-2 border-border bg-transparent p-3 text-sm focus:outline-none focus:border-primary transition-colors resize-none h-20"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-muted uppercase tracking-wide mb-2 block">
+              Ví dụ minh họa
+            </label>
+            <textarea
+              value={example}
+              onChange={(e) => setExample(e.target.value)}
+              placeholder="Nhập ví dụ sử dụng từ này..."
+              className="w-full rounded-xl border-2 border-border bg-transparent p-3 text-sm focus:outline-none focus:border-primary transition-colors resize-none h-16"
             />
           </div>
 

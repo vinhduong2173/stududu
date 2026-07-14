@@ -132,6 +132,11 @@ function MyWordsTab({ showToast }: { showToast: (msg: string) => void }) {
                       <span className="text-[10px] font-bold rounded-full px-2 py-0.5 bg-primary/10 text-primary">
                         {item.word.language.name}
                       </span>
+                      {item.word.level && (
+                        <span className="text-[10px] font-bold rounded-full px-2 py-0.5 bg-warning/10 text-warning border border-warning/20">
+                          ⭐ Level {item.word.level}
+                        </span>
+                      )}
                       <span
                         className={cn(
                           "text-[10px] font-bold rounded-full px-2 py-0.5",
@@ -147,7 +152,7 @@ function MyWordsTab({ showToast }: { showToast: (msg: string) => void }) {
                       )}
                     </div>
                     <p className="text-sm text-muted mt-1 truncate">
-                      {item.personalNote || item.word.definition || "Chưa có ghi chú"}
+                      {item.word.definition || item.personalNote || "Chưa có định nghĩa/ghi chú"}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
@@ -168,16 +173,19 @@ function MyWordsTab({ showToast }: { showToast: (msg: string) => void }) {
                 </div>
               </button>
 
-              {expandedId === item.id && (
+               {expandedId === item.id && (
                 <div className="border-t border-border bg-muted/5 px-4 py-3 space-y-1.5 text-sm">
-                  {item.personalNote && (
-                    <p><span className="text-muted font-medium">Ghi chú của bạn:</span> {item.personalNote}</p>
+                  {item.word.level && (
+                    <p><span className="text-muted font-medium">Trình độ:</span> {item.word.level}</p>
                   )}
                   {item.word.definition && (
-                    <p><span className="text-muted font-medium">Định nghĩa (thư viện):</span> {item.word.definition}</p>
+                    <p><span className="text-muted font-medium">Định nghĩa:</span> {item.word.definition}</p>
                   )}
                   {item.word.example && (
                     <p><span className="text-muted font-medium">Ví dụ:</span> {item.word.example}</p>
+                  )}
+                  {item.personalNote && (
+                    <p><span className="text-muted font-medium">Ghi chú riêng:</span> {item.personalNote}</p>
                   )}
                   <p className="text-xs text-muted">
                     {item.word.saveCount} người đã lưu từ này

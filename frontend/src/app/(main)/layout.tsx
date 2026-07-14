@@ -65,7 +65,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <div className="flex h-screen flex-col bg-background">
       {/* Desktop Top Nav */}
       <header className="hidden md:flex h-16 items-center justify-between border-b border-border bg-surface px-8 shadow-sm">
-        <Link href="/discover" className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+        <Link href="/discover" className="flex items-center gap-2 text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          <img src="/stududu-logo.png" alt="stududu logo" className="h-8 w-auto object-contain" />
           stududu
         </Link>
         <nav className="flex gap-8">

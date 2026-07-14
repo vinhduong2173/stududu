@@ -133,6 +133,8 @@ model User {
   endorsementsReceived Endorsement[]    @relation("EndorsementReceiver")
   activityPosts       ActivityPost[]
   postLikes           PostLike[]
+  postComments        PostComment[]
+  commentLikes        CommentLike[]
   scheduleRequests    ScheduleRequest[]
 
   @@map("users")
@@ -335,6 +337,7 @@ model WordLibrary {
   languageId  Int      @map("language_id")
   definition  String? // có thể null — chờ cộng đồng bổ sung (FS-24)
   example     String?
+  level       String? // level của từ vựng (ví dụ: N1-N5, A1-C2)
   saveCount   Int      @default(0) @map("save_count") // = số user khác nhau đã lưu (UNIQUE bên dưới)
   isPublic    Boolean  @default(false) @map("is_public")
   updatedById Int?     @map("updated_by_id") // ai bổ sung định nghĩa gần nhất — để Admin revert nếu spam
@@ -385,10 +388,12 @@ model ActivityPost {
   type       ActivityPostType
   contentRef String?          @map("content_ref") // word_public: wordLibraryId · milestone: số giờ mốc
   content    String? // user_post: nội dung chia sẻ tự do
+  imageUrl   String?          @map("image_url")
   createdAt  DateTime         @default(now()) @map("created_at")
 
-  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  likes PostLike[]
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes    PostLike[]
+  comments PostComment[]
 
   @@map("activity_posts")
 }
@@ -435,4 +440,34 @@ model ModerationAction {
   target User @relation("ModerationTarget", fields: [targetUserId], references: [id])
 
   @@map("moderation_actions")
+}
+
+model PostComment {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  content   String
+  parentId  Int?     @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post      ActivityPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    PostComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   PostComment[] @relation("CommentReplies")
+  likes     CommentLike[]
+
+  @@map("post_comments")
+}
+
+model CommentLike {
+  id        Int      @id @default(autoincrement())
+  commentId Int      @map("comment_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  comment   PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@map("comment_likes")
 }

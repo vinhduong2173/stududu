@@ -337,12 +337,10 @@ function InboxContent() {
         "message:send",
         { conversationId: selectedId, content, type, payload },
         (ack: Message) => {
-          // Lọc bản trùng (nếu message:new đã kịp thêm) rồi thay tin optimistic bằng bản thật
-          setMessages((prev) =>
-            prev
-              .filter((m) => String(m.id) !== String(ack.id))
-              .map((m) => (String(m.id) === String(tempId) ? { ...ack, pending: false } : m)),
-          );
+          setMessages((prev) => {
+            if (prev.some((m) => String(m.id) === String(ack.id))) return prev;
+            return prev.map((m) => (String(m.id) === String(tempId) ? { ...ack, pending: false } : m));
+          });
           setConversations((prev) => {
             const idx = prev.findIndex((c) => String(c.id) === String(selectedId));
             if (idx === -1) return prev;

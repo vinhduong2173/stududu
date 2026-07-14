@@ -15,7 +15,7 @@
   --color-warning: var(--warning);
   --color-error: var(--error);
 
-  --font-sans: var(--font-playfair-display), Georgia, serif;
+  --font-sans: "Times New Roman", Times, Baskerville, Georgia, serif;
 }
 
 :root {

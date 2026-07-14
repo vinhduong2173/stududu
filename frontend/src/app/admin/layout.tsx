@@ -45,7 +45,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <aside className="w-56 shrink-0 border-r border-border bg-surface flex flex-col">
         <div className="p-5 border-b border-border">
-          <p className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          <p className="flex items-center gap-2 text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <img src="/stududu-logo.png" alt="stududu logo" className="h-6 w-auto object-contain" />
             stududu
           </p>
           <p className="text-xs text-muted mt-1 font-semibold uppercase tracking-wider">Quản trị</p>

@@ -35,6 +35,16 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   if (!res.ok) {
     const data = (await res.json().catch(() => null)) as { message?: string | string[] } | null;
     const message = Array.isArray(data?.message) ? data.message.join(', ') : data?.message;
+    
+    if (res.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      const path = window.location.pathname;
+      if (path !== '/login' && path !== '/register' && path !== '/forgot-password') {
+        window.location.href = '/login';
+      }
+    }
+    
     throw new ApiError(res.status, message ?? res.statusText);
   }
 
