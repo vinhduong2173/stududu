@@ -20,3 +20,11 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 .idea/
+
+# design-sync (generated/machine state)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+frontend/.ds-styles.css
