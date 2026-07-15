@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { Logo } from "@/components/ui/Logo";
 
 export default function Home() {
   const router = useRouter();
@@ -17,10 +18,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between px-8 py-6">
-        <div className="flex items-center gap-2 text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-          <img src="/stududu-logo.png" alt="stududu logo" className="h-8 w-auto object-contain" />
-          stududu
-        </div>
+        <Logo size="md" showTagline={true} href="/" />
         <nav className="flex gap-4">
           <Link href="/login">
             <Button variant="ghost">Đăng nhập</Button>

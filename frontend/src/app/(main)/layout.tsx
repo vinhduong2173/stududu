@@ -10,6 +10,7 @@ import { disconnectSocket, getSocket } from "@/lib/socket";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/features/TrustDialogs";
 import { useLocale } from "@/lib/i18n";
+import { Logo } from "@/components/ui/Logo";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const { t } = useLocale();
@@ -65,10 +66,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <div className="flex h-screen flex-col bg-background">
       {/* Desktop Top Nav */}
       <header className="hidden md:flex h-16 items-center justify-between border-b border-border bg-surface px-8 shadow-sm">
-        <Link href="/discover" className="flex items-center gap-2 text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-          <img src="/stududu-logo.png" alt="stududu logo" className="h-8 w-auto object-contain" />
-          stududu
-        </Link>
+        <Logo size="md" href="/discover" />
         <nav className="flex gap-8">
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href);

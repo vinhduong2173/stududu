@@ -53,7 +53,7 @@ export default function SettingsPage() {
     setShareActivity(next);
     try {
       await api("/users/me", { method: "PATCH", body: { shareActivity: next } });
-      showToast(next ? "Đã bật chia sẻ hoạt động" : "Đã tắt chia sẻ hoạt động");
+      showToast(next ? t("settings.shareActivity.enabled") : t("settings.shareActivity.disabled"));
     } catch (err) {
       setShareActivity(!next);
       console.error(err);
@@ -64,7 +64,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setPwError("");
     if (newPassword !== confirmPassword) {
-      setPwError("Xác nhận mật khẩu không khớp.");
+      setPwError(t("settings.password.mismatch"));
       return;
     }
     setPwSaving(true);
@@ -76,9 +76,9 @@ export default function SettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      showToast("Đã cập nhật mật khẩu");
+      showToast(t("settings.password.success"));
     } catch (err) {
-      setPwError(err instanceof ApiError ? err.message : "Đã có lỗi xảy ra");
+      setPwError(err instanceof ApiError ? err.message : "Error occurred");
     } finally {
       setPwSaving(false);
     }
@@ -88,7 +88,7 @@ export default function SettingsPage() {
     try {
       await api(`/blocks/${userId}`, { method: "DELETE" });
       setBlocks((prev) => prev.filter((b) => b.blocked.id !== userId));
-      showToast(`Đã bỏ chặn ${name}`);
+      showToast(`${t("settings.blocked.unblockSuccess")} ${name}`);
     } catch (err) {
       console.error(err);
     }
@@ -142,36 +142,36 @@ export default function SettingsPage() {
         {/* Đổi mật khẩu */}
         <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
           <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-primary" /> Đổi mật khẩu
+            <KeyRound className="h-5 w-5 text-primary" /> {t("settings.password")}
           </h2>
-          <p className="text-sm text-muted mb-4">Tối thiểu 8 ký tự, gồm cả chữ và số.</p>
+          <p className="text-sm text-muted mb-4">{t("settings.password.hint")}</p>
 
           {pwError && <div className="mb-4 rounded-xl bg-error/10 p-3 text-sm text-error">{pwError}</div>}
 
           <form onSubmit={handleChangePassword} className="space-y-3">
             <Input
               type="password"
-              placeholder="Mật khẩu hiện tại"
+              placeholder={t("settings.password.current")}
               required
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
             />
             <Input
               type="password"
-              placeholder="Mật khẩu mới"
+              placeholder={t("settings.password.new")}
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
             <Input
               type="password"
-              placeholder="Xác nhận mật khẩu mới"
+              placeholder={t("settings.password.confirm")}
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
             <Button type="submit" disabled={pwSaving} className="w-full">
-              {pwSaving ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
+              {pwSaving ? t("settings.password.updating") : t("settings.password.update")}
             </Button>
           </form>
         </section>
@@ -179,10 +179,10 @@ export default function SettingsPage() {
         {/* FS-25 — chia sẻ hoạt động lên Cộng đồng */}
         <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
           <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" /> Chia sẻ hoạt động
+            <Users className="h-5 w-5 text-primary" /> {t("settings.shareActivity")}
           </h2>
           <p className="text-sm text-muted mb-4">
-            Tự động đăng lên Cộng đồng khi bạn góp từ vào thư viện chung hoặc đạt mốc giờ luyện tập.
+            {t("settings.shareActivity.hint")}
           </p>
           <label className="flex items-center gap-3 cursor-pointer group">
             <div className="relative">
@@ -207,7 +207,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <span className="text-sm font-medium text-foreground">
-              {shareActivity ? "Đang bật" : "Đang tắt"}
+              {shareActivity ? t("settings.shareActivity.on") : t("settings.shareActivity.off")}
             </span>
           </label>
         </section>
@@ -215,7 +215,7 @@ export default function SettingsPage() {
         {/* Danh sách đã chặn */}
         <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
           <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <ShieldBan className="h-5 w-5 text-error" /> Danh sách đã chặn
+            <ShieldBan className="h-5 w-5 text-error" /> {t("settings.blocked")}
           </h2>
 
           {blocksLoading ? (
@@ -223,7 +223,7 @@ export default function SettingsPage() {
               <div className="animate-spin h-6 w-6 border-4 border-primary border-t-transparent rounded-full" />
             </div>
           ) : blocks.length === 0 ? (
-            <p className="text-sm text-muted">Bạn chưa chặn ai.</p>
+            <p className="text-sm text-muted">{t("settings.blocked.empty")}</p>
           ) : (
             <ul className="space-y-3">
               {blocks.map((b) => (
@@ -241,7 +241,7 @@ export default function SettingsPage() {
                     size="sm"
                     onClick={() => handleUnblock(b.blocked.id, b.blocked.displayName)}
                   >
-                    Bỏ chặn
+                    {t("settings.blocked.unblock")}
                   </Button>
                 </li>
               ))}
@@ -256,7 +256,7 @@ export default function SettingsPage() {
             className="w-full text-error border-error/30 hover:bg-error/5 hover:text-error"
             onClick={handleLogout}
           >
-            <LogOut className="h-4 w-4 mr-2" /> Đăng xuất
+            <LogOut className="h-4 w-4 mr-2" /> {t("menu.logout")}
           </Button>
         </section>
       </div>
