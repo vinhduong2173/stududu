@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Put, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { JwtPayload } from '../../common/types/jwt-payload';
@@ -26,8 +26,8 @@ export class UserController {
   }
 
   @Get(':id')
-  getProfile(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
-    return this.userService.getProfile(user.sub, Number(id));
+  getProfile(@Param('id') id: string) {
+    return this.userService.getProfile(Number(id));
   }
 
   @Patch('me')

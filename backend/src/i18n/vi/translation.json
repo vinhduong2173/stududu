@@ -1,0 +1,67 @@
+{
+  "auth": {
+    "emailExists": "Email đã tồn tại",
+    "invalidToken": "Token không hợp lệ",
+    "accountDeleted": "Tài khoản không tồn tại hoặc đã bị xóa",
+    "accountSuspended": "Tài khoản đang bị tạm khóa đến {until}{reason}",
+    "accountBanned": "Tài khoản đã bị xóa",
+    "invalidRefreshToken": "Refresh token không hợp lệ hoặc đã hết hạn",
+    "invalidCredentials": "Email hoặc mật khẩu không đúng",
+    "suspendedNoChat": "Tài khoản của bạn đang bị tạm khóa, không thể nhắn tin"
+  },
+  "user": {
+    "notFound": "Không tìm thấy người dùng",
+    "lockedOrNotExist": "Người dùng không tồn tại hoặc đã bị khóa",
+    "learningNeedsLevel": "Ngôn ngữ đang học cần level theo thang 1–5",
+    "nativeNoLevel": "Ngôn ngữ mẹ đẻ không cần level",
+    "wrongCurrentPassword": "Mật khẩu hiện tại không đúng"
+  },
+  "trust": {
+    "noSelfReport": "Không thể report chính mình",
+    "noSelfBlock": "Không thể block chính mình",
+    "noSelfEndorse": "Không thể tự ghi nhận chính mình",
+    "endorseOnlyConversed": "Chỉ ghi nhận được người bạn đã từng trò chuyện cùng"
+  },
+  "translate": {
+    "unavailable": "Dịch vụ dịch tạm thời không khả dụng, thử lại sau"
+  },
+  "schedule": {
+    "mustBeFuture": "Thời gian hẹn phải ở tương lai",
+    "notFound": "Không tìm thấy lời mời hẹn",
+    "noSelfRespond": "Người mời không thể tự phản hồi",
+    "alreadyResponded": "Lời mời này đã được phản hồi hoặc đã hết hạn"
+  },
+  "matching": {
+    "noSelfLike": "Không thể like chính mình",
+    "userNotFound": "Người dùng không tồn tại hoặc đã bị khóa",
+    "mustCompleteProfile": "Bạn cần khai ít nhất một ngôn ngữ đang học trước khi Khám phá"
+  },
+  "community": {
+    "postNotFound": "Không tìm thấy bài viết"
+  },
+  "chat": {
+    "invalidEmoji": "Emoji không nằm trong danh sách cho phép",
+    "messageNotFound": "Không tìm thấy tin nhắn",
+    "scheduleNotFound": "Không tìm thấy lời mời hẹn giờ",
+    "noSelfScheduleRespond": "Người gửi lời mời không thể tự phản hồi",
+    "alreadyResponded": "Lời mời này đã được phản hồi",
+    "emptyMessage": "Tin nhắn trống",
+    "messageTooLong": "Tin nhắn tối đa {max} ký tự",
+    "invalidImage": "Ảnh không hợp lệ",
+    "imageTooLarge": "Ảnh quá lớn (tối đa ~500KB sau nén)",
+    "missingScheduleInfo": "Thiếu thông tin lời mời hẹn giờ",
+    "notInConversation": "Bạn không thuộc hội thoại này",
+    "conversationNotFound": "Không tìm thấy hội thoại",
+    "blockedUser": "Không thể nhắn tin với người này"
+  },
+  "vocab": {
+    "wordNotFound": "Không tìm thấy từ trong sổ của bạn",
+    "libraryWordNotFound": "Không tìm thấy từ trong thư viện"
+  },
+  "admin": {
+    "userNotFound": "Không tìm thấy người dùng"
+  },
+  "common": {
+    "accessDenied": "Không đủ quyền truy cập"
+  }
+}

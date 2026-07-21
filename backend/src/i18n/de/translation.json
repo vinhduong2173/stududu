@@ -1,0 +1,67 @@
+{
+  "auth": {
+    "emailExists": "E-Mail-Adresse existiert bereits",
+    "invalidToken": "Ungültiges Token",
+    "accountDeleted": "Konto existiert nicht oder wurde gelöscht",
+    "accountSuspended": "Konto ist gesperrt bis {until}{reason}",
+    "accountBanned": "Konto wurde gelöscht",
+    "invalidRefreshToken": "Refresh-Token ist ungültig oder abgelaufen",
+    "invalidCredentials": "E-Mail oder Passwort ist falsch",
+    "suspendedNoChat": "Ihr Konto ist gesperrt und Sie können keine Nachrichten senden"
+  },
+  "user": {
+    "notFound": "Benutzer nicht gefunden",
+    "lockedOrNotExist": "Benutzer existiert nicht oder wurde gesperrt",
+    "learningNeedsLevel": "Eine zu lernende Sprache erfordert ein Niveau (1–5)",
+    "nativeNoLevel": "Muttersprachen erfordern kein Niveau",
+    "wrongCurrentPassword": "Das aktuelle Passwort ist falsch"
+  },
+  "trust": {
+    "noSelfReport": "Sie können sich nicht selbst melden",
+    "noSelfBlock": "Sie können sich nicht selbst blockieren",
+    "noSelfEndorse": "Sie können sich nicht selbst bestätigen",
+    "endorseOnlyConversed": "Sie können nur Benutzer bestätigen, mit denen Sie gesprochen haben"
+  },
+  "translate": {
+    "unavailable": "Übersetzungsdienst ist vorübergehend nicht verfügbar, bitte versuchen Sie es später noch einmal"
+  },
+  "schedule": {
+    "mustBeFuture": "Der geplante Zeitpunkt muss in der Zukunft liegen",
+    "notFound": "Terminanfrage nicht gefunden",
+    "noSelfRespond": "Der Anforderer kann nicht auf seine eigene Einladung antworten",
+    "alreadyResponded": "Diese Einladung wurde bereits beantwortet oder ist abgelaufen"
+  },
+  "matching": {
+    "noSelfLike": "Sie können sich nicht selbst liken",
+    "userNotFound": "Benutzer existiert nicht oder wurde gesperrt",
+    "mustCompleteProfile": "Sie müssen mindestens eine Sprache hinzufügen, die Sie lernen, bevor Sie auf Entdeckungsreise gehen"
+  },
+  "community": {
+    "postNotFound": "Beitrag nicht gefunden"
+  },
+  "chat": {
+    "invalidEmoji": "Emoji ist nicht in der erlaubten Liste",
+    "messageNotFound": "Nachricht nicht gefunden",
+    "scheduleNotFound": "Termineinladung nicht gefunden",
+    "noSelfScheduleRespond": "Der Absender kann nicht auf seine eigene Einladung antworten",
+    "alreadyResponded": "Diese Einladung wurde bereits beantwortet",
+    "emptyMessage": "Nachricht darf nicht leer sein",
+    "messageTooLong": "Nachricht überschreitet {max} Zeichen",
+    "invalidImage": "Ungültiges Bild",
+    "imageTooLarge": "Bild ist zu groß (maximal ~500KB nach Komprimierung)",
+    "missingScheduleInfo": "Fehlende Termineinladungsinformationen",
+    "notInConversation": "Sie sind nicht Teil dieser Konversation",
+    "conversationNotFound": "Konversation nicht gefunden",
+    "blockedUser": "Nachrichten können an diesen Benutzer nicht gesendet werden"
+  },
+  "vocab": {
+    "wordNotFound": "Wort nicht in Ihrem Notizbuch gefunden",
+    "libraryWordNotFound": "Wort nicht in der Bibliothek gefunden"
+  },
+  "admin": {
+    "userNotFound": "Benutzer nicht gefunden"
+  },
+  "common": {
+    "accessDenied": "Unzureichende Berechtigungen"
+  }
+}

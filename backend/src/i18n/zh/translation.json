@@ -1,0 +1,67 @@
+{
+  "auth": {
+    "emailExists": "邮箱已存在",
+    "invalidToken": "无效的令牌",
+    "accountDeleted": "账号不存在或已被删除",
+    "accountSuspended": "账号已被封禁至 {until}{reason}",
+    "accountBanned": "账号已被删除",
+    "invalidRefreshToken": "刷新令牌无效或已过期",
+    "invalidCredentials": "邮箱或密码错误",
+    "suspendedNoChat": "您的账号已被封禁，无法发送消息"
+  },
+  "user": {
+    "notFound": "找不到用户",
+    "lockedOrNotExist": "用户不存在或已被封禁",
+    "learningNeedsLevel": "正在学习的语言必须指定等级（1-5）",
+    "nativeNoLevel": "母语无需指定等级",
+    "wrongCurrentPassword": "当前密码错误"
+  },
+  "trust": {
+    "noSelfReport": "您不能举报自己",
+    "noSelfBlock": "您不能拉黑自己",
+    "noSelfEndorse": "您不能推荐自己",
+    "endorseOnlyConversed": "您只能推荐与您交流过的用户"
+  },
+  "translate": {
+    "unavailable": "翻译服务暂时不可用，请稍后再试"
+  },
+  "schedule": {
+    "mustBeFuture": "预约时间必须是未来时间",
+    "notFound": "找不到预约请求",
+    "noSelfRespond": "发起人不能响应自己的邀请",
+    "alreadyResponded": "此邀请已被响应或已过期"
+  },
+  "matching": {
+    "noSelfLike": "您不能喜欢自己",
+    "userNotFound": "用户不存在或已被封禁",
+    "mustCompleteProfile": "在开始探索之前，您需要至少添加一门正在学习的语言"
+  },
+  "community": {
+    "postNotFound": "找不到帖子"
+  },
+  "chat": {
+    "invalidEmoji": "表情符号不在允许列表中",
+    "messageNotFound": "找不到消息",
+    "scheduleNotFound": "找不到预约邀请",
+    "noSelfScheduleRespond": "发送者不能响应自己的邀请",
+    "alreadyResponded": "此邀请已被响应",
+    "emptyMessage": "消息内容不能为空",
+    "messageTooLong": "消息超出 {max} 个字符限制",
+    "invalidImage": "无效的图片",
+    "imageTooLarge": "图片过大（压缩后最大支持 ~500KB）",
+    "missingScheduleInfo": "缺少预约邀请信息",
+    "notInConversation": "您不在此会话中",
+    "conversationNotFound": "找不到会话",
+    "blockedUser": "无法向该用户发送消息"
+  },
+  "vocab": {
+    "wordNotFound": "生词本中未找到该单词",
+    "libraryWordNotFound": "词库中未找到该单词"
+  },
+  "admin": {
+    "userNotFound": "找不到用户"
+  },
+  "common": {
+    "accessDenied": "权限不足"
+  }
+}

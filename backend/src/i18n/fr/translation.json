@@ -1,0 +1,67 @@
+{
+  "auth": {
+    "emailExists": "L'adresse e-mail existe déjà",
+    "invalidToken": "Jeton invalide",
+    "accountDeleted": "Le compte n'existe pas ou a été supprimé",
+    "accountSuspended": "Le compte est suspendu jusqu'à {until}{reason}",
+    "accountBanned": "Le compte a été supprimé",
+    "invalidRefreshToken": "Le jeton de rafraîchissement est invalide ou a expiré",
+    "invalidCredentials": "L'adresse e-mail ou le mot de passe est incorrect",
+    "suspendedNoChat": "Votre compte est suspendu et vous ne pouvez pas envoyer de messages"
+  },
+  "user": {
+    "notFound": "Utilisateur non trouvé",
+    "lockedOrNotExist": "L'utilisateur n'existe pas ou a été suspendu",
+    "learningNeedsLevel": "La langue en cours d'apprentissage requiert un niveau (1–5)",
+    "nativeNoLevel": "Les langues maternelles ne requièrent pas de niveau",
+    "wrongCurrentPassword": "Le mot de passe actuel est incorrect"
+  },
+  "trust": {
+    "noSelfReport": "Vous ne pouvez pas vous signaler vous-même",
+    "noSelfBlock": "Vous ne pouvez pas vous bloquer vous-même",
+    "noSelfEndorse": "Vous ne pouvez pas vous recommander vous-même",
+    "endorseOnlyConversed": "Vous ne pouvez recommander que les utilisateurs avec qui vous avez discuté"
+  },
+  "translate": {
+    "unavailable": "Le service de traduction est temporairement indisponible, veuillez réessayer plus tard"
+  },
+  "schedule": {
+    "mustBeFuture": "L'heure programmée doit être dans le futur",
+    "notFound": "Demande de rendez-vous non trouvée",
+    "noSelfRespond": "Le demandeur ne peut pas répondre à sa propre invitation",
+    "alreadyResponded": "Cette invitation a déjà fait l'objet d'une réponse ou a expiré"
+  },
+  "matching": {
+    "noSelfLike": "Vous ne pouvez pas vous aimer vous-même",
+    "userNotFound": "L'utilisateur n'existe pas ou a été suspendu",
+    "mustCompleteProfile": "Vous devez ajouter au moins une langue en cours d'apprentissage avant de découvrir"
+  },
+  "community": {
+    "postNotFound": "Publication non trouvée"
+  },
+  "chat": {
+    "invalidEmoji": "L'émoji n'est pas dans la liste autorisée",
+    "messageNotFound": "Message non trouvé",
+    "scheduleNotFound": "Invitation de rendez-vous non trouvée",
+    "noSelfScheduleRespond": "L'expéditeur ne peut pas répondre à sa propre invitation",
+    "alreadyResponded": "Cette invitation a déjà fait l'objet d'une réponse",
+    "emptyMessage": "Le message ne peut pas être vide",
+    "messageTooLong": "Le message dépasse {max} caractères",
+    "invalidImage": "Image invalide",
+    "imageTooLarge": "L'image est trop grande (max ~500Ko après compression)",
+    "missingScheduleInfo": "Informations d'invitation de rendez-vous manquantes",
+    "notInConversation": "Vous ne faites pas partie de cette conversation",
+    "conversationNotFound": "Conversation non trouvée",
+    "blockedUser": "Impossible d'envoyer des messages à cet utilisateur"
+  },
+  "vocab": {
+    "wordNotFound": "Mot non trouvé dans votre carnet",
+    "libraryWordNotFound": "Mot non trouvé dans la bibliothèque"
+  },
+  "admin": {
+    "userNotFound": "Utilisateur non trouvé"
+  },
+  "common": {
+    "accessDenied": "Autorisations insuffisantes"
+  }
+}

@@ -1,10 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ActivityPostType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { TranslateService } from '../translate/translate.service';
-import { DictionaryService } from './dictionary.service';
-import { NotificationService } from '../notification/notification.service';
 import { SaveWordDto, UpdateLibraryWordDto } from './dto/save-word.dto';
+import { I18nService, I18nContext } from 'nestjs-i18n';
 
 // BR-12 — WORD_LIBRARY công khai khi đủ ngưỡng người lưu (mỗi user chỉ tính 1 lần
 // nhờ UNIQUE(user_id, word_library_id) → save_count = số user khác nhau)
@@ -14,9 +12,7 @@ export const WORD_LIBRARY_PUBLIC_THRESHOLD = 3;
 export class VocabularyService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly translateService: TranslateService,
-    private readonly dictionaryService: DictionaryService,
-    private readonly notificationService: NotificationService,
+    private readonly i18n: I18nService,
   ) {}
 
   // FS-23 — tìm/tạo WORD_LIBRARY theo (term, language) rồi gắn USER_SAVED_WORD
@@ -28,20 +24,7 @@ export class VocabularyService {
     });
     if (!word) {
       word = await this.prisma.wordLibrary.create({
-        data: {
-          term,
-          languageId: dto.languageId,
-          definition: dto.definition,
-          example: dto.example,
-        },
-      });
-    } else {
-      word = await this.prisma.wordLibrary.update({
-        where: { id: word.id },
-        data: {
-          definition: dto.definition || word.definition,
-          example: dto.example || word.example,
-        },
+        data: { term, languageId: dto.languageId },
       });
     }
 
@@ -89,18 +72,13 @@ export class VocabularyService {
         select: { shareActivity: true },
       });
       if (user?.shareActivity) {
-        const post = await this.prisma.activityPost.create({
+        await this.prisma.activityPost.create({
           data: {
             userId,
             type: ActivityPostType.word_public,
             contentRef: String(word.id),
           },
         });
-        try {
-          await this.notificationService.notifyFollowersNewPost(userId, post.id);
-        } catch (err) {
-          console.error('Failed to notify followers of public word post:', err);
-        }
       }
     }
 
@@ -150,58 +128,5 @@ export class VocabularyService {
       data: { ...dto, updatedById: userId },
       include: { language: true },
     });
-  }
-
-  // Tra từ nhanh — gộp 3 nguồn (Dictionary API + Translate + Word Library) trong 1 request
-  async lookup(term: string, targetLang = 'vi') {
-    const trimmed = term.trim();
-    if (!trimmed) return { term: trimmed, translation: null, detectedLang: null, dictionary: null, library: null };
-
-    // Chạy song song 3 nguồn để giảm latency
-    const [dictResult, translateResult, libraryWord] = await Promise.all([
-      this.dictionaryService.lookup(trimmed),
-      this.translateService.translate({ text: trimmed, source: 'auto', target: targetLang }).catch(() => null),
-      this.prisma.wordLibrary.findFirst({
-        where: { term: { equals: trimmed, mode: 'insensitive' } },
-        include: { language: true },
-      }),
-    ]);
-
-    // Tìm languageId tương ứng với ngôn ngữ được detect
-    let languageId = libraryWord?.languageId ?? null;
-    if (!languageId && translateResult?.source) {
-      const dbLang = await this.prisma.language.findUnique({
-        where: { code: translateResult.source },
-      });
-      if (dbLang) {
-        languageId = dbLang.id;
-      }
-    }
-
-    // Fallback nếu không detect được hoặc không khớp database: chọn ngôn ngữ đầu tiên hoặc tiếng Anh
-    if (!languageId) {
-      const fallbackLang = await this.prisma.language.findFirst({
-        where: { code: 'en' },
-      }) || await this.prisma.language.findFirst();
-      languageId = fallbackLang?.id ?? 1; // Default to 1 if no languages in DB
-    }
-
-    return {
-      term: trimmed,
-      translation: translateResult?.translation ?? null,
-      detectedLang: translateResult?.source ?? null,
-      languageId,
-      dictionary: dictResult,
-      library: libraryWord
-        ? {
-            id: libraryWord.id,
-            definition: libraryWord.definition,
-            example: libraryWord.example,
-            languageId: libraryWord.languageId,
-            languageName: libraryWord.language.name,
-            saveCount: libraryWord.saveCount,
-          }
-        : null,
-    };
   }
 }

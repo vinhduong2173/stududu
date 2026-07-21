@@ -1,0 +1,67 @@
+{
+  "auth": {
+    "emailExists": "メールアドレスは既に存在します",
+    "invalidToken": "無効なトークンです",
+    "accountDeleted": "アカウントが存在しないか、削除されました",
+    "accountSuspended": "アカウントは{until}まで一時停止されています{reason}",
+    "accountBanned": "アカウントは削除されました",
+    "invalidRefreshToken": "リフレッシュトークンが無効であるか、有効期限が切れています",
+    "invalidCredentials": "メールアドレスまたはパスワードが正しくありません",
+    "suspendedNoChat": "アカウントが停止されているため、メッセージを送信できません"
+  },
+  "user": {
+    "notFound": "ユーザーが見つかりません",
+    "lockedOrNotExist": "ユーザーが存在しないか、停止されています",
+    "learningNeedsLevel": "学習中の言語にはレベル（1〜5）が必要です",
+    "nativeNoLevel": "母国語にはレベルは必要ありません",
+    "wrongCurrentPassword": "現在のパスワードが正しくありません"
+  },
+  "trust": {
+    "noSelfReport": "自分自身を通報することはできません",
+    "noSelfBlock": "自分自身をブロックすることはできません",
+    "noSelfEndorse": "自分自身を推薦することはできません",
+    "endorseOnlyConversed": "会話したことのあるユーザーのみ推薦できます"
+  },
+  "translate": {
+    "unavailable": "翻訳サービスは現在ご利用いただけません。後ほどもう一度お試しください"
+  },
+  "schedule": {
+    "mustBeFuture": "予定時間は未来である必要があります",
+    "notFound": "予定リクエストが見つかりません",
+    "noSelfRespond": "招待者は自身の招待に応答することはできません",
+    "alreadyResponded": "この招待は既に回答済みか、有効期限が切れています"
+  },
+  "matching": {
+    "noSelfLike": "自分自身に「いいね！」することはできません",
+    "userNotFound": "ユーザーが存在しないか、停止されています",
+    "mustCompleteProfile": "探索する前に、学習中の言語を少なくとも1つ追加する必要があります"
+  },
+  "community": {
+    "postNotFound": "投稿が見つかりません"
+  },
+  "chat": {
+    "invalidEmoji": "絵文字は許可リストにありません",
+    "messageNotFound": "メッセージが見つかりません",
+    "scheduleNotFound": "予定の招待が見つかりません",
+    "noSelfScheduleRespond": "送信者は自身の招待に応答することはできません",
+    "alreadyResponded": "この招待はすでに回答されています",
+    "emptyMessage": "メッセージを空にすることはできません",
+    "messageTooLong": "メッセージは{max}文字を超えています",
+    "invalidImage": "無効な画像です",
+    "imageTooLarge": "画像が大きすぎます（圧縮後最大約500KB）",
+    "missingScheduleInfo": "予定の招待情報が不足しています",
+    "notInConversation": "この会話のメンバーではありません",
+    "conversationNotFound": "会話が見つかりません",
+    "blockedUser": "このユーザーにメッセージを送信できません"
+  },
+  "vocab": {
+    "wordNotFound": "ノートに単語が見つかりません",
+    "libraryWordNotFound": "ライブラリに単語が見つかりません"
+  },
+  "admin": {
+    "userNotFound": "ユーザーが見つかりません"
+  },
+  "common": {
+    "accessDenied": "権限が不足しています"
+  }
+}

@@ -12,6 +12,8 @@ import type { JwtPayload } from '../../common/types/jwt-payload';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { I18nService, I18nContext } from 'nestjs-i18n';
+import type { GoogleProfile } from './strategies/google.strategy';
 
 const BCRYPT_ROUNDS = 10;
 
@@ -28,13 +30,14 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly i18n: I18nService,
   ) {}
 
   // US-01 — đăng ký
   async register(dto: RegisterDto): Promise<{ user: PublicUser; tokens: AuthTokens }> {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) {
-      throw new ConflictException('Email đã tồn tại');
+      throw new ConflictException(this.i18n.t('translation.auth.emailExists', { lang: I18nContext.current()?.lang }));
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
@@ -45,12 +48,50 @@ export class AuthService {
     return { user: this.toPublic(user), tokens: await this.issueTokens(user) };
   }
 
+  async googleLogin(profile: GoogleProfile): Promise<{ user: PublicUser; tokens: AuthTokens }> {
+    // Check if user already exists with this Google ID
+    let user = await this.prisma.user.findUnique({
+      where: { googleId: profile.googleId },
+    });
+
+    if (!user) {
+      user = await this.prisma.user.findUnique({
+        where: { email: profile.email },
+      });
+
+      if (user) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { googleId: profile.googleId },
+        });
+      } else {
+        user = await this.prisma.user.create({
+          data: {
+            email: profile.email,
+            displayName: profile.displayName,
+            avatarUrl: profile.avatarUrl,
+            googleId: profile.googleId,
+          },
+        });
+      }
+    }
+
+    await this.assertNotSuspended(user);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastActive: new Date() },
+    });
+
+    return { user: this.toPublic(user), tokens: await this.issueTokens(user) };
+  }
+
   // US-02 — đăng nhập (không tiết lộ email có tồn tại hay không)
   // TODO US-02: khóa đăng nhập tạm 15 phút sau 5 lần sai liên tiếp
   // US-02 — kiểm tra email/pass cho LocalStrategy
   async validateUser(email: string, pass: string): Promise<User | null> {
     const user = await this.prisma.user.findUnique({ where: { email } });
-    if (user && (await bcrypt.compare(pass, user.passwordHash))) {
+    if (user && user.passwordHash && (await bcrypt.compare(pass, user.passwordHash))) {
       await this.assertNotSuspended(user);
       return user;
     }
@@ -74,7 +115,7 @@ export class AuthService {
         secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
     } catch {
-      throw new UnauthorizedException('Refresh token không hợp lệ hoặc đã hết hạn');
+      throw new UnauthorizedException(this.i18n.t('translation.auth.invalidRefreshToken', { lang: I18nContext.current()?.lang }));
     }
 
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
@@ -88,7 +129,7 @@ export class AuthService {
   // AC3: thông báo cho người dùng cả LÝ DO (từ log kiểm duyệt) + THỜI HẠN.
   private async assertNotSuspended(user: User): Promise<void> {
     if (user.status === UserStatus.deleted) {
-      throw new ForbiddenException('Tài khoản đã bị xóa');
+      throw new ForbiddenException(this.i18n.t('translation.auth.accountBanned', { lang: I18nContext.current()?.lang }));
     }
     if (user.status === UserStatus.suspended) {
       if (user.suspendedUntil && user.suspendedUntil <= new Date()) {
@@ -104,17 +145,23 @@ export class AuthService {
         where: { targetUserId: user.id },
         orderBy: { createdAt: 'desc' },
       });
+      const lang = I18nContext.current()?.lang;
+      const locale = lang === 'en' ? 'en-US' : 'vi-VN';
       const until = user.suspendedUntil
-        ? user.suspendedUntil.toLocaleString('vi-VN', {
+        ? user.suspendedUntil.toLocaleString(locale, {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
           })
-        : 'khi có thông báo mới';
+        : (lang === 'en' ? 'further notice' : 'khi có thông báo mới');
+      const reasonStr = lastAction ? (lang === 'en' ? ` — reason: ${lastAction.reason}` : ` — lý do: ${lastAction.reason}`) : '';
       throw new ForbiddenException(
-        `Tài khoản bị tạm khóa đến ${until}${lastAction ? ` — lý do: ${lastAction.reason}` : ''}`,
+        this.i18n.t('translation.auth.accountSuspended', {
+          lang,
+          args: { until, reason: reasonStr },
+        }),
       );
     }
   }

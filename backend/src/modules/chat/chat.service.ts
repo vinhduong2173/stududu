@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { MessageType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { I18nService, I18nContext } from 'nestjs-i18n';
 
 const MAX_TEXT_LENGTH = 2000;
 const MAX_IMAGE_DATA_URL_LENGTH = 700_000; // ~500KB ảnh đã nén phía client
@@ -25,13 +26,15 @@ export interface ScheduleMessagePayload {
   slotId?: string;
   myTimeLabel?: string;
   partnerTimeLabel?: string;
-  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'cancelled';
-  cancelReason?: string;
+  status: 'pending' | 'accepted' | 'declined' | 'expired';
 }
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly i18n: I18nService,
+  ) {}
 
   // US-15 — Inbox: danh sách hội thoại sắp theo tin mới nhất, kèm tin cuối
   async getConversations(userId: number) {
@@ -85,14 +88,12 @@ export class ChatService {
     return conversations
       .map((c) => {
         const partner = c.match.memberId === userId ? c.match.candidate : c.match.member;
-        const isConnected = ['liked', 'mutual'].includes(c.match.status);
         return {
           id: c.id,
           partner,
           lastMessage: c.messages[0] ?? null,
           unreadCount: unreadByConversation.get(c.id) ?? 0,
           createdAt: c.createdAt,
-          isConnected,
         };
       })
       .sort(
@@ -124,11 +125,10 @@ export class ChatService {
       select: { status: true },
     });
     if (sender?.status !== 'active') {
-      throw new ForbiddenException('Tài khoản của bạn đang bị tạm khóa, không thể nhắn tin');
+      throw new ForbiddenException(this.i18n.t('translation.auth.suspendedNoChat', { lang: I18nContext.current()?.lang }));
     }
 
     await this.assertParticipant(userId, conversationId);
-
     this.validateMessage(content, type, payload);
 
     const [message] = await this.prisma.$transaction([
@@ -155,10 +155,10 @@ export class ChatService {
   // FS-14 — toggle reaction emoji trên tin nhắn (tập cố định REACTION_EMOJIS)
   async toggleReaction(userId: number, messageId: number, emoji: string) {
     if (!REACTION_EMOJIS.includes(emoji as (typeof REACTION_EMOJIS)[number])) {
-      throw new BadRequestException('Emoji không nằm trong danh sách cho phép');
+      throw new BadRequestException(this.i18n.t('translation.chat.invalidEmoji', { lang: I18nContext.current()?.lang }));
     }
     const message = await this.prisma.message.findUnique({ where: { id: messageId } });
-    if (!message) throw new NotFoundException('Không tìm thấy tin nhắn');
+    if (!message) throw new NotFoundException(this.i18n.t('translation.chat.messageNotFound', { lang: I18nContext.current()?.lang }));
     await this.assertParticipant(userId, message.conversationId);
 
     const reactions = (message.reactions as Record<string, number[]> | null) ?? {};
@@ -228,16 +228,16 @@ export class ChatService {
   async respondSchedule(userId: number, messageId: number, response: 'accepted' | 'declined') {
     const message = await this.prisma.message.findUnique({ where: { id: messageId } });
     if (!message || message.type !== MessageType.schedule) {
-      throw new NotFoundException('Không tìm thấy lời mời hẹn giờ');
+      throw new NotFoundException(this.i18n.t('translation.chat.scheduleNotFound', { lang: I18nContext.current()?.lang }));
     }
     await this.assertParticipant(userId, message.conversationId);
     if (message.senderId === userId) {
-      throw new BadRequestException('Người gửi lời mời không thể tự phản hồi');
+      throw new BadRequestException(this.i18n.t('translation.chat.noSelfScheduleRespond', { lang: I18nContext.current()?.lang }));
     }
 
     const payload = message.payload as unknown as ScheduleMessagePayload;
     if (payload.status !== 'pending') {
-      throw new BadRequestException('Lời mời này đã được phản hồi');
+      throw new BadRequestException(this.i18n.t('translation.chat.alreadyResponded', { lang: I18nContext.current()?.lang }));
     }
 
     return this.prisma.message.update({
@@ -253,24 +253,25 @@ export class ChatService {
     type: MessageType,
     payload?: ScheduleMessagePayload,
   ): void {
+    const lang = I18nContext.current()?.lang;
     if (type === MessageType.text) {
-      if (!content.trim()) throw new BadRequestException('Tin nhắn trống');
+      if (!content.trim()) throw new BadRequestException(this.i18n.t('translation.chat.emptyMessage', { lang }));
       if (content.length > MAX_TEXT_LENGTH) {
-        throw new BadRequestException(`Tin nhắn tối đa ${MAX_TEXT_LENGTH} ký tự`);
+        throw new BadRequestException(this.i18n.t('translation.chat.messageTooLong', { lang, args: { max: MAX_TEXT_LENGTH } }));
       }
     } else if (type === MessageType.image) {
       if (!content.startsWith('data:image/')) {
-        throw new BadRequestException('Ảnh không hợp lệ');
+        throw new BadRequestException(this.i18n.t('translation.chat.invalidImage', { lang }));
       }
       if (content.length > MAX_IMAGE_DATA_URL_LENGTH) {
-        throw new BadRequestException('Ảnh quá lớn (tối đa ~500KB sau nén)');
+        throw new BadRequestException(this.i18n.t('translation.chat.imageTooLarge', { lang }));
       }
     } else if (type === MessageType.schedule) {
       // FS-28: bản mới cần requestId + timeUtc; bản cũ cần slotId + labels
       const isNewShape = Boolean(payload?.requestId && payload?.timeUtc);
       const isLegacyShape = Boolean(payload?.slotId && payload?.myTimeLabel);
       if (!isNewShape && !isLegacyShape) {
-        throw new BadRequestException('Thiếu thông tin lời mời hẹn giờ');
+        throw new BadRequestException(this.i18n.t('translation.chat.missingScheduleInfo', { lang }));
       }
     }
   }
@@ -286,15 +287,16 @@ export class ChatService {
 
   // Chỉ 2 thành viên của match được vào hội thoại; chặn nếu đã block nhau (US-18 AC2)
   async assertParticipant(userId: number, conversationId: number): Promise<void> {
+    const lang = I18nContext.current()?.lang;
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: { match: true },
     });
-    if (!conversation) throw new NotFoundException('Không tìm thấy hội thoại');
+    if (!conversation) throw new NotFoundException(this.i18n.t('translation.chat.conversationNotFound', { lang }));
 
     const { memberId, candidateId } = conversation.match;
     if (userId !== memberId && userId !== candidateId) {
-      throw new ForbiddenException('Bạn không thuộc hội thoại này');
+      throw new ForbiddenException(this.i18n.t('translation.chat.notInConversation', { lang }));
     }
 
     const partnerId = userId === memberId ? candidateId : memberId;
@@ -306,6 +308,6 @@ export class ChatService {
         ],
       },
     });
-    if (blocked) throw new ForbiddenException('Không thể nhắn tin với người này');
+    if (blocked) throw new ForbiddenException(this.i18n.t('translation.chat.blockedUser', { lang }));
   }
 }

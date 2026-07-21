@@ -1,0 +1,67 @@
+{
+  "auth": {
+    "emailExists": "El correo electrónico ya existe",
+    "invalidToken": "Token inválido",
+    "accountDeleted": "La cuenta no existe o ha sido eliminada",
+    "accountSuspended": "La cuenta está suspendida hasta {until}{reason}",
+    "accountBanned": "La cuenta ha sido eliminada",
+    "invalidRefreshToken": "El token de actualización es inválido o ha expirado",
+    "invalidCredentials": "El correo electrónico o la contraseña son incorrectos",
+    "suspendedNoChat": "Su cuenta está suspendida y no puede enviar mensajes"
+  },
+  "user": {
+    "notFound": "Usuario no encontrado",
+    "lockedOrNotExist": "El usuario no existe o ha sido suspendido",
+    "learningNeedsLevel": "El idioma que se está aprendiendo requiere un nivel (1-5)",
+    "nativeNoLevel": "Los idiomas nativos no requieren un nivel",
+    "wrongCurrentPassword": "La contraseña actual es incorrecta"
+  },
+  "trust": {
+    "noSelfReport": "No puedes denunciarte a ti mismo",
+    "noSelfBlock": "No puedes bloquearte a ti mismo",
+    "noSelfEndorse": "No puedes respaldarte a ti mismo",
+    "endorseOnlyConversed": "Solo puedes respaldar a usuarios con los que hayas conversado"
+  },
+  "translate": {
+    "unavailable": "El servicio de traducción no está disponible temporalmente, inténtelo de nuevo más tarde"
+  },
+  "schedule": {
+    "mustBeFuture": "La hora programada debe ser en el futuro",
+    "notFound": "Petición de programación no encontrada",
+    "noSelfRespond": "El solicitante no puede responder a su propia invitación",
+    "alreadyResponded": "Esta invitación ya ha sido respondida o ha expirado"
+  },
+  "matching": {
+    "noSelfLike": "No te puedes dar me gusta a ti mismo",
+    "userNotFound": "El usuario no existe o ha sido suspendido",
+    "mustCompleteProfile": "Necesitas añadir al menos un idioma que estés aprendiendo antes de explorar"
+  },
+  "community": {
+    "postNotFound": "Publicación no encontrada"
+  },
+  "chat": {
+    "invalidEmoji": "El emoji no está en la lista permitida",
+    "messageNotFound": "Mensaje no encontrado",
+    "scheduleNotFound": "Invitación de programación no encontrada",
+    "noSelfScheduleRespond": "El remitente no puede responder a su propia invitación",
+    "alreadyResponded": "Esta invitación ya ha sido respondida",
+    "emptyMessage": "El mensaje no puede estar vacío",
+    "messageTooLong": "El mensaje excede los {max} caracteres",
+    "invalidImage": "Imagen inválida",
+    "imageTooLarge": "La imagen es demasiado grande (máx ~500KB después de la compresión)",
+    "missingScheduleInfo": "Falta información de la invitación de programación",
+    "notInConversation": "No eres parte de esta conversación",
+    "conversationNotFound": "Conversación no encontrada",
+    "blockedUser": "No se pueden enviar mensajes a este usuario"
+  },
+  "vocab": {
+    "wordNotFound": "Palabra no encontrada en tu cuaderno",
+    "libraryWordNotFound": "Palabra no encontrada en la biblioteca"
+  },
+  "admin": {
+    "userNotFound": "Usuario no encontrado"
+  },
+  "common": {
+    "accessDenied": "Permisos insuficientes"
+  }
+}

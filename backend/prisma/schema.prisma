@@ -90,7 +90,6 @@ enum ScheduleStatus {
   accepted
   declined
   expired
-  cancelled
 }
 
 // ===== Models =====
@@ -98,7 +97,8 @@ enum ScheduleStatus {
 model User {
   id             Int        @id @default(autoincrement())
   email          String     @unique
-  passwordHash   String     @map("password_hash")
+  passwordHash   String?    @map("password_hash") // nullable cho Google-only accounts
+  googleId       String?    @unique @map("google_id") // Google OAuth ID
   displayName    String     @map("display_name")
   avatarUrl      String?    @map("avatar_url") // URL hoặc data URL (ảnh chọn từ máy, đã nén)
   bio            String?
@@ -134,12 +134,7 @@ model User {
   endorsementsReceived Endorsement[]    @relation("EndorsementReceiver")
   activityPosts       ActivityPost[]
   postLikes           PostLike[]
-  postComments        PostComment[]
-  commentLikes        CommentLike[]
   scheduleRequests    ScheduleRequest[]
-
-  notificationsReceived Notification[]     @relation("NotificationReceiver")
-  notificationsSent     Notification[]     @relation("NotificationSender")
 
   @@map("users")
 }
@@ -391,12 +386,10 @@ model ActivityPost {
   type       ActivityPostType
   contentRef String?          @map("content_ref") // word_public: wordLibraryId · milestone: số giờ mốc
   content    String? // user_post: nội dung chia sẻ tự do
-  imageUrl   String?          @map("image_url")
   createdAt  DateTime         @default(now()) @map("created_at")
 
-  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  likes    PostLike[]
-  comments PostComment[]
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes PostLike[]
 
   @@map("activity_posts")
 }
@@ -421,7 +414,6 @@ model ScheduleRequest {
   proposerId      Int            @map("proposer_id")
   proposedTimeUtc DateTime       @map("proposed_time_utc")
   status          ScheduleStatus @default(pending)
-  cancelReason    String?        @map("cancel_reason")
   reminderSentAt  DateTime?      @map("reminder_sent_at") // đã gửi nhắc 30 phút trước giờ hẹn chưa
   createdAt       DateTime       @default(now()) @map("created_at")
 
@@ -444,51 +436,4 @@ model ModerationAction {
   target User @relation("ModerationTarget", fields: [targetUserId], references: [id])
 
   @@map("moderation_actions")
-}
-
-model PostComment {
-  id        Int      @id @default(autoincrement())
-  postId    Int      @map("post_id")
-  userId    Int      @map("user_id")
-  content   String
-  parentId  Int?     @map("parent_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  post      ActivityPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent    PostComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   PostComment[] @relation("CommentReplies")
-  likes     CommentLike[]
-
-  @@map("post_comments")
-}
-
-model CommentLike {
-  id        Int      @id @default(autoincrement())
-  commentId Int      @map("comment_id")
-  userId    Int      @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  comment   PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([commentId, userId])
-  @@map("comment_likes")
-}
-
-
-model Notification {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @map("user_id")
-  senderId    Int?     @map("sender_id")
-  type        String
-  message     String
-  referenceId Int?     @map("reference_id")
-  read        Boolean  @default(false)
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  user   User  @relation("NotificationReceiver", fields: [userId], references: [id], onDelete: Cascade)
-  sender User? @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
-
-  @@map("notifications")
 }

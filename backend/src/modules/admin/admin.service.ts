@@ -13,6 +13,7 @@ import {
   UpdateTopicDto,
 } from './dto/catalog.dto';
 import { ModerateDto } from './dto/moderate.dto';
+import { I18nService, I18nContext } from 'nestjs-i18n';
 
 const SUSPEND_DURATIONS: Partial<Record<ModerationActionType, number>> = {
   [ModerationActionType.suspend_3d]: 3 * 24 * 60 * 60 * 1000,
@@ -21,7 +22,10 @@ const SUSPEND_DURATIONS: Partial<Record<ModerationActionType, number>> = {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly i18n: I18nService,
+  ) {}
 
   // US-19 AC1 — danh sách report kèm người báo / bị báo
   getReports(status?: ReportStatus) {
@@ -42,7 +46,7 @@ export class AdminService {
   // US-20 — vô hiệu hóa theo mức độ / xóa cứng khi tái phạm + ghi log kiểm duyệt
   async moderate(adminId: number, targetUserId: number, dto: ModerateDto) {
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
-    if (!target) throw new NotFoundException('Không tìm thấy người dùng');
+    if (!target) throw new NotFoundException(this.i18n.t('translation.admin.userNotFound', { lang: I18nContext.current()?.lang }));
 
     const userUpdate = this.buildUserUpdate(dto.action);
 
@@ -90,7 +94,7 @@ export class AdminService {
         _count: { select: { reportsReceived: true, reportsSent: true } },
       },
     });
-    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    if (!user) throw new NotFoundException(this.i18n.t('translation.admin.userNotFound', { lang: I18nContext.current()?.lang }));
     return user;
   }
 

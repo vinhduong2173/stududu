@@ -7,13 +7,13 @@ import { SetInterestsDto } from './dto/set-interests.dto';
 import { SetLanguagesDto } from './dto/set-languages.dto';
 import { SetPreferenceDto } from './dto/set-preference.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { NotificationService } from '../notification/notification.service';
+import { I18nService, I18nContext } from 'nestjs-i18n';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notificationService: NotificationService,
+    private readonly i18n: I18nService,
   ) {}
 
   async getMe(userId: number) {
@@ -41,16 +41,11 @@ export class UserService {
         matchPreference: true,
       },
     });
-    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
-
-    // Lấy mã ngôn ngữ native — dùng cho popup tra từ (ngôn ngữ dịch mặc định)
-    const nativeLang =
-      user.languages.find((l) => l.role === LanguageRole.native)?.language.code ?? null;
-
-    return { ...user, nativeLang };
+    if (!user) throw new NotFoundException(this.i18n.t('translation.user.notFound', { lang: I18nContext.current()?.lang }));
+    return user;
   }
 
-  async getProfile(currentUserId: number, userId: number) {
+  async getProfile(userId: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId, status: 'active' },
       select: {
@@ -69,8 +64,7 @@ export class UserService {
         interests: { include: { topic: true } },
       },
     });
-    if (!user) throw new NotFoundException('Người dùng không tồn tại hoặc đã bị khóa');
-
+    if (!user) throw new NotFoundException(this.i18n.t('translation.user.lockedOrNotExist', { lang: I18nContext.current()?.lang }));
     return user;
   }
 
@@ -96,10 +90,10 @@ export class UserService {
   async setLanguages(userId: number, dto: SetLanguagesDto) {
     for (const item of dto.languages) {
       if (item.role === LanguageRole.learning && !item.level) {
-        throw new BadRequestException('Ngôn ngữ đang học cần level theo thang 1–5');
+        throw new BadRequestException(this.i18n.t('translation.user.learningNeedsLevel', { lang: I18nContext.current()?.lang }));
       }
       if (item.role === LanguageRole.native && item.level) {
-        throw new BadRequestException('Ngôn ngữ mẹ đẻ không cần level');
+        throw new BadRequestException(this.i18n.t('translation.user.nativeNoLevel', { lang: I18nContext.current()?.lang }));
       }
     }
 
@@ -182,10 +176,14 @@ export class UserService {
   // Đổi mật khẩu trong Cài đặt — yêu cầu xác nhận mật khẩu hiện tại
   async changePassword(userId: number, dto: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('Không tìm thấy người dùng');
+    if (!user) throw new NotFoundException(this.i18n.t('translation.user.notFound', { lang: I18nContext.current()?.lang }));
+
+    if (!user.passwordHash) {
+      throw new BadRequestException(this.i18n.t('translation.user.wrongCurrentPassword', { lang: I18nContext.current()?.lang }));
+    }
 
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
-    if (!valid) throw new BadRequestException('Mật khẩu hiện tại không đúng');
+    if (!valid) throw new BadRequestException(this.i18n.t('translation.user.wrongCurrentPassword', { lang: I18nContext.current()?.lang }));
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });

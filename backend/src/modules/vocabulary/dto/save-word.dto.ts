@@ -12,16 +12,6 @@ export class SaveWordDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(1000)
-  definition?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  example?: string;
-
-  @IsOptional()
-  @IsString()
   @MaxLength(500)
   personalNote?: string;
 

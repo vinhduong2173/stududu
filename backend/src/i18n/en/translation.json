@@ -1,0 +1,67 @@
+{
+  "auth": {
+    "emailExists": "Email already exists",
+    "invalidToken": "Invalid token",
+    "accountDeleted": "Account does not exist or has been deleted",
+    "accountSuspended": "Account is suspended until {until}{reason}",
+    "accountBanned": "Account has been deleted",
+    "invalidRefreshToken": "Refresh token is invalid or has expired",
+    "invalidCredentials": "Email or password is incorrect",
+    "suspendedNoChat": "Your account is suspended and cannot send messages"
+  },
+  "user": {
+    "notFound": "User not found",
+    "lockedOrNotExist": "User does not exist or has been suspended",
+    "learningNeedsLevel": "A language being learned requires a level (1–5)",
+    "nativeNoLevel": "Native languages do not require a level",
+    "wrongCurrentPassword": "Current password is incorrect"
+  },
+  "trust": {
+    "noSelfReport": "You cannot report yourself",
+    "noSelfBlock": "You cannot block yourself",
+    "noSelfEndorse": "You cannot endorse yourself",
+    "endorseOnlyConversed": "You can only endorse users you have conversed with"
+  },
+  "translate": {
+    "unavailable": "Translation service is temporarily unavailable, please try again later"
+  },
+  "schedule": {
+    "mustBeFuture": "Scheduled time must be in the future",
+    "notFound": "Schedule request not found",
+    "noSelfRespond": "The requester cannot respond to their own invitation",
+    "alreadyResponded": "This invitation has already been responded to or has expired"
+  },
+  "matching": {
+    "noSelfLike": "You cannot like yourself",
+    "userNotFound": "User does not exist or has been suspended",
+    "mustCompleteProfile": "You need to add at least one language you are learning before discovering"
+  },
+  "community": {
+    "postNotFound": "Post not found"
+  },
+  "chat": {
+    "invalidEmoji": "Emoji is not in the allowed list",
+    "messageNotFound": "Message not found",
+    "scheduleNotFound": "Schedule invitation not found",
+    "noSelfScheduleRespond": "The sender cannot respond to their own invitation",
+    "alreadyResponded": "This invitation has already been responded to",
+    "emptyMessage": "Message cannot be empty",
+    "messageTooLong": "Message exceeds {max} characters",
+    "invalidImage": "Invalid image",
+    "imageTooLarge": "Image is too large (max ~500KB after compression)",
+    "missingScheduleInfo": "Missing schedule invitation information",
+    "notInConversation": "You are not part of this conversation",
+    "conversationNotFound": "Conversation not found",
+    "blockedUser": "Cannot send messages to this user"
+  },
+  "vocab": {
+    "wordNotFound": "Word not found in your notebook",
+    "libraryWordNotFound": "Word not found in the library"
+  },
+  "admin": {
+    "userNotFound": "User not found"
+  },
+  "common": {
+    "accessDenied": "Insufficient permissions"
+  }
+}
