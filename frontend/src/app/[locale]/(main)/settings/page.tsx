@@ -150,7 +150,7 @@ export default function SettingsPage() {
         {/* Đổi mật khẩu */}
         <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
           <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-primary" /> {t("settings.change_password")}
+            <KeyRound className="h-5 w-5 text-primary" /> {t("settings.password")}
           </h2>
           <p className="text-sm text-muted mb-4">{t("settings.password_hint")}</p>
 
@@ -187,7 +187,7 @@ export default function SettingsPage() {
         {/* FS-25 — chia sẻ hoạt động lên Cộng đồng */}
         <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
           <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" /> {t("settings.share_activity")}
+            <Users className="h-5 w-5 text-primary" /> {t("settings.shareActivity")}
           </h2>
           <p className="text-sm text-muted mb-4">
             {t("settings.share_activity_hint")}
@@ -223,7 +223,7 @@ export default function SettingsPage() {
         {/* Danh sách đã chặn */}
         <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
           <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <ShieldBan className="h-5 w-5 text-error" /> {t("settings.blocked_list")}
+            <ShieldBan className="h-5 w-5 text-error" /> {t("settings.blocked")}
           </h2>
 
           {blocksLoading ? (

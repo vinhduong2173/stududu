@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Flag, ListTree } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { Logo } from "@/components/ui/Logo";
 
 /** MÀN 14–16 — layout riêng /admin (US-19 AC3: chỉ role admin). */
 
@@ -45,10 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <aside className="w-56 shrink-0 border-r border-border bg-surface flex flex-col">
         <div className="p-5 border-b border-border">
-          <p className="flex items-center gap-2 text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            <img src="/stududu-logo.png" alt="stududu logo" className="h-6 w-auto object-contain" />
-            stududu
-          </p>
+          <Logo size="sm" href="/admin" />
           <p className="text-xs text-muted mt-1 font-semibold uppercase tracking-wider">Quản trị</p>
         </div>
         <nav className="flex-1 p-3 space-y-1">

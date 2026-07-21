@@ -1,0 +1,31 @@
+{
+  "projectId": "ffe3194d-289f-4c8d-abd2-4f1f5358a164",
+  "shape": "package",
+  "pkg": "frontend",
+  "globalName": "Stududu",
+  "entry": "frontend/dist/index.js",
+  "srcDir": "src/components",
+  "tsconfig": "tsconfig.design-sync.json",
+  "buildCmd": "cd frontend && npx -y @tailwindcss/cli -i src/app/globals.css -o .ds-styles.css",
+  "cssEntry": "./.ds-styles.css",
+  "extraFonts": ["../.design-sync/fonts/playfair.css"],
+  "componentSrcMap": {
+    "EndorsementBadges": null,
+    "ChatStats": null,
+    "LogoIcon": null
+  },
+  "docsDir": "../.design-sync/docs",
+  "readmeHeader": ".design-sync/conventions.md",
+  "libOverrides": {
+    "source-kit.mjs": "app-shape repo: coi 'features' là thư mục chứa chung (GENERIC_DIR) để category frontmatter quyết định nhóm"
+  },
+  "overrides": {
+    "MatchModal": { "cardMode": "single", "viewport": "420x560" },
+    "ReportDialog": { "cardMode": "single", "viewport": "440x640" },
+    "BlockDialog": { "cardMode": "single", "viewport": "440x400" },
+    "WordSaveModal": { "cardMode": "single", "viewport": "440x660" },
+    "TranslationModal": { "cardMode": "single", "viewport": "760x620" },
+    "ScheduleChatModal": { "cardMode": "single", "viewport": "480x660" },
+    "EndorseModal": { "cardMode": "single", "viewport": "440x580" }
+  }
+}
