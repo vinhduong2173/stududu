@@ -90,6 +90,7 @@ enum ScheduleStatus {
   accepted
   declined
   expired
+  cancelled
 }
 
 // ===== Models =====
@@ -136,6 +137,9 @@ model User {
   postComments        PostComment[]
   commentLikes        CommentLike[]
   scheduleRequests    ScheduleRequest[]
+
+  notificationsReceived Notification[]     @relation("NotificationReceiver")
+  notificationsSent     Notification[]     @relation("NotificationSender")
 
   @@map("users")
 }
@@ -337,7 +341,6 @@ model WordLibrary {
   languageId  Int      @map("language_id")
   definition  String? // có thể null — chờ cộng đồng bổ sung (FS-24)
   example     String?
-  level       String? // level của từ vựng (ví dụ: N1-N5, A1-C2)
   saveCount   Int      @default(0) @map("save_count") // = số user khác nhau đã lưu (UNIQUE bên dưới)
   isPublic    Boolean  @default(false) @map("is_public")
   updatedById Int?     @map("updated_by_id") // ai bổ sung định nghĩa gần nhất — để Admin revert nếu spam
@@ -418,6 +421,7 @@ model ScheduleRequest {
   proposerId      Int            @map("proposer_id")
   proposedTimeUtc DateTime       @map("proposed_time_utc")
   status          ScheduleStatus @default(pending)
+  cancelReason    String?        @map("cancel_reason")
   reminderSentAt  DateTime?      @map("reminder_sent_at") // đã gửi nhắc 30 phút trước giờ hẹn chưa
   createdAt       DateTime       @default(now()) @map("created_at")
 
@@ -470,4 +474,21 @@ model CommentLike {
 
   @@unique([commentId, userId])
   @@map("comment_likes")
+}
+
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  senderId    Int?     @map("sender_id")
+  type        String
+  message     String
+  referenceId Int?     @map("reference_id")
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user   User  @relation("NotificationReceiver", fields: [userId], references: [id], onDelete: Cascade)
+  sender User? @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
 }

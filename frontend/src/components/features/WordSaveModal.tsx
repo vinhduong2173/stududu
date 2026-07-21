@@ -5,6 +5,7 @@ import { BookOpen, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /** FS-23 — Lưu từ vào sổ (WORD_LIBRARY + USER_SAVED_WORD). Dùng trong chat + trang Từ vựng. */
 
@@ -40,8 +41,8 @@ export function WordSaveModal({
   source: "chat" | "manual";
   onSaved?: (item: SavedWord, duplicated: boolean) => void;
 }) {
+  const t = useTranslations();
   const [term, setTerm] = React.useState(initialWord);
-  const [level, setLevel] = React.useState("");
   const [definition, setDefinition] = React.useState("");
   const [example, setExample] = React.useState("");
   const [languages, setLanguages] = React.useState<Language[]>([]);
@@ -49,21 +50,11 @@ export function WordSaveModal({
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState("");
 
-  const getLevelsForLanguage = (langCode: string) => {
-    const code = langCode.toLowerCase();
-    if (code === "ja" || code === "jp") {
-      return ["N1", "N2", "N3", "N4", "N5"];
-    }
-    return ["A1", "A2", "B1", "B2", "C1", "C2"];
-  };
 
-  const selectedLang = languages.find((l) => l.id === languageId);
-  const levels = selectedLang ? getLevelsForLanguage(selectedLang.code) : [];
 
   React.useEffect(() => {
     if (open) {
       setTerm(initialWord.trim());
-      setLevel("");
       setDefinition("");
       setExample("");
       setError("");
@@ -88,7 +79,6 @@ export function WordSaveModal({
         body: {
           term: term.trim(),
           languageId,
-          level: level || undefined,
           definition: definition.trim() || undefined,
           example: example.trim() || undefined,
           source,
@@ -110,7 +100,7 @@ export function WordSaveModal({
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-primary" />
-            <h2 className="font-bold text-foreground">Lưu vào Sổ từ vựng</h2>
+            <h2 className="font-bold text-foreground">{t("vocabulary.modal_title")}</h2>
           </div>
           <button
             onClick={onClose}
@@ -125,16 +115,13 @@ export function WordSaveModal({
 
           <div>
             <label className="text-xs font-bold text-muted uppercase tracking-wide mb-2 block">
-              Ngôn ngữ
+              {t("vocabulary.language_label")}
             </label>
             <div className="flex flex-wrap gap-2">
               {languages.map((l) => (
                 <button
                   key={l.id}
-                  onClick={() => {
-                    setLanguageId(l.id);
-                    setLevel(""); // Reset level when language changes
-                  }}
+                  onClick={() => setLanguageId(l.id)}
                   className={cn(
                     "rounded-full px-3 py-1.5 text-sm font-semibold border-2 transition-all",
                     languageId === l.id
@@ -148,35 +135,17 @@ export function WordSaveModal({
             </div>
           </div>
 
-          {levels.length > 0 && (
-            <div>
-              <label className="text-xs font-bold text-muted uppercase tracking-wide mb-2 block">
-                Trình độ / Cấp độ
-              </label>
-              <select
-                value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                className="w-full h-11 rounded-xl border-2 border-border bg-surface text-foreground px-3 text-sm font-medium focus:outline-none focus:border-primary transition-colors"
-              >
-                <option value="">-- Chọn trình độ (Tùy chọn) --</option>
-                {levels.map((lvl) => (
-                  <option key={lvl} value={lvl}>
-                    {lvl}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+
 
           <div>
             <label className="text-xs font-bold text-muted uppercase tracking-wide mb-2 block">
-              Từ / cụm từ (tối đa 100 ký tự)
+              {t("vocabulary.term_label")}
             </label>
             <input
               value={term}
               maxLength={100}
               onChange={(e) => setTerm(e.target.value)}
-              placeholder="Nhập từ cần lưu..."
+              placeholder={t("vocabulary.term_placeholder")}
               className="w-full h-11 rounded-xl border-2 border-border bg-transparent px-4 text-sm font-medium focus:outline-none focus:border-primary transition-colors"
               autoFocus
             />
@@ -184,31 +153,31 @@ export function WordSaveModal({
 
           <div>
             <label className="text-xs font-bold text-muted uppercase tracking-wide mb-2 block">
-              Khái niệm / Định nghĩa
+              {t("vocabulary.definition_label")}
             </label>
             <textarea
               value={definition}
               onChange={(e) => setDefinition(e.target.value)}
-              placeholder="Giải thích khái niệm của từ..."
+              placeholder={t("vocabulary.definition_placeholder")}
               className="w-full rounded-xl border-2 border-border bg-transparent p-3 text-sm focus:outline-none focus:border-primary transition-colors resize-none h-20"
             />
           </div>
 
           <div>
             <label className="text-xs font-bold text-muted uppercase tracking-wide mb-2 block">
-              Ví dụ minh họa
+              {t("vocabulary.example_label")}
             </label>
             <textarea
               value={example}
               onChange={(e) => setExample(e.target.value)}
-              placeholder="Nhập ví dụ sử dụng từ này..."
+              placeholder={t("vocabulary.example_placeholder")}
               className="w-full rounded-xl border-2 border-border bg-transparent p-3 text-sm focus:outline-none focus:border-primary transition-colors resize-none h-16"
             />
           </div>
 
           <Button className="w-full" size="lg" onClick={handleSave} disabled={!term.trim() || !languageId || saving}>
             <BookOpen className="w-4 h-4 mr-2" />
-            {saving ? "Đang lưu..." : "Lưu vào Sổ từ vựng"}
+            {saving ? t("common.loading") : t("vocabulary.modal_title")}
           </Button>
         </div>
       </div>

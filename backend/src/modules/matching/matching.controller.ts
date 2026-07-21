@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -40,6 +41,11 @@ export class MatchingController {
   @Post('like/:targetId')
   like(@CurrentUser() user: JwtPayload, @Param('targetId', ParseIntPipe) targetId: number) {
     return this.matchingService.like(user.sub, targetId);
+  }
+
+  @Delete('like/:targetId')
+  unlike(@CurrentUser() user: JwtPayload, @Param('targetId', ParseIntPipe) targetId: number) {
+    return this.matchingService.unlike(user.sub, targetId);
   }
 
   // Trạng thái quan hệ với 1 hồ sơ: đã thích chưa + id hội thoại (trang hồ sơ đối tác)

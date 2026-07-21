@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/Button"
 import { Heart, MapPin } from "lucide-react"
 import Link from "next/link"
 import { ageFromDob, cn } from "@/lib/utils"
+import { useTranslations } from "next-intl"
+import { getTopicTranslation } from "@/lib/i18nHelper"
 
 export interface MatchCardProps {
   user: {
@@ -19,12 +21,15 @@ export interface MatchCardProps {
   whyMatched?: {
     sharedTopics?: string[];
   };
-  /** Đã thích rồi → nút chuyển "Đã thích" (logic mới: card không biến mất) */
   liked?: boolean;
   onLike: () => void;
+  onUnlike?: () => void;
 }
 
-export function MatchCard({ user, whyMatched, liked, onLike }: MatchCardProps) {
+export function MatchCard({ user, whyMatched, liked, onLike, onUnlike }: MatchCardProps) {
+  const t = useTranslations("discover");
+  const tRoot = useTranslations();
+  const [isHovered, setIsHovered] = React.useState(false);
   const isOnline = user.lastActive ? new Date(user.lastActive).getTime() > Date.now() - 5 * 60 * 1000 : false;
 
   const teachLangs = user.languages.filter(l => l.role === "native" || l.role === "fluent");
@@ -43,7 +48,7 @@ export function MatchCard({ user, whyMatched, liked, onLike }: MatchCardProps) {
             {age !== null && <span className="font-medium text-muted">, {age}</span>}
           </h3>
           <p className="text-sm text-muted flex items-center gap-1.5">
-            {isOnline ? "Đang hoạt động" : "Hoạt động gần đây"}
+            {isOnline ? t("card_online") : t("card_recent")}
             {user.city && (
               <span className="inline-flex items-center gap-0.5">
                 · <MapPin className="w-3 h-3" /> {user.city}
@@ -55,15 +60,15 @@ export function MatchCard({ user, whyMatched, liked, onLike }: MatchCardProps) {
 
       <div className="flex flex-col gap-3 mb-6 z-10 pointer-events-none">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium w-12 text-muted">Nói:</span>
+          <span className="text-sm font-medium w-12 text-muted">{t("card_speaks")}</span>
           {teachLangs.map(l => (
             <Chip key={l.id} variant="default" className="text-xs py-0.5">
-              {l.language?.name} {l.role === "native" ? "(Mẹ đẻ)" : "(Thành thạo)"}
+              {l.language?.name} {l.role === "native" ? t("card_native") : t("card_fluent")}
             </Chip>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium w-12 text-muted">Học:</span>
+          <span className="text-sm font-medium w-12 text-muted">{t("card_learns")}</span>
           {learnLangs.map(l => (
             <Chip key={l.id} variant="secondary" className="text-xs py-0.5">
               {l.language?.name} (Lvl {l.level})
@@ -75,28 +80,40 @@ export function MatchCard({ user, whyMatched, liked, onLike }: MatchCardProps) {
       {whyMatched && whyMatched.sharedTopics && whyMatched.sharedTopics.length > 0 && (
         <div className="bg-accent/10 border border-accent/20 rounded-xl p-3 mb-6 z-10 pointer-events-none">
           <div className="text-xs font-bold text-success flex items-center gap-1.5 mb-1">
-            <span>🔄</span> Chung sở thích
+            <span>🔄</span> {t("card_interests")}
           </div>
           <p className="text-sm text-foreground font-medium">
-            {whyMatched.sharedTopics.join(", ")}
+            {whyMatched.sharedTopics.map((topic) => getTopicTranslation(topic, tRoot)).join(", ")}
           </p>
         </div>
       )}
 
-      <div className="mt-auto z-10">
+      <div className="mt-auto z-10" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
         <Button
-          variant={liked ? "ghost" : "secondary"}
-          disabled={liked}
+          variant={liked ? (isHovered ? "ghost" : "secondary") : "secondary"}
           className={cn(
-            "w-full rounded-xl transition-transform",
+            "w-full rounded-xl transition-all duration-200",
             liked
-              ? "border border-success/40 text-success disabled:opacity-100 bg-success/5"
+              ? isHovered
+                ? "text-error border border-error hover:bg-error/5"
+                : "border border-success/40 text-success bg-success/5"
               : "hover:scale-[1.02]",
           )}
-          onClick={(e) => { e.preventDefault(); if (!liked) onLike(); }}
+          onClick={(e) => {
+            e.preventDefault();
+            if (liked) {
+              onUnlike?.();
+            } else {
+              onLike();
+            }
+          }}
         >
-          <Heart className={cn("w-5 h-5 mr-2", liked ? "fill-success" : "fill-current")} />
-          {liked ? "Đã thích" : "Thích"}
+          <Heart className={cn("w-5 h-5 mr-2", liked ? (isHovered ? "fill-none text-error" : "fill-success") : "fill-current")} />
+          {liked
+            ? isHovered
+              ? t("card_unlike") || "Bỏ thích"
+              : t("card_liked")
+            : t("card_like")}
         </Button>
       </div>
     </div>

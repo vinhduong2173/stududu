@@ -55,4 +55,14 @@ export class VocabularyController {
   ) {
     return this.vocabularyService.updateLibraryWord(user.sub, id, dto);
   }
+
+  // Tra từ nhanh — gộp Dictionary API + Translate + Word Library trong 1 request
+  @Get('lookup')
+  @UseGuards(JwtAuthGuard)
+  lookup(
+    @Query('term') term: string,
+    @Query('target') target?: string,
+  ) {
+    return this.vocabularyService.lookup(term, target);
+  }
 }

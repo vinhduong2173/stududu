@@ -12,11 +12,6 @@ export class SaveWordDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(50)
-  level?: string;
-
-  @IsOptional()
-  @IsString()
   @MaxLength(1000)
   definition?: string;
 

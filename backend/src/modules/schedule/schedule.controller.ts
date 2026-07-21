@@ -11,7 +11,7 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { JwtPayload } from '../../common/types/jwt-payload';
-import { CreateScheduleDto, RespondScheduleDto } from './dto/schedule.dto';
+import { CreateScheduleDto, RespondScheduleDto, CancelScheduleDto } from './dto/schedule.dto';
 import { ScheduleService } from './schedule.service';
 
 @Controller('schedule')
@@ -31,6 +31,15 @@ export class ScheduleController {
     @Body() dto: RespondScheduleDto,
   ) {
     return this.scheduleService.respond(user.sub, id, dto);
+  }
+
+  @Post(':id/cancel')
+  cancel(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CancelScheduleDto,
+  ) {
+    return this.scheduleService.cancel(user.sub, id, dto);
   }
 
   @Get('upcoming')

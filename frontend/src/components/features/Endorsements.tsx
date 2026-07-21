@@ -5,6 +5,7 @@ import { Award, Clock3, MessageCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /** FS-26 — Endorsement định tính (BR-13: chỉ đếm theo nhãn, KHÔNG rating/điểm trung bình)
  *  FS-27 — Thống kê giờ chat & hội thoại (BR-14: cắt phiên idle > 30 phút, tính khi đọc) */
@@ -17,6 +18,7 @@ export const ENDORSEMENT_LABELS: { key: string; icon: string; name: string }[] =
 ];
 
 export function EndorsementBadges({ userId, refreshKey = 0 }: { userId: number; refreshKey?: number }) {
+  const t = useTranslations();
   const [counts, setCounts] = React.useState<Record<string, number> | null>(null);
 
   React.useEffect(() => {
@@ -31,14 +33,14 @@ export function EndorsementBadges({ userId, refreshKey = 0 }: { userId: number; 
   return (
     <div className="flex flex-wrap gap-2">
       {visible.length === 0 ? (
-        <p className="text-sm text-muted">Chưa có lượt ghi nhận nào</p>
+        <p className="text-sm text-muted">{t("profile.no_endorsements")}</p>
       ) : (
         visible.map((l) => (
           <span
             key={l.key}
             className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1 text-sm font-semibold"
           >
-            {l.icon} {l.name} · {counts[l.key]}
+            {l.icon} {t(`profile.${l.key}`)} · {counts[l.key]}
           </span>
         ))
       )}
@@ -47,6 +49,7 @@ export function EndorsementBadges({ userId, refreshKey = 0 }: { userId: number; 
 }
 
 export function ChatStats({ userId }: { userId: number }) {
+  const t = useTranslations();
   const [stats, setStats] = React.useState<{
     totalChatHours: number;
     conversationCount: number;
@@ -63,10 +66,10 @@ export function ChatStats({ userId }: { userId: number }) {
   return (
     <div className="flex flex-wrap gap-2">
       <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 text-secondary px-3 py-1 text-sm font-semibold">
-        <Clock3 className="w-3.5 h-3.5" /> {stats.totalChatHours} giờ luyện tập
+        <Clock3 className="w-3.5 h-3.5" /> {t("profile.chat_hours", { count: stats.totalChatHours })}
       </span>
       <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary/10 text-secondary px-3 py-1 text-sm font-semibold">
-        <MessageCircle className="w-3.5 h-3.5" /> {stats.conversationCount} hội thoại
+        <MessageCircle className="w-3.5 h-3.5" /> {t("profile.conversations", { count: stats.conversationCount })}
       </span>
     </div>
   );
@@ -85,6 +88,7 @@ export function EndorseModal({
   targetName: string;
   onDone?: () => void;
 }) {
+  const t = useTranslations();
   const [selected, setSelected] = React.useState<string[]>([]);
   const [alreadyGiven, setAlreadyGiven] = React.useState<string[]>([]);
   const [saving, setSaving] = React.useState(false);
@@ -117,7 +121,7 @@ export function EndorseModal({
       onDone?.();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Đã có lỗi xảy ra");
+      setError(err instanceof ApiError ? err.message : t("common.error_generic"));
     } finally {
       setSaving(false);
     }
@@ -130,7 +134,7 @@ export function EndorseModal({
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Award className="w-5 h-5 text-primary" />
-            <h2 className="font-bold text-foreground">Ghi nhận {targetName}</h2>
+            <h2 className="font-bold text-foreground">{t("profile.endorse_title", { name: targetName })}</h2>
           </div>
           <button
             onClick={onClose}
@@ -142,8 +146,7 @@ export function EndorseModal({
 
         <div className="p-5 space-y-4">
           <p className="text-sm text-muted">
-            Chọn điều bạn muốn ghi nhận sau khi trò chuyện cùng {targetName} — không chấm điểm,
-            chỉ ghi nhận định tính.
+            {t("profile.endorse_desc", { name: targetName })}
           </p>
 
           {error && <div className="rounded-xl bg-error/10 p-3 text-sm text-error">{error}</div>}
@@ -172,8 +175,8 @@ export function EndorseModal({
                     onChange={() => toggle(l.key)}
                   />
                   <span className="text-sm font-medium text-foreground">
-                    {l.icon} {l.name}
-                    {given && <span className="text-xs text-success ml-2">✓ đã ghi nhận</span>}
+                    {l.icon} {t(`profile.${l.key}`)}
+                    {given && <span className="text-xs text-success ml-2">{t("profile.endorse_already_given")}</span>}
                   </span>
                 </label>
               );
@@ -181,7 +184,7 @@ export function EndorseModal({
           </div>
 
           <Button className="w-full" onClick={handleSubmit} disabled={selected.length === 0 || saving}>
-            {saving ? "Đang gửi..." : "Gửi ghi nhận"}
+            {saving ? t("profile.sending") : t("profile.submit_endorse")}
           </Button>
         </div>
       </div>

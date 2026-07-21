@@ -4,6 +4,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 export interface MatchModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export interface MatchModalProps {
 
 export function MatchModal({ isOpen, onClose, myAvatar, partnerAvatar, partnerName, conversationId }: MatchModalProps) {
   const router = useRouter();
+  const t = useTranslations("discover");
 
   if (!isOpen) return null;
 
@@ -30,10 +32,10 @@ export function MatchModal({ isOpen, onClose, myAvatar, partnerAvatar, partnerNa
         </div>
 
         <h2 className="text-3xl font-extrabold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
-          🎉 Đã match!
+          {t("match_title")}
         </h2>
         <p className="text-muted mb-8">
-          Tuyệt vời! Bạn và {partnerName} đã thích nhau. Bắt đầu trò chuyện và luyện tập cùng nhau nhé.
+          {t("match_desc", { name: partnerName })}
         </p>
 
         <div className="flex flex-col w-full gap-3">
@@ -44,14 +46,14 @@ export function MatchModal({ isOpen, onClose, myAvatar, partnerAvatar, partnerNa
               router.push(conversationId ? `/inbox?conversation=${conversationId}` : "/inbox");
             }}
           >
-            Nhắn tin ngay
+            {t("match_chat_now")}
           </Button>
           <Button 
             variant="ghost" 
             className="w-full h-12" 
             onClick={onClose}
           >
-            Tiếp tục khám phá
+            {t("match_continue")}
           </Button>
         </div>
       </div>

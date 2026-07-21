@@ -7,6 +7,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 
 const TEACH_ROLES: LanguageRole[] = [LanguageRole.native, LanguageRole.fluent];
 
@@ -16,7 +17,10 @@ export const SUGGESTIONS_PAGE_SIZE = 10;
 
 @Injectable()
 export class MatchingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   // FS-08 — gợi ý bù trừ ngôn ngữ, MATCH_SCORE tính on-the-fly (không cache).
   // Nếu <6 kết quả thì nới dần: (1) bỏ lọc topic chung → (2) nới level mong muốn
@@ -226,12 +230,66 @@ export class MatchingService {
           data: { matchId: match.id, userId, action: InteractionAction.like },
         }),
       ]);
+
+      const liker = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { displayName: true },
+      });
+      if (liker) {
+        try {
+          await this.notificationService.createNotification(
+            targetId,
+            userId,
+            'like',
+            `${liker.displayName} đã thích bạn.`,
+            match.id,
+          );
+        } catch (err) {
+          console.error('Failed to send like notification:', err);
+        }
+      }
+
       return { match, conversation, mutual: false };
     }
 
     const conversation =
       existing.conversation ??
       (await this.prisma.conversation.create({ data: { matchId: existing.id } }));
+
+    // Nếu match cũ đã bị skipped hoặc expired, ta hồi sinh nó làm lượt thích mới
+    if (existing.status === MatchStatus.skipped || existing.status === MatchStatus.expired) {
+      const match = await this.prisma.match.update({
+        where: { id: existing.id },
+        data: {
+          memberId: userId,
+          candidateId: targetId,
+          status: MatchStatus.liked,
+        },
+      });
+      await this.prisma.interaction.create({
+        data: { matchId: existing.id, userId, action: InteractionAction.like },
+      });
+
+      const liker = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { displayName: true },
+      });
+      if (liker) {
+        try {
+          await this.notificationService.createNotification(
+            targetId,
+            userId,
+            'like',
+            `${liker.displayName} đã thích bạn.`,
+            match.id,
+          );
+        } catch (err) {
+          console.error('Failed to send like notification:', err);
+        }
+      }
+
+      return { match, conversation, mutual: false };
+    }
 
     // Mình đã thích trước đó → idempotent
     if (existing.memberId === userId) {
@@ -241,6 +299,8 @@ export class MatchingService {
         mutual: existing.status === MatchStatus.mutual,
       };
     }
+
+    const isNewMutual = existing.status !== MatchStatus.mutual;
 
     // Đối phương thích trước, giờ mình thích lại → mutual (US-13)
     const match =
@@ -253,6 +313,27 @@ export class MatchingService {
     await this.prisma.interaction.create({
       data: { matchId: existing.id, userId, action: InteractionAction.like },
     });
+
+    if (isNewMutual) {
+      const liker = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { displayName: true },
+      });
+      if (liker) {
+        try {
+          await this.notificationService.createNotification(
+            targetId,
+            userId,
+            'match',
+            `Bạn và ${liker.displayName} đã tương hợp!`,
+            match.id,
+          );
+        } catch (err) {
+          console.error('Failed to send match notification:', err);
+        }
+      }
+    }
+
     return { match, conversation, mutual: true };
   }
 
@@ -282,6 +363,53 @@ export class MatchingService {
       map.set(otherId, { conversationId: m.conversation?.id ?? null });
     }
     return map;
+  }
+
+  async unlike(userId: number, targetId: number) {
+    if (userId === targetId) throw new BadRequestException('Không thể bỏ thích chính mình');
+
+    const existing = await this.prisma.match.findFirst({
+      where: {
+        OR: [
+          { memberId: userId, candidateId: targetId },
+          { memberId: targetId, candidateId: userId },
+        ],
+      },
+    });
+
+    if (!existing) return { success: true };
+
+    if (existing.status === MatchStatus.mutual) {
+      // Chuyển mutual về một phía (chỉ targetId thích userId)
+      await this.prisma.$transaction([
+        this.prisma.match.update({
+          where: { id: existing.id },
+          data: {
+            memberId: targetId,
+            candidateId: userId,
+            status: MatchStatus.liked,
+          },
+        }),
+        this.prisma.interaction.deleteMany({
+          where: { matchId: existing.id, userId },
+        }),
+      ]);
+    } else {
+      if (existing.memberId === userId) {
+        // Thay vì xóa match và conversation, ta chuyển trạng thái thành skipped để giữ lại lịch sử chat
+        await this.prisma.$transaction([
+          this.prisma.match.update({
+            where: { id: existing.id },
+            data: { status: MatchStatus.skipped },
+          }),
+          this.prisma.interaction.deleteMany({
+            where: { matchId: existing.id, userId },
+          }),
+        ]);
+      }
+    }
+
+    return { success: true };
   }
 
   /** Trạng thái quan hệ của viewer với 1 hồ sơ (trang hồ sơ đối tác) */

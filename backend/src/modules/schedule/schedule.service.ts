@@ -10,7 +10,7 @@ import { Prisma, ScheduleStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChatGateway } from '../chat/chat.gateway';
 import { ChatService, type ScheduleMessagePayload } from '../chat/chat.service';
-import { CreateScheduleDto, RespondScheduleDto } from './dto/schedule.dto';
+import { CreateScheduleDto, RespondScheduleDto, CancelScheduleDto } from './dto/schedule.dto';
 
 // BR-15 — lưu UTC, tự expire sau 48h không phản hồi; nhắc trước giờ hẹn 30 phút
 const EXPIRE_AFTER_MS = 48 * 60 * 60 * 1000;
@@ -98,6 +98,34 @@ export class ScheduleService implements OnModuleInit, OnModuleDestroy {
     return updated;
   }
 
+  async cancel(userId: number, requestId: number, dto: CancelScheduleDto) {
+    const request = await this.prisma.scheduleRequest.findUnique({
+      where: { id: requestId },
+    });
+    if (!request) throw new NotFoundException('Không tìm thấy lịch hẹn');
+
+    await this.chatService.assertParticipant(userId, request.conversationId);
+
+    if (
+      request.status !== ScheduleStatus.accepted &&
+      request.status !== ScheduleStatus.pending
+    ) {
+      throw new BadRequestException('Chỉ có thể hủy lịch hẹn đang chờ hoặc đã đồng ý');
+    }
+
+    const updated = await this.prisma.scheduleRequest.update({
+      where: { id: requestId },
+      data: {
+        status: ScheduleStatus.cancelled,
+        cancelReason: dto.reason,
+      },
+    });
+
+    await this.syncMessageStatus(requestId, ScheduleStatus.cancelled, dto.reason);
+
+    return updated;
+  }
+
   /** Lịch sắp tới (đã accept, còn ở tương lai) của user — hiển thị nhắc trên UI */
   upcoming(userId: number) {
     return this.prisma.scheduleRequest.findMany({
@@ -159,7 +187,11 @@ export class ScheduleService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Đồng bộ status vào tin nhắn schedule tương ứng + phát message:update
-  private async syncMessageStatus(requestId: number, status: ScheduleStatus) {
+  private async syncMessageStatus(
+    requestId: number,
+    status: ScheduleStatus,
+    cancelReason?: string,
+  ) {
     const message = await this.prisma.message.findFirst({
       where: {
         type: 'schedule',
@@ -169,9 +201,13 @@ export class ScheduleService implements OnModuleInit, OnModuleDestroy {
     if (!message) return;
 
     const payload = message.payload as unknown as ScheduleMessagePayload;
+    const newPayload = { ...payload, status };
+    if (cancelReason !== undefined) {
+      newPayload.cancelReason = cancelReason;
+    }
     const updated = await this.prisma.message.update({
       where: { id: message.id },
-      data: { payload: { ...payload, status } as unknown as Prisma.InputJsonValue },
+      data: { payload: newPayload as unknown as Prisma.InputJsonValue },
     });
     this.chatGateway.server
       .to(`conversation:${message.conversationId}`)

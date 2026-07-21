@@ -40,7 +40,8 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       const path = window.location.pathname;
-      if (path !== '/login' && path !== '/register' && path !== '/forgot-password') {
+      const cleanPath = path.replace(/^\/(vi|en)/, '');
+      if (cleanPath !== '/login' && cleanPath !== '/register' && cleanPath !== '/forgot-password') {
         window.location.href = '/login';
       }
     }

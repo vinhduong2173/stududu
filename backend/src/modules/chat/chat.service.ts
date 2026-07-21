@@ -25,7 +25,8 @@ export interface ScheduleMessagePayload {
   slotId?: string;
   myTimeLabel?: string;
   partnerTimeLabel?: string;
-  status: 'pending' | 'accepted' | 'declined' | 'expired';
+  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'cancelled';
+  cancelReason?: string;
 }
 
 @Injectable()
@@ -84,12 +85,14 @@ export class ChatService {
     return conversations
       .map((c) => {
         const partner = c.match.memberId === userId ? c.match.candidate : c.match.member;
+        const isConnected = ['liked', 'mutual'].includes(c.match.status);
         return {
           id: c.id,
           partner,
           lastMessage: c.messages[0] ?? null,
           unreadCount: unreadByConversation.get(c.id) ?? 0,
           createdAt: c.createdAt,
+          isConnected,
         };
       })
       .sort(
@@ -125,6 +128,7 @@ export class ChatService {
     }
 
     await this.assertParticipant(userId, conversationId);
+
     this.validateMessage(content, type, payload);
 
     const [message] = await this.prisma.$transaction([

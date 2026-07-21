@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 
 // FS-25 — Community feed: CHỈ auto-generated post (word_public, chat_hours_milestone),
 // chưa làm free-form post ở đợt này.
 @Injectable()
 export class CommunityService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async feed(viewerId?: number) {
     const posts = await this.prisma.activityPost.findMany({
@@ -49,14 +53,22 @@ export class CommunityService {
   }
 
   // Bài chia sẻ tự do của member (mở rộng theo yêu cầu — ngoài auto-post)
-  createPost(userId: number, content: string, imageUrl?: string) {
-    return this.prisma.activityPost.create({
+  async createPost(userId: number, content: string, imageUrl?: string) {
+    const post = await this.prisma.activityPost.create({
       data: { userId, type: 'user_post', content: content.trim(), imageUrl },
       include: {
         user: { select: { id: true, displayName: true, avatarUrl: true } },
         _count: { select: { likes: true, comments: true } },
       },
     });
+
+    try {
+      await this.notificationService.notifyFollowersNewPost(userId, post.id);
+    } catch (err) {
+      console.error('Failed to notify followers of new post:', err);
+    }
+
+    return post;
   }
 
   async updatePost(userId: number, postId: number, content?: string, imageUrl?: string, removeImage?: boolean) {

@@ -7,10 +7,14 @@ import { SetInterestsDto } from './dto/set-interests.dto';
 import { SetLanguagesDto } from './dto/set-languages.dto';
 import { SetPreferenceDto } from './dto/set-preference.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async getMe(userId: number) {
     const user = await this.prisma.user.findUnique({
@@ -38,10 +42,15 @@ export class UserService {
       },
     });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
-    return user;
+
+    // Lấy mã ngôn ngữ native — dùng cho popup tra từ (ngôn ngữ dịch mặc định)
+    const nativeLang =
+      user.languages.find((l) => l.role === LanguageRole.native)?.language.code ?? null;
+
+    return { ...user, nativeLang };
   }
 
-  async getProfile(userId: number) {
+  async getProfile(currentUserId: number, userId: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId, status: 'active' },
       select: {
@@ -61,6 +70,7 @@ export class UserService {
       },
     });
     if (!user) throw new NotFoundException('Người dùng không tồn tại hoặc đã bị khóa');
+
     return user;
   }
 
