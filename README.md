@@ -16,9 +16,17 @@
 
 ```
 troll/
+  AGENTS.md      # quy tắc chuẩn cho mọi AI agent (Claude Code, Antigravity)
+  CLAUDE.md      # import AGENTS.md + ghi chú riêng cho Claude Code
   frontend/      # Next.js (App Router) + Tailwind + shadcn/ui
   backend/       # NestJS + Prisma + Socket.IO
-  docs/          # tài liệu requirements / design / planning
+  docs/
+    01-requirements/   # SRS, vision & scope, product backlog
+    02-design/         # ERD, data dictionary, style guide, diagrams
+    03-planning/       # roadmap, implementation plan, phân công Sprint
+    04-convention/     # coding convention, rule template cho AI agent
+    05-prompts/        # prompt log dùng với AI agent
+    _archive/          # bản tài liệu cũ đã bị thay thế
   docker-compose.yml
 ```
 
@@ -58,7 +66,10 @@ npm run dev
 
 ## Tài liệu
 
+- [AGENTS.md](AGENTS.md) — **đọc trước khi code**: business rules, quy ước i18n, Definition of Done, luồng PR
+- [SRS đầy đủ](docs/01-requirements/SRS-stududu.docx) — nguồn chuẩn đặc tả chức năng
 - [Product Backlog & User Stories](docs/01-requirements/product-backlog-user-stories.md)
 - [ERD](docs/02-design/ERD.mermaid) · [Data Dictionary](docs/02-design/data-dictionary.md)
 - [UI/UX Style Guide](docs/02-design/ui-ux-style-guide.md)
 - [Coding Convention](docs/04-convention/coding-convention.md)
+- [Phân công Sprint hiện tại](docs/03-planning/Phan-cong-cong-viec_16-20-07-2026.md)
