@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { Input } from "@/components/ui/Input";
 import { api, ApiError } from "@/lib/api";
-import { ArrowLeft, Check, Clock, ImageUp, Trash2 } from "lucide-react";
+import { Camera, Check, Clock, Eye, Heart, MapPin, Trash2 } from "lucide-react";
 import { TIMEZONES, TIME_SLOTS, getTimezone } from "@/lib/timezones";
-import { cn, compressImage } from "@/lib/utils";
+import { ageFromDob, cn, compressImage } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { getTopicTranslation } from "@/lib/i18nHelper";
 
@@ -179,6 +179,17 @@ export default function EditProfilePage() {
     }
   };
 
+  const onPickAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      setAvatarUrl(await compressImage(file, 400, 0.8));
+    } catch {
+      setError(t("avatar_error"));
+    }
+  };
+
   if (loading)
     return (
       <div className="flex justify-center p-12">
@@ -188,65 +199,112 @@ export default function EditProfilePage() {
 
   const selectClass =
     "flex h-12 rounded-xl border border-border bg-transparent px-4 py-2 outline-none focus:border-primary";
+  const fieldLabel = "block text-xs font-semibold text-muted uppercase tracking-wide mb-2";
+
+  // Xem trước — suy ra từ state hiện tại (không gọi API)
+  const previewAge = ageFromDob(dob);
+  const teachPreview = myLanguages.find((l) => l.role !== "learning");
+  const learnPreview = myLanguages.find((l) => l.role === "learning");
+  const previewTopics = availableTopics.filter((tp) => selectedTopics.includes(tp.id));
+
+  const actionButtons = (
+    <div className="flex gap-2 shrink-0">
+      <Button variant="ghost" onClick={() => router.back()} disabled={saving}>
+        {tCommon("cancel")}
+      </Button>
+      <Button className="sd-btn-gradient" onClick={handleSave} disabled={saving}>
+        <Check className="h-4 w-4 mr-2" />
+        {saving ? tOnboard("loading") : tCommon("save")}
+      </Button>
+    </div>
+  );
 
   return (
-    <div className="max-w-2xl mx-auto p-4 md:p-8 pb-24">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => router.back()} className="p-2 hover:bg-muted/10 rounded-full transition-colors">
-          <ArrowLeft className="w-6 h-6 text-foreground" />
-        </button>
-        <h1 className="text-2xl font-bold text-foreground">{t("edit_profile")}</h1>
+    <div className="max-w-6xl mx-auto p-4 md:p-8 pb-24">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
+            {t("edit_profile")}
+          </h1>
+          <p className="text-sm text-muted mt-1">{t("edit_subtitle")}</p>
+        </div>
+        {actionButtons}
       </div>
 
       {error && <div className="mb-6 rounded-xl bg-error/10 p-4 text-sm text-error">{error}</div>}
 
-      <div className="space-y-6">
+      {/* Cover banner + avatar */}
+      <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-6">
+        <div className="sd-cover relative h-32 md:h-44">
+          <div className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+        </div>
+        <div className="px-6 pb-6">
+          <div className="flex items-end gap-4 -mt-12">
+            <div className="relative inline-block">
+              <div className="rounded-full ring-4 ring-surface bg-surface">
+                <Avatar
+                  src={avatarUrl || undefined}
+                  fallback={displayName.charAt(0) || "?"}
+                  size="xl"
+                  className="shadow-lg"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white shadow-md ring-2 ring-surface hover:bg-primary-hover transition-colors"
+                title={t("change_avatar")}
+              >
+                <Camera className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="pb-1 min-w-0">
+              <h2 className="font-display text-xl font-extrabold tracking-tight text-foreground truncate">
+                {displayName || t("your_name")}
+              </h2>
+              <p className="text-sm text-muted">{t("this_is_you")}</p>
+            </div>
+            {avatarUrl && (
+              <button
+                type="button"
+                onClick={() => setAvatarUrl("")}
+                className="ml-auto pb-1 flex items-center gap-1 text-xs font-medium text-muted hover:text-error transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> {t("delete_image")}
+              </button>
+            )}
+          </div>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onPickAvatar}
+          />
+        </div>
+      </div>
+
+      {/* Bố cục 2 cột */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* CỘT TRÁI */}
+        <div className="lg:col-span-2 space-y-6">
         {/* Thông tin cơ bản */}
         <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border space-y-4">
-          <h2 className="text-lg font-bold text-foreground">{t("basic_info")}</h2>
+          <h2 className="font-display text-lg font-bold text-foreground">{t("basic_info")}</h2>
 
-          <div className="flex items-center gap-4">
-            <Avatar src={avatarUrl || undefined} fallback={displayName.charAt(0) || "?"} size="xl" />
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-2">{t("avatar")}</label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => avatarInputRef.current?.click()}
-                >
-                  <ImageUp className="h-4 w-4 mr-2" /> {t("select_image")}
-                </Button>
-                {avatarUrl && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setAvatarUrl("")}>
-                    <Trash2 className="h-4 w-4 mr-2" /> {t("delete_image")}
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted mt-2">{t("avatar_hint")}</p>
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (!file) return;
-                  try {
-                    setAvatarUrl(await compressImage(file, 400, 0.8));
-                  } catch {
-                    setError(t("avatar_error"));
-                  }
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">{t("dob")}</label>
+              <label className={fieldLabel}>{t("display_name")}</label>
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            </div>
+            <div>
+              <label className={fieldLabel}>{t("city")}</label>
+              <Input placeholder={t("city_placeholder")} value={city} onChange={(e) => setCity(e.target.value)} />
+            </div>
+            <div>
+              <label className={fieldLabel}>{t("dob")}</label>
               <input
                 type="date"
                 className={`${selectClass} w-full`}
@@ -256,7 +314,7 @@ export default function EditProfilePage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">{t("gender")}</label>
+              <label className={fieldLabel}>{t("gender")}</label>
               <select className={`${selectClass} w-full`} value={gender} onChange={(e) => setGender(e.target.value)}>
                 <option value="">{t("gender_private")}</option>
                 <option value="nam">{t("gender_male")}</option>
@@ -264,45 +322,22 @@ export default function EditProfilePage() {
                 <option value="khác">{t("gender_other")}</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">{t("city")}</label>
-              <Input placeholder={t("city_placeholder")} value={city} onChange={(e) => setCity(e.target.value)} />
-            </div>
           </div>
+        </section>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">{t("display_name")}</label>
-            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+        {/* Giới thiệu (Bio) */}
+        <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display text-lg font-bold text-foreground">{tOnboard("bio_label")}</h2>
+            <span className="text-xs text-muted">{bio.length}/300</span>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">{tOnboard("bio_label")}</label>
-            <textarea
-              className="w-full rounded-xl border border-border bg-transparent p-4 outline-none focus:border-primary resize-none h-32"
-              placeholder={tOnboard("bio_placeholder")}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">{tOnboard("intent_label")}</label>
-            <select className={`${selectClass} w-full`} value={intent} onChange={(e) => setIntent(e.target.value)}>
-              {INTENTS.map((i) => (
-                <option key={i} value={i}>
-                  {i === "Giao tiếp casual"
-                    ? tOnboard("intent_casual")
-                    : i === "Thi cử"
-                      ? tOnboard("intent_exam")
-                      : i === "Du lịch"
-                        ? tOnboard("intent_travel")
-                        : i === "Làm việc"
-                          ? tOnboard("intent_work")
-                          : i}
-                </option>
-              ))}
-            </select>
-          </div>
+          <textarea
+            className="w-full rounded-xl border border-border bg-transparent p-4 outline-none focus:border-primary resize-none h-32"
+            placeholder={tOnboard("bio_placeholder")}
+            maxLength={300}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+          />
         </section>
 
         {/* Ngôn ngữ */}
@@ -363,7 +398,8 @@ export default function EditProfilePage() {
 
         {/* Sở thích */}
         <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
-          <h2 className="text-lg font-bold text-foreground mb-4">{t("interests")}</h2>
+          <h2 className="font-display text-lg font-bold text-foreground mb-1">{t("interests")}</h2>
+          <p className="text-sm text-muted mb-4">{t("interests_hint")}</p>
           <div className="flex flex-wrap gap-3">
             {availableTopics.map((topic) => (
               <button key={topic.id} onClick={() => toggleTopic(topic.id)}>
@@ -464,15 +500,102 @@ export default function EditProfilePage() {
           </div>
         </section>
 
-        <div className="flex gap-4">
-          <Button variant="ghost" className="flex-1" onClick={() => router.back()} disabled={saving}>
-            {tCommon("cancel")}
-          </Button>
-          <Button className="flex-1" onClick={handleSave} disabled={saving}>
-            {saving ? tOnboard("loading") : tCommon("save")}
-          </Button>
+        </div>
+
+        {/* CỘT PHẢI */}
+        <div className="space-y-6">
+          {/* Xem trước — hồ sơ người khác nhìn thấy */}
+          <section className="bg-surface rounded-3xl p-5 shadow-sm border border-border lg:sticky lg:top-6">
+            <div className="flex items-center gap-2 mb-1">
+              <Eye className="h-4 w-4 text-primary" />
+              <h2 className="font-display text-base font-bold text-foreground">{t("preview")}</h2>
+            </div>
+            <p className="text-xs text-muted mb-4">{t("preview_hint")}</p>
+
+            <div className="rounded-2xl border border-border p-4">
+              <div className="flex items-center gap-3">
+                <Avatar src={avatarUrl || undefined} fallback={displayName.charAt(0) || "?"} size="lg" />
+                <div className="min-w-0">
+                  <p className="font-bold text-foreground truncate">
+                    {displayName || t("your_name")}
+                    {previewAge !== null && <span className="font-medium text-muted">, {previewAge}</span>}
+                  </p>
+                  <p className="text-xs text-muted flex items-center gap-1">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
+                    {t("preview_online")}
+                    {city && (
+                      <span className="inline-flex items-center gap-0.5">
+                        · <MapPin className="w-3 h-3" /> {city}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted shrink-0">{t("preview_speaks")}</span>
+                  {teachPreview ? (
+                    <Chip className="text-xs py-0.5">
+                      {getLangName(teachPreview.languageId)} (
+                      {teachPreview.role === "native" ? tDisc("card_native") : tDisc("card_fluent")})
+                    </Chip>
+                  ) : (
+                    <span className="text-xs text-muted">{t("preview_not_added")}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted shrink-0">{t("preview_learns")}</span>
+                  {learnPreview ? (
+                    <Chip variant="secondary" className="text-xs py-0.5">
+                      {getLangName(learnPreview.languageId)} ({tOnboard(`level_${learnPreview.level}`)})
+                    </Chip>
+                  ) : (
+                    <span className="text-xs text-muted">{t("preview_not_added")}</span>
+                  )}
+                </div>
+              </div>
+
+              {previewTopics.length > 0 && (
+                <div className="mt-4 rounded-xl bg-primary/5 p-3">
+                  <p className="text-xs font-semibold text-primary mb-1">✨ {t("shared_interests")}</p>
+                  <p className="text-xs text-foreground leading-relaxed">
+                    {previewTopics.map((tp) => getTopicTranslation(tp.name, tRoot)).join(", ")}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-semibold text-muted">
+                <Heart className="w-4 h-4" /> {t("preview_like")}
+              </div>
+            </div>
+          </section>
+
+          {/* Mục tiêu luyện tập */}
+          <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="font-display text-lg font-bold text-foreground mb-1">{tOnboard("intent_label")}</h2>
+            <p className="text-sm text-muted mb-3">{t("intent_hint")}</p>
+            <select className={`${selectClass} w-full`} value={intent} onChange={(e) => setIntent(e.target.value)}>
+              {INTENTS.map((i) => (
+                <option key={i} value={i}>
+                  {i === "Giao tiếp casual"
+                    ? tOnboard("intent_casual")
+                    : i === "Thi cử"
+                      ? tOnboard("intent_exam")
+                      : i === "Du lịch"
+                        ? tOnboard("intent_travel")
+                        : i === "Làm việc"
+                          ? tOnboard("intent_work")
+                          : i}
+                </option>
+              ))}
+            </select>
+          </section>
         </div>
       </div>
+
+      {/* Nút lưu dưới cùng */}
+      <div className="flex justify-end mt-8">{actionButtons}</div>
     </div>
   );
 }

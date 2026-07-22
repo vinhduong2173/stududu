@@ -65,7 +65,13 @@
     "google": "Tiếp tục với Google",
     "google_notice": "Đăng nhập bằng Google: Giao diện UI đã sẵn sàng. Logic kết nối API sẽ được cấu hình khi Backend hoàn tất.",
     "no_account": "Chưa có tài khoản?",
-    "register_link": "Đăng ký ngay"
+    "register_link": "Đăng ký ngay",
+    "hero_title": "Học ngôn ngữ cùng người bản xứ thật.",
+    "hero_sub": "Bạn dạy ngôn ngữ của mình, họ dạy lại thứ tiếng bạn đang học. Trao đổi minh bạch, không điểm số, không trả phí.",
+    "hero_p1": "Ghép đôi theo ngôn ngữ bù trừ, không phải theo điểm",
+    "hero_p2": "Trò chuyện 1:1 trực tiếp, luyện phản xạ mỗi ngày",
+    "hero_p3": "Ghi nhận đóng góp bằng lời khen, không xếp hạng",
+    "hero_footer": "stududu — trao đổi ngôn ngữ theo mô hình Tandem"
   },
   "register": {
     "title": "Tạo tài khoản",
@@ -287,7 +293,21 @@
     "preferred_language": "Ngôn ngữ ưu tiên ghép",
     "no_preference": "Không ưu tiên",
     "desired_level": "Trình độ đối tác mong muốn",
-    "any_level": "Bất kỳ"
+    "any_level": "Bất kỳ",
+    "edit_subtitle": "Hồ sơ đầy đủ giúp bạn match nhiều hơn — cập nhật bất cứ lúc nào.",
+    "this_is_you": "Đây là hồ sơ của bạn",
+    "your_name": "Tên của bạn",
+    "change_avatar": "Đổi ảnh đại diện",
+    "preview": "Xem trước",
+    "preview_hint": "Người khác thấy bạn thế này trong Khám phá.",
+    "preview_speaks": "Nói:",
+    "preview_learns": "Học:",
+    "preview_not_added": "Chưa thêm",
+    "preview_online": "Đang hoạt động",
+    "preview_like": "Thích",
+    "shared_interests": "Chung sở thích",
+    "interests_hint": "Chọn chủ đề bạn thích trò chuyện.",
+    "intent_hint": "Giúp gợi ý đối tác phù hợp hơn."
   },
   "chat": {
     "say_hi": "Hãy gửi lời chào đầu tiên 👋",
