@@ -39,6 +39,110 @@ export class AdminService {
     });
   }
 
+  // Dashboard Stats cho Admin
+  async getDashboardStats() {
+    const now = new Date();
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [
+      totalUsers,
+      usersThisWeek,
+      openReportsCount,
+      newUsersThisMonth,
+      activeConversationsToday,
+      recentReports,
+      recentUsers,
+    ] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { createdAt: { gte: startOfWeek } } }),
+      this.prisma.report.count({ where: { status: ReportStatus.open } }),
+      this.prisma.user.count({ where: { createdAt: { gte: startOfMonth } } }),
+      this.prisma.message
+        .groupBy({
+          by: ['conversationId'],
+          where: { sentAt: { gte: startOfToday } },
+        })
+        .then((res) => res.length),
+      this.prisma.report.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          reporter: { select: { id: true, displayName: true, email: true } },
+          reported: { select: { id: true, displayName: true, email: true, avatarUrl: true, status: true } },
+        },
+      }),
+      this.prisma.user.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          displayName: true,
+          email: true,
+          avatarUrl: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    const previousUsers = totalUsers - usersThisWeek;
+    const userGrowthWeeklyPercent = previousUsers > 0 ? (usersThisWeek / previousUsers) * 100 : 0;
+
+    return {
+      totalUsers,
+      userGrowthWeeklyPercent: Number(userGrowthWeeklyPercent.toFixed(1)),
+      openReportsCount,
+      newUsersThisMonth,
+      activeConversationsToday,
+      recentReports,
+      recentUsers,
+    };
+  }
+
+  // Quản lý danh sách Người dùng (phân trang + tìm kiếm)
+  async getUsers(page = 1, limit = 10, search?: string, status?: UserStatus) {
+    const where: Prisma.UserWhereInput = {
+      ...(status ? { status } : {}),
+      ...(search
+        ? {
+            OR: [
+              { displayName: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          avatarUrl: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          _count: { select: { reportsReceived: true } },
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   updateReportStatus(reportId: number, status: ReportStatus) {
     return this.prisma.report.update({ where: { id: reportId }, data: { status } });
   }

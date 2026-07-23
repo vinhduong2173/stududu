@@ -166,14 +166,24 @@ model UserSavedWord {
 
 ---
 
-## 3. Quy tắc Nghiệp vụ Flashcard & Trạng thái (Business Logic)
+## 3. Quy tắc Nghiệp vụ Quiz Trắc Nghệm (Multiple Choice Quiz Business Logic)
 
 1. **Khởi tạo trạng thái**: Tất cả các từ khi được thêm vào Sổ từ vựng (qua bôi đen dịch từ hoặc chat) mặc định có `status = "learning"` (**Đang học / Cần ôn**).
-2. **Chế độ "Ôn tập những từ chưa thuộc"**:
-   - Backend lọc danh sách các từ có `status === 'learning'`.
-   - Khi người dùng nhấn nút **"✓ Đã thuộc"**, Frontend gọi `PATCH /vocabulary/my-words/:id/status` với body `{ status: "mastered" }`.
-   - Từ này lập tức đổi trạng thái sang "mastered" và sẽ **không xuất hiện** trong danh sách câu hỏi ôn từ chưa thuộc ở các lần sau.
-   - Khi người dùng nhấn nút **"↺ Cần ôn"**, từ vựng giữ nguyên `status = "learning"` và tiếp tục nằm trong danh sách cần ôn tập.
-3. **Chế độ "Ôn tập toàn bộ"**:
-   - Backend/Frontend lấy toàn bộ danh sách `UserSavedWord` của user không phân biệt trạng thái.
-4. **Trộn từ (Shuffle)**: Mỗi lần truy cập hoặc nhấn bắt đầu ôn tập, Frontend/Backend sẽ xáo trộn ngẫu nhiên thứ tự các câu hỏi.
+2. **Cơ chế câu hỏi Quiz Trắc Nghiệm**:
+   - Thay thế thẻ Flashcard tự chọn bằng **Quiz 4 lựa chọn (Multiple Choice)**: Cho Từ vựng tiếng Anh (Term + Audio + Phonetic) $\rightarrow$ Chọn 1 trong 4 Nghĩa tiếng Việt.
+   - **Tạo đáp án nhiễu (Distractors)**: 1 đáp án đúng là nghĩa của từ + 3 đáp án sai được lấy ngẫu nhiên từ nghĩa của các từ khác trong Sổ từ vựng / Từ điển hệ thống.
+3. **Quy tắc chuyển đổi Trạng thái & Chấm điểm**:
+   - **Trả lời ĐÚNG**:
+     - Frontend gọi `PATCH /vocabulary/my-words/:id/status` với `{ "status": "mastered" }`.
+     - Từ vựng được đánh dấu **"Đã thuộc"** (`mastered`) và sẽ không xuất hiện trong các lượt làm Quiz "Ôn từ chưa thuộc" tiếp theo.
+     - Tăng điểm câu đúng của lượt Quiz.
+   - **Trả lời SAI**:
+     - Từ vựng **giữ nguyên** `status = "learning"`.
+     - **Không đẩy từ bị sai xuống cuối hàng chờ lượt hiện tại** (để giữ nguyên điểm số chính xác của phiên làm bài).
+     - Từ này sẽ tiếp tục được đưa vào danh sách câu hỏi ở các lần làm Quiz tiếp theo cho đến khi người dùng chọn đúng.
+4. **Chế độ Ôn tập**:
+   - **"Ôn từ chưa thuộc" (`learning_only`)**: Lấy toàn bộ các từ có `status !== "mastered"`.
+   - **"Ôn toàn bộ" (`all`)**: Lấy tất cả từ vựng trong sổ tay không phân biệt trạng thái.
+5. **Tổng kết lượt làm (Quiz Summary)**:
+   - Khi làm xong tất cả các câu hỏi trong lượt, hiển thị kết quả: Điểm số, phần trăm chính xác (Accuracy %), số từ thuộc mới, và danh sách các từ trả lời sai cần ôn tiếp.
+

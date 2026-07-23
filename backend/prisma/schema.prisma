@@ -135,6 +135,8 @@ model User {
   activityPosts       ActivityPost[]
   postLikes           PostLike[]
   scheduleRequests    ScheduleRequest[]
+  notificationsReceived Notification[] @relation("NotificationUser")
+  notificationsSent     Notification[] @relation("NotificationSender")
 
   @@map("users")
 }
@@ -421,6 +423,24 @@ model ScheduleRequest {
   proposer     User         @relation(fields: [proposerId], references: [id])
 
   @@map("schedule_requests")
+}
+
+// ===== Notifications — thông báo in-app (new_post, v.v.) =====
+model Notification {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")       // người nhận
+  senderId    Int?     @map("sender_id")     // người gửi (nullable: hệ thống)
+  type        String                         // 'new_post' | 'schedule_reminder' | ...
+  message     String
+  referenceId Int?     @map("reference_id") // id bài post / schedule_request liên quan
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user   User  @relation("NotificationUser", fields: [userId], references: [id], onDelete: Cascade)
+  sender User? @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 // Log kiểm duyệt = lịch sử vi phạm (đếm để xác định tái phạm — US-20)

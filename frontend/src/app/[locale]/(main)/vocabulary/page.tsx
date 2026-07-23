@@ -3,15 +3,20 @@
 import * as React from "react";
 import {
   BookOpen,
-  ChevronLeft,
   ChevronRight,
   RotateCw,
   Search,
   Trash2,
   Volume2,
-  CheckCircle2,
-  RefreshCw,
   Sparkles,
+  Check,
+  X,
+  Trophy,
+  Award,
+  HelpCircle,
+  Brain,
+  CheckCircle2,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
@@ -37,7 +42,7 @@ const speakWord = (text: string, langCode: string = "en-US") => {
   }
 };
 
-// Helper to shuffle deck array randomly
+// Helper to shuffle array randomly
 function shuffleArray<T>(array: T[]): T[] {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -47,43 +52,219 @@ function shuffleArray<T>(array: T[]): T[] {
   return arr;
 }
 
+// LocalStorage persistence helpers for vocabulary statuses
+const LOCAL_STATUS_KEY = "stududu_vocab_word_statuses";
+
+function getStoredWordStatuses(): Record<number, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(LOCAL_STATUS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveWordStatusToStorage(id: number, status: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getStoredWordStatuses();
+    current[id] = status;
+    localStorage.setItem(LOCAL_STATUS_KEY, JSON.stringify(current));
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// Rich Vietnamese distractors pool for quiz (natural, meaningful vocabulary definitions)
+const FALLBACK_DISTRACTORS = [
+  "Sự kiên trì và nỗ lực bền bỉ",
+  "Tình cờ phát hiện ra điều may mắn",
+  "Khả năng thích ứng với hoàn cảnh mới",
+  "Nguồn cảm hứng sáng tạo dồi dào",
+  "Sự đồng cảm và thấu hiểu sâu sắc",
+  "Thành tựu xuất sắc nổi bật",
+  "Sự tập trung cao độ vào mục tiêu",
+  "Sự bộc phát năng lượng tích cực",
+  "Tạo ra ảnh hưởng sâu rộng và tích cực",
+  "Phương pháp tư duy logic sáng tạo",
+  "Sự chu đáo và tỉ mỉ trong từng chi tiết",
+  "Tầm nhìn chiến lược dài hạn",
+  "Cơ sở và nền móng vững chắc",
+  "Sự mỉa mai và trớ trêu bất ngờ",
+  "Hoàng hôn và cảnh vật chạng vạng",
+  "Khả năng phục hồi tinh thần nhanh chóng",
+  "Sự hòa đồng và thân thiện với mọi người",
+  "Thực tế và có tính ứng dụng cao",
+];
+
+// Clean dynamic semantic fallback generator when API translation is pending or unavailable
+function formatCleanFallbackDefinition(wordItem: SavedWord): string {
+  const pos = (wordItem.word.partOfSpeech || "").toLowerCase();
+
+  if (pos.includes("danh") || pos.includes("noun")) {
+    return "Khái niệm và thuật ngữ đặc trưng";
+  }
+  if (pos.includes("tính") || pos.includes("adj")) {
+    return "Có đặc điểm và tính chất nổi bật";
+  }
+  if (pos.includes("động") || pos.includes("verb")) {
+    return "Hành động tác động và phát triển";
+  }
+
+  return "Định nghĩa và ý nghĩa cốt lõi";
+}
+
+type MainTab = "quiz" | "notebook";
 type ReviewMode = "learning_only" | "all";
-type ListFilter = "all" | "new" | "learning" | "mastered";
+type ListFilterType = "all" | "new" | "learning" | "mastered";
 
 export default function VocabularyPage() {
   const { show: showToast, toast } = useToast();
   const [words, setWords] = React.useState<SavedWord[]>([]);
   const [loading, setLoading] = React.useState(true);
 
+  // Dynamic async translation cache (wordId -> Vietnamese definition)
+  const [translatedDefsMap, setTranslatedDefsMap] = React.useState<Record<number, string>>({});
+
+  // Main Navigation Tabs: "quiz" (Làm Quiz Ôn Tập) or "notebook" (Sổ Từ Vựng)
+  const [activeTab, setActiveTab] = React.useState<MainTab>("quiz");
+
   // Review Deck State
   const [reviewMode, setReviewMode] = React.useState<ReviewMode>("learning_only");
   const [deck, setDeck] = React.useState<SavedWord[]>([]);
   const [currentIndex, setCurrentIndex] = React.useState(0);
-  const [isFlipped, setIsFlipped] = React.useState(false);
+  const deckInitializedRef = React.useRef(false);
 
-  // Saved Words List Filters
-  const [listFilter, setListFilter] = React.useState<ListFilter>("all");
+  // Quiz State
+  const [quizOptions, setQuizOptions] = React.useState<string[]>([]);
+  const [selectedOption, setSelectedOption] = React.useState<string | null>(null);
+  const [isAnswered, setIsAnswered] = React.useState<boolean>(false);
+  const [score, setScore] = React.useState<number>(0);
+  const [quizCompleted, setQuizCompleted] = React.useState<boolean>(false);
+  const [streak, setStreak] = React.useState<number>(0);
+
+  // Saved Words List Filters (Notebook Tab)
+  const [listFilter, setListFilter] = React.useState<ListFilterType>("all");
   const [search, setSearch] = React.useState("");
   const [selectedWordId, setSelectedWordId] = React.useState<number | null>(null);
 
-  // Fetch saved words from API
+  // Resolve clean Vietnamese definition for any given SavedWord dynamically
+  const getVietnameseDefinition = React.useCallback(
+    (wordItem: SavedWord): string => {
+      if (translatedDefsMap[wordItem.id]) {
+        return translatedDefsMap[wordItem.id];
+      }
+
+      if (
+        wordItem.personalNote &&
+        /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(
+          wordItem.personalNote,
+        )
+      ) {
+        return wordItem.personalNote.trim();
+      }
+
+      const def = wordItem.word.definition || "";
+      if (
+        def &&
+        /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(def)
+      ) {
+        return def.trim();
+      }
+
+      return formatCleanFallbackDefinition(wordItem);
+    },
+    [translatedDefsMap],
+  );
+
+  // Dynamic Translation Pipeline: Pre-fetches translations for ANY new English terms via API
+  const ensureVietnameseTranslations = React.useCallback(async (wordList: SavedWord[]) => {
+    const newMap: Record<number, string> = {};
+    const unmappedWords: SavedWord[] = [];
+
+    for (const item of wordList) {
+      const personalNote = item.personalNote?.trim() || "";
+      const rawDef = item.word.definition?.trim() || "";
+
+      if (
+        personalNote &&
+        /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(
+          personalNote,
+        )
+      ) {
+        newMap[item.id] = personalNote;
+      } else if (
+        rawDef &&
+        /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(
+          rawDef,
+        )
+      ) {
+        newMap[item.id] = rawDef;
+      } else {
+        unmappedWords.push(item);
+      }
+    }
+
+    setTranslatedDefsMap(newMap);
+
+    if (unmappedWords.length > 0) {
+      const results = await Promise.allSettled(
+        unmappedWords.map(async (item) => {
+          try {
+            const res = await api<{ translation: string }>("/translate", {
+              method: "POST",
+              body: { text: item.word.term, source: "auto", target: "vi" },
+            });
+            if (res?.translation) {
+              return { id: item.id, translation: res.translation };
+            }
+          } catch {
+            // Silently fall back
+          }
+          return null;
+        }),
+      );
+
+      setTranslatedDefsMap((prev) => {
+        const updated = { ...prev };
+        for (const res of results) {
+          if (res.status === "fulfilled" && res.value) {
+            updated[res.value.id] = res.value.translation;
+          }
+        }
+        return updated;
+      });
+    }
+  }, []);
+
+  // Fetch saved words from API & merge persistent localStorage statuses
   const loadWords = React.useCallback(async () => {
     setLoading(true);
     try {
       const data = await api<SavedWord[]>("/vocabulary/my-words");
-      setWords(data);
+      const localStatuses = getStoredWordStatuses();
+
+      // Merge client-side persisted statuses with backend data
+      const mergedWords = data.map((w) => {
+        const storedStatus = localStatuses[w.id];
+        return storedStatus ? { ...w, status: storedStatus } : w;
+      });
+
+      setWords(mergedWords);
+      void ensureVietnameseTranslations(mergedWords);
     } catch (err) {
       console.error("Failed to load words:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ensureVietnameseTranslations]);
 
   React.useEffect(() => {
     void loadWords();
   }, [loadWords]);
 
-  // Build review deck whenever words or reviewMode changes
+  // Build review deck whenever mode changes or on initial load
   const initReviewDeck = React.useCallback(
     (mode: ReviewMode, currentWords: SavedWord[]) => {
       let target = currentWords;
@@ -93,19 +274,94 @@ export default function VocabularyPage() {
       const shuffled = shuffleArray(target);
       setDeck(shuffled);
       setCurrentIndex(0);
-      setIsFlipped(false);
+      setScore(0);
+      setQuizCompleted(false);
+      setSelectedOption(null);
+      setIsAnswered(false);
+      setStreak(0);
     },
     [],
   );
 
+  // Initialize deck ONCE when words load
   React.useEffect(() => {
-    if (words.length > 0) {
+    if (words.length > 0 && !deckInitializedRef.current) {
       initReviewDeck(reviewMode, words);
-    } else {
+      deckInitializedRef.current = true;
+    } else if (words.length === 0) {
       setDeck([]);
       setCurrentIndex(0);
     }
   }, [words, reviewMode, initReviewDeck]);
+
+  // Generate 4 Quiz options in Vietnamese (1 correct answer + 3 distractors)
+  const generateOptionsForWord = React.useCallback(
+    (targetWord: SavedWord, allWords: SavedWord[]): string[] => {
+      const correctDef = getVietnameseDefinition(targetWord);
+
+      const candidateDefs = allWords
+        .filter((w) => w.id !== targetWord.id)
+        .map((w) => getVietnameseDefinition(w))
+        .filter(
+          (def) =>
+            def.trim() !== "" &&
+            def !== correctDef &&
+            !def.startsWith("Khái niệm và") &&
+            !def.startsWith("Định nghĩa và"),
+        );
+
+      const uniqueCandidates = Array.from(new Set(candidateDefs));
+
+      const needed = 3;
+      const distractors: string[] = [];
+
+      const shuffledCandidates = shuffleArray(uniqueCandidates);
+      for (const cand of shuffledCandidates) {
+        if (distractors.length < needed && !distractors.includes(cand)) {
+          distractors.push(cand);
+        }
+      }
+
+      if (distractors.length < needed) {
+        const shuffledFallbacks = shuffleArray(FALLBACK_DISTRACTORS);
+        for (const fallback of shuffledFallbacks) {
+          if (
+            distractors.length < needed &&
+            fallback !== correctDef &&
+            !distractors.includes(fallback)
+          ) {
+            distractors.push(fallback);
+          }
+        }
+      }
+
+      return shuffleArray([correctDef, ...distractors]);
+    },
+    [getVietnameseDefinition],
+  );
+
+  // Active word in current quiz
+  const activeQuizWord = deck[currentIndex] || null;
+  const activeQuizWordId = activeQuizWord?.id;
+
+  // Prepare Quiz options dynamically whenever active word OR translations load (ONLY if question not answered yet)
+  React.useEffect(() => {
+    if (activeQuizWord && words.length > 0 && !isAnswered) {
+      const opts = generateOptionsForWord(activeQuizWord, words);
+      setQuizOptions(opts);
+    }
+  }, [activeQuizWordId, words, generateOptionsForWord, translatedDefsMap, isAnswered]);
+
+  // Move to next question or complete quiz
+  const handleNextQuestion = React.useCallback(() => {
+    if (currentIndex + 1 < deck.length) {
+      setCurrentIndex((prev) => prev + 1);
+      setSelectedOption(null);
+      setIsAnswered(false);
+    } else {
+      setQuizCompleted(true);
+    }
+  }, [currentIndex, deck.length]);
 
   // Handle deck mode toggle with shuffle
   const handleModeChange = (newMode: ReviewMode) => {
@@ -118,60 +374,61 @@ export default function VocabularyPage() {
   const masteredCount = words.filter((w) => w.status === "mastered").length;
   const learningCount = totalCount - masteredCount;
 
-  // Active word in flashcard
-  const activeCardWord = deck[currentIndex] || null;
+  // Option selection handler: Saves status to localStorage & backend
+  const handleSelectOption = async (option: string) => {
+    if (isAnswered || !activeQuizWord) return;
 
-  // Next / Prev card navigation
-  const handleNextCard = () => {
-    if (deck.length === 0) return;
-    setIsFlipped(false);
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev + 1) % deck.length);
-    }, 150);
-  };
+    setSelectedOption(option);
+    setIsAnswered(true);
 
-  const handlePrevCard = () => {
-    if (deck.length === 0) return;
-    setIsFlipped(false);
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev - 1 + deck.length) % deck.length);
-    }, 150);
-  };
+    const correctDef = getVietnameseDefinition(activeQuizWord);
+    const isCorrect =
+      option.trim().toLowerCase() === correctDef.trim().toLowerCase();
 
-  // Update status action (Cần ôn / Đã thuộc)
-  const handleUpdateStatus = async (newStatus: "learning" | "mastered") => {
-    if (!activeCardWord) return;
+    if (isCorrect) {
+      setScore((prev) => prev + 1);
+      setStreak((prev) => prev + 1);
+      const targetId = activeQuizWord.id;
 
-    const targetId = activeCardWord.id;
+      // 1. Save to LocalStorage for persistence across tab navigation
+      saveWordStatusToStorage(targetId, "mastered");
 
-    // 1. Optimistic UI update
-    setWords((prev) =>
-      prev.map((w) => (w.id === targetId ? { ...w, status: newStatus } : w)),
-    );
+      // 2. Optimistic UI update for word status
+      setWords((prev) =>
+        prev.map((w) => (w.id === targetId ? { ...w, status: "mastered" } : w)),
+      );
 
-    // 2. Call Backend PATCH endpoint (gracefully fallback if API not ready)
-    try {
-      await api(`/vocabulary/my-words/${targetId}/status`, {
-        method: "PATCH",
-        body: { status: newStatus },
-      });
-    } catch {
-      // Backend status endpoint API might be pending implementation by backend team
-    }
-
-    if (newStatus === "mastered") {
-      showToast(`Đã đánh dấu "${activeCardWord.word.term}" là ĐÃ THUỘC! 🎉`);
+      // 3. API update for backend
+      try {
+        await api(`/vocabulary/my-words/${targetId}/status`, {
+          method: "PATCH",
+          body: { status: "mastered" },
+        });
+      } catch {
+        // Fallback gracefully
+      }
     } else {
-      showToast(`Giữ từ "${activeCardWord.word.term}" trong danh sách CẦN ÔN.`);
+      setStreak(0);
     }
+  };
 
-    // Move to next card in deck
-    handleNextCard();
+  // Restart Quiz round
+  const handleRestartQuiz = () => {
+    initReviewDeck(reviewMode, words);
   };
 
   // Delete word handler
   const handleDeleteWord = async (id: number, term: string) => {
     setWords((prev) => prev.filter((w) => w.id !== id));
+
+    if (typeof window !== "undefined") {
+      try {
+        const current = getStoredWordStatuses();
+        delete current[id];
+        localStorage.setItem(LOCAL_STATUS_KEY, JSON.stringify(current));
+      } catch {}
+    }
+
     try {
       await api(`/vocabulary/my-words/${id}`, { method: "DELETE" });
       showToast(`Đã xóa "${term}" khỏi sổ từ vựng.`);
@@ -180,20 +437,7 @@ export default function VocabularyPage() {
     }
   };
 
-  // Select word from right list to display in Flashcard
-  const handleSelectWordFromList = (wordItem: SavedWord) => {
-    setSelectedWordId(wordItem.id);
-    const existingIndex = deck.findIndex((w) => w.id === wordItem.id);
-    if (existingIndex !== -1) {
-      setCurrentIndex(existingIndex);
-    } else {
-      setDeck([wordItem, ...deck]);
-      setCurrentIndex(0);
-    }
-    setIsFlipped(false);
-  };
-
-  // Filtered words for right-hand list
+  // Filtered words for Notebook tab list
   const filteredWords = words.filter((w) => {
     const matchesSearch =
       !search ||
@@ -205,23 +449,38 @@ export default function VocabularyPage() {
 
     if (listFilter === "mastered") return w.status === "mastered";
     if (listFilter === "learning") return w.status === "learning" || w.status === "new" || !w.status;
-    if (listFilter === "new") return w.status === "new" || w.source === "manual";
-    return true; // all
+    if (listFilter === "new") return w.source === "manual" || w.status === "new";
+    return true;
   });
 
+  // Calculate Quiz Final Score & Rank
+  const totalQuestions = deck.length;
+  const earnedPoints = score * 10;
+  const maxPossiblePoints = totalQuestions * 10;
+  const accuracyPercent = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+
+  const getRankBadge = (acc: number) => {
+    if (acc >= 90) return { title: "Xuất Sắc! 🌟", color: "text-amber-500 bg-amber-500/10 border-amber-500/30" };
+    if (acc >= 70) return { title: "Giỏi! 👏", color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/30" };
+    if (acc >= 50) return { title: "Khá! 👍", color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/30" };
+    return { title: "Cần Cố Gắng! 💡", color: "text-rose-500 bg-rose-500/10 border-rose-500/30" };
+  };
+
+  const rankInfo = getRankBadge(accuracyPercent);
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 md:py-8 pb-24 space-y-6">
+    <div className="mx-auto max-w-5xl px-4 py-6 md:py-8 pb-24 space-y-6">
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface p-6 rounded-3xl border border-border shadow-sm">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary mb-1">
-            <BookOpen className="w-4 h-4" /> HỌC NHANH
+            <BookOpen className="w-4 h-4" /> HỌC TỪ VỰNG TRẮC NGHIỆM
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">
-            Sổ từ vựng
+            Sổ từ vựng & Quiz
           </h1>
           <p className="text-sm text-muted mt-1">
-            Ôn tập bằng flashcard mỗi ngày — từ hội thoại, cộng đồng và ghi chú của bạn.
+            Ôn tập trắc nghiệm nghĩa tiếng Việt và quản lý sổ từ vựng cá nhân của bạn.
           </p>
         </div>
 
@@ -250,10 +509,35 @@ export default function VocabularyPage() {
         </div>
       </div>
 
-      {/* MAIN 2-COLUMN LAYOUT */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN: INTERACTIVE FLASHCARD STUDY PANEL (7 cols) */}
-        <div className="lg:col-span-7 space-y-4">
+      {/* MAIN TABS SWITCHER: LÀM QUIZ ÔN TẬP VS SỔ TỪ VỰNG (2 TAB RIÊNG BIỆT) */}
+      <div className="flex items-center bg-surface p-1.5 rounded-2xl border border-border shadow-sm">
+        <button
+          onClick={() => setActiveTab("quiz")}
+          className={cn(
+            "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2",
+            activeTab === "quiz"
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "text-muted hover:text-foreground hover:bg-muted/10",
+          )}
+        >
+          <Brain className="w-4 h-4" /> 🎯 Ôn Tập Quiz
+        </button>
+        <button
+          onClick={() => setActiveTab("notebook")}
+          className={cn(
+            "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2",
+            activeTab === "notebook"
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "text-muted hover:text-foreground hover:bg-muted/10",
+          )}
+        >
+          <BookOpen className="w-4 h-4" /> 📚 Sổ Từ Vựng ({totalCount})
+        </button>
+      </div>
+
+      {/* TAB 1: LÀM QUIZ ÔN TẬP (HOÀN TOÀN TÁCH BIỆT NỘI DUNG SỔ TỪ) */}
+      {activeTab === "quiz" && (
+        <div className="space-y-4">
           {/* REVIEW MODE TOGGLE TABS */}
           <div className="flex items-center justify-between bg-surface p-1.5 rounded-2xl border border-border shadow-sm">
             <div className="flex gap-1 w-full">
@@ -262,7 +546,7 @@ export default function VocabularyPage() {
                 className={cn(
                   "flex-1 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition-all text-center flex items-center justify-center gap-1.5",
                   reviewMode === "learning_only"
-                    ? "bg-primary text-primary-foreground shadow-md"
+                    ? "bg-indigo-600 text-white shadow-sm"
                     : "text-muted hover:text-foreground hover:bg-muted/10",
                 )}
               >
@@ -274,175 +558,241 @@ export default function VocabularyPage() {
                 className={cn(
                   "flex-1 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition-all text-center flex items-center justify-center gap-1.5",
                   reviewMode === "all"
-                    ? "bg-primary text-primary-foreground shadow-md"
+                    ? "bg-indigo-600 text-white shadow-sm"
                     : "text-muted hover:text-foreground hover:bg-muted/10",
                 )}
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RotateCw className="w-3.5 h-3.5" />
                 Ôn toàn bộ ({totalCount})
               </button>
             </div>
           </div>
 
-          {/* FLASHCARD DISPLAY BOX */}
           {loading ? (
-            <div className="h-80 rounded-3xl bg-muted/10 animate-pulse flex items-center justify-center text-muted text-sm">
-              Đang tải từ vựng...
+            <div className="h-96 rounded-3xl bg-muted/10 animate-pulse flex items-center justify-center text-muted text-sm">
+              Đang tải dữ liệu Quiz...
             </div>
-          ) : deck.length > 0 && activeCardWord ? (
-            <div className="space-y-4">
-              {/* 3D FLIP CARD CONTAINER */}
-              <div
-                onClick={() => setIsFlipped(!isFlipped)}
-                className="perspective-1000 cursor-pointer group select-none min-h-[320px] rounded-3xl bg-surface border-2 border-border shadow-lg p-6 md:p-8 flex flex-col justify-between transition-all duration-300 hover:border-primary/50 relative overflow-hidden"
-              >
-                {/* TOP BAR OF CARD */}
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-muted bg-muted/20 px-3 py-1 rounded-full">
-                    {activeCardWord.word.language?.name || "GB English"}
-                  </span>
-                  <span
-                    className={cn(
-                      "font-bold px-3 py-1 rounded-full text-[11px]",
-                      activeCardWord.status === "mastered"
-                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                        : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
-                    )}
-                  >
-                    {activeCardWord.status === "mastered" ? "Đã thuộc" : "Đang học"}
-                  </span>
+          ) : quizCompleted ? (
+            /* QUIZ SCORE COMPLETION CARD (HIỂN THỊ ĐIỂM SỐ & XẾP LOẠI CHI TIẾT) */
+            <div className="rounded-3xl bg-surface border-2 border-border shadow-xl p-6 md:p-10 text-center space-y-6 animate-in zoom-in-95 duration-300">
+              <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-amber-400 to-amber-200 flex items-center justify-center shadow-lg text-amber-950">
+                <Trophy className="w-12 h-12 animate-bounce" />
+              </div>
+
+              <div className="space-y-1">
+                <span className={cn("inline-block px-4 py-1.5 rounded-full text-xs font-black border uppercase tracking-wider mb-2", rankInfo.color)}>
+                  {rankInfo.title}
+                </span>
+                <h2 className="text-3xl md:text-4xl font-black text-foreground">
+                  Kết Quả Lượt Quiz
+                </h2>
+                <p className="text-sm text-muted">
+                  Bạn đã hoàn thành lượt ôn tập với bộ {totalQuestions} câu hỏi.
+                </p>
+              </div>
+
+              {/* DETAILED SCORE SUMMARY BOARD */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-xl mx-auto pt-2">
+                <div className="bg-gradient-to-br from-primary/10 to-indigo-500/10 border border-primary/20 p-5 rounded-2xl text-center shadow-sm">
+                  <div className="flex items-center justify-center gap-1 text-primary text-xs font-bold uppercase mb-1">
+                    <Zap className="w-3.5 h-3.5" /> Tổng Điểm
+                  </div>
+                  <div className="text-3xl font-black text-primary">
+                    {earnedPoints} <span className="text-xs text-muted font-normal">/ {maxPossiblePoints}</span>
+                  </div>
+                  <div className="text-[11px] text-muted mt-1 font-semibold">+10 điểm / câu đúng</div>
                 </div>
 
-                {/* CARD CONTENT FRONT / BACK */}
-                {!isFlipped ? (
-                  /* FRONT OF CARD */
-                  <div className="my-auto text-center space-y-3 py-4">
-                    <div className="flex items-center justify-center gap-3">
-                      <h2 className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight">
-                        {activeCardWord.word.term}
-                      </h2>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          speakWord(
-                            activeCardWord.word.term,
-                            activeCardWord.word.language?.code || "en",
-                          );
-                        }}
-                        className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-                        title="Nghe phát âm"
-                      >
-                        <Volume2 className="w-5 h-5" />
-                      </button>
-                    </div>
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-2xl text-center shadow-sm">
+                  <div className="flex items-center justify-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase mb-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Câu Đúng
+                  </div>
+                  <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                    {score} <span className="text-xs text-muted font-normal">/ {totalQuestions}</span>
+                  </div>
+                  <div className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-1 font-semibold">
+                    Đã chuyển Đã thuộc
+                  </div>
+                </div>
 
-                    <p className="text-sm font-semibold text-rose-500">
-                      {activeCardWord.word.phonetic || "/ˌser.ənˈdɪp.ə.ti/"}
-                      {activeCardWord.word.partOfSpeech && (
-                        <span> · {activeCardWord.word.partOfSpeech}</span>
+                <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-2xl text-center shadow-sm">
+                  <div className="flex items-center justify-center gap-1 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase mb-1">
+                    <Award className="w-3.5 h-3.5" /> Tỷ Lệ Đúng
+                  </div>
+                  <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400">
+                    {accuracyPercent}%
+                  </div>
+                  <div className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-1 font-semibold">
+                    Độ chính xác
+                  </div>
+                </div>
+              </div>
+
+              {/* ACTION BUTTONS */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                <Button
+                  onClick={handleRestartQuiz}
+                  className="rounded-2xl h-12 px-6 font-bold shadow-md bg-primary text-primary-foreground hover:opacity-90"
+                >
+                  <RotateCw className="w-4 h-4 mr-2" /> Bắt đầu lượt Quiz mới
+                </Button>
+                <Button
+                  onClick={() => setActiveTab("notebook")}
+                  variant="outline"
+                  className="rounded-2xl h-12 px-6 font-bold border-border"
+                >
+                  <BookOpen className="w-4 h-4 mr-2" /> Xem Sổ Từ Vựng
+                </Button>
+              </div>
+            </div>
+          ) : deck.length > 0 && activeQuizWord ? (
+            /* ACTIVE QUIZ QUESTION CARD */
+            <div className="rounded-3xl bg-surface border-2 border-border shadow-lg p-6 md:p-8 space-y-6 relative overflow-hidden">
+              {/* TOP QUIZ BAR: PROGRESS, SCORE & STREAK */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-muted flex items-center gap-1.5">
+                    <HelpCircle className="w-4 h-4 text-primary" /> Câu {currentIndex + 1} / {deck.length}
+                  </span>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-primary font-black bg-primary/10 px-3 py-1 rounded-full text-xs">
+                      ⚡ {score * 10} điểm
+                    </span>
+
+                    {streak > 1 && (
+                      <span className="bg-amber-500/15 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-full flex items-center gap-1 text-[11px] font-extrabold animate-pulse">
+                        🔥 Chuỗi {streak}!
+                      </span>
+                    )}
+
+                    <span
+                      className={cn(
+                        "font-bold px-3 py-1 rounded-full text-[11px]",
+                        activeQuizWord.status === "mastered"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                          : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
                       )}
-                    </p>
-
-                    <div className="pt-4 flex items-center justify-center text-xs font-semibold text-muted-foreground group-hover:text-primary transition-colors">
-                      👇 Bấm để xem nghĩa
-                    </div>
-                  </div>
-                ) : (
-                  /* BACK OF CARD (FLIPPED) */
-                  <div className="my-auto text-center space-y-4 py-2 animate-in fade-in zoom-in-95 duration-200">
-                    <div>
-                      <div className="text-xs font-bold uppercase tracking-wider text-muted mb-1">
-                        Nghĩa của từ
-                      </div>
-                      <h3 className="text-xl md:text-2xl font-bold text-foreground">
-                        {activeCardWord.word.definition ||
-                          activeCardWord.personalNote ||
-                          "Chưa có định nghĩa"}
-                      </h3>
-                    </div>
-
-                    {activeCardWord.word.example && (
-                      <div className="bg-muted/10 p-3 rounded-2xl text-xs text-muted italic max-w-md mx-auto">
-                        &quot;{activeCardWord.word.example}&quot;
-                      </div>
-                    )}
-
-                    {activeCardWord.personalNote && activeCardWord.word.definition && (
-                      <p className="text-xs text-muted">
-                        📝 Ghi chú: {activeCardWord.personalNote}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* BOTTOM PROGRESS BAR IN CARD */}
-                <div className="space-y-1.5 pt-2">
-                  <div className="flex justify-between text-[11px] font-bold text-muted">
-                    <span>Tiến độ ôn tập</span>
-                    <span>
-                      {currentIndex + 1} / {deck.length}
+                    >
+                      {activeQuizWord.status === "mastered" ? "Đã thuộc" : "Đang học"}
                     </span>
                   </div>
-                  <div className="h-1.5 w-full bg-muted/20 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-rose-500 transition-all duration-300 rounded-full"
-                      style={{
-                        width: `${((currentIndex + 1) / deck.length) * 100}%`,
-                      }}
-                    />
-                  </div>
+                </div>
+
+                {/* PROGRESS BAR */}
+                <div className="h-2 w-full bg-muted/20 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-primary via-indigo-500 to-emerald-500 transition-all duration-300 rounded-full"
+                    style={{
+                      width: `${((currentIndex + 1) / deck.length) * 100}%`,
+                    }}
+                  />
                 </div>
               </div>
 
-              {/* CARD NAVIGATION & FLIP CONTROLS */}
-              <div className="flex items-center justify-between gap-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handlePrevCard}
-                  className="rounded-2xl h-10 px-4"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Trước
-                </Button>
+              {/* TARGET WORD BOX */}
+              <div className="text-center py-5 bg-muted/5 rounded-2xl border border-border/60 p-4 space-y-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted">
+                  {activeQuizWord.word.language?.name || "ENGLISH"}
+                </div>
+                <div className="flex items-center justify-center gap-3">
+                  <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
+                    {activeQuizWord.word.term}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      speakWord(
+                        activeQuizWord.word.term,
+                        activeQuizWord.word.language?.code || "en",
+                      )
+                    }
+                    className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors active:scale-95"
+                    title="Nghe phát âm"
+                  >
+                    <Volume2 className="w-5 h-5" />
+                  </button>
+                </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsFlipped(!isFlipped)}
-                  className="rounded-2xl h-10 px-6 font-bold shadow-sm"
-                >
-                  <RotateCw className="w-4 h-4 mr-2 text-primary" /> Lật thẻ
-                </Button>
+                <p className="text-sm font-semibold text-rose-500">
+                  {activeQuizWord.word.phonetic || "/ˌser.ənˈdɪp.ə.ti/"}
+                  {activeQuizWord.word.partOfSpeech && (
+                    <span className="text-muted"> · {activeQuizWord.word.partOfSpeech}</span>
+                  )}
+                </p>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleNextCard}
-                  className="rounded-2xl h-10 px-4"
-                >
-                  Sau <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
+                <p className="text-xs text-muted font-medium pt-1">
+                  👉 Chọn 1 đáp án nghĩa tiếng Việt đúng nhất ở bên dưới:
+                </p>
               </div>
 
-              {/* ACTION BUTTONS: CẦN ÔN (RE-STUDY) VS ĐÃ THUỘC (MASTERED) */}
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleUpdateStatus("learning")}
-                  className="w-full py-3.5 px-4 rounded-2xl font-bold text-sm border-2 border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-98"
-                >
-                  <RotateCw className="w-4 h-4" /> ↺ Cần ôn
-                </button>
+              {/* 4 MULTIPLE CHOICE OPTIONS GRID */}
+              <div className="grid grid-cols-1 gap-3">
+                {quizOptions.map((opt, idx) => {
+                  const correctDef = getVietnameseDefinition(activeQuizWord);
+                  const isThisCorrect =
+                    opt.trim().toLowerCase() === correctDef.trim().toLowerCase();
+                  const isThisSelected = selectedOption === opt;
 
-                <button
-                  type="button"
-                  onClick={() => handleUpdateStatus("mastered")}
-                  className="w-full py-3.5 px-4 rounded-2xl font-bold text-sm bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-98"
-                >
-                  <CheckCircle2 className="w-4 h-4" /> ✓ Đã thuộc
-                </button>
+                  let optionStyle =
+                    "border-border bg-surface hover:border-primary/50 hover:bg-muted/10 text-foreground";
+                  let optionIcon = null;
+
+                  if (isAnswered) {
+                    if (isThisSelected && isThisCorrect) {
+                      optionStyle =
+                        "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/30 font-bold";
+                      optionIcon = <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />;
+                    } else if (isThisSelected && !isThisCorrect) {
+                      optionStyle =
+                        "border-rose-500 bg-rose-500/15 text-rose-700 dark:text-rose-300 ring-2 ring-rose-500/30 font-bold";
+                      optionIcon = <X className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />;
+                    } else if (!isThisSelected && isThisCorrect) {
+                      optionStyle =
+                        "border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold";
+                      optionIcon = <Check className="w-5 h-5 text-emerald-500 shrink-0" />;
+                    } else {
+                      optionStyle = "border-border/40 bg-surface/50 text-muted opacity-50";
+                    }
+                  }
+
+                  const labels = ["A", "B", "C", "D"];
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={isAnswered}
+                      onClick={() => void handleSelectOption(opt)}
+                      className={cn(
+                        "w-full p-4 rounded-2xl border-2 text-left text-sm transition-all duration-200 flex items-center justify-between gap-3 group active:scale-[0.99]",
+                        optionStyle,
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-7 h-7 rounded-xl bg-muted/20 flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
+                          {labels[idx]}
+                        </span>
+                        <span className="font-medium leading-snug">{opt}</span>
+                      </div>
+                      {optionIcon}
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* FOOTER ACTION: NEXT QUESTION BUTTON */}
+              {isAnswered && (
+                <div className="pt-2 flex justify-end animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <Button
+                    onClick={handleNextQuestion}
+                    className="rounded-2xl h-12 px-6 font-bold shadow-md bg-gradient-to-r from-primary to-indigo-600 text-white hover:opacity-95"
+                  >
+                    {currentIndex + 1 < deck.length ? "Câu tiếp theo" : "Xem điểm số Quiz"}{" "}
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             /* EMPTY DECK STATE */
@@ -456,7 +806,7 @@ export default function VocabularyPage() {
               <p className="text-sm text-muted max-w-xs">
                 {reviewMode === "learning_only"
                   ? "Tuyệt vời! Bạn có thể chuyển sang chế độ Ôn toàn bộ để củng cố lại kiến thức."
-                  : "Hãy bôi đen từ mới trong ứng dụng hoặc khi chat để thêm vào sổ từ vựng nhé."}
+                  : "Hãy thêm từ mới vào sổ tay bằng cách bôi đen khi dịch hoặc chat nhé."}
               </p>
               {reviewMode === "learning_only" && (
                 <Button onClick={() => handleModeChange("all")} variant="ghost">
@@ -466,126 +816,150 @@ export default function VocabularyPage() {
             </div>
           )}
         </div>
+      )}
 
-        {/* RIGHT COLUMN: SAVED WORD LIST "Từ đã lưu" (5 cols) */}
-        <div className="lg:col-span-5 bg-surface rounded-3xl border border-border shadow-sm p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-extrabold text-lg text-foreground">Từ đã lưu</h2>
-            <span className="text-xs font-semibold text-muted bg-muted/20 px-2.5 py-1 rounded-full">
-              {filteredWords.length} từ
+      {/* TAB 2: SỔ TỪ VỰNG (TRANG ĐẬP TRUNG XEM & QUẢN LÝ DẠNG SỔ TAY) */}
+      {activeTab === "notebook" && (
+        <div className="bg-surface rounded-3xl border border-border shadow-sm p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+            <div>
+              <h2 className="font-extrabold text-xl text-foreground">Sổ Từ Vựng Cá Nhân</h2>
+              <p className="text-xs text-muted mt-0.5">Danh sách toàn bộ các từ đã lưu, bôi đen dịch hoặc học trong chat.</p>
+            </div>
+            <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full self-start sm:self-auto">
+              Tổng số: {filteredWords.length} từ
             </span>
           </div>
 
-          {/* LIST FILTER TABS */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
-            {(["all", "new", "learning", "mastered"] as const).map((filterKey) => (
-              <button
-                key={filterKey}
-                onClick={() => setListFilter(filterKey)}
-                className={cn(
-                  "px-3 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all border",
-                  listFilter === filterKey
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-surface text-muted border-border hover:border-primary/30",
-                )}
-              >
-                {filterKey === "all" && "Tất cả"}
-                {filterKey === "new" && "Mới"}
-                {filterKey === "learning" && "Đang học"}
-                {filterKey === "mastered" && "Đã thuộc"}
-              </button>
-            ))}
-          </div>
-
-          {/* SEARCH INPUT */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm từ vựng..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-10 rounded-2xl border border-border bg-muted/5 pl-10 pr-4 text-xs focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
-
-          {/* WORD ITEMS SCROLLABLE LIST */}
-          <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
-            {filteredWords.length > 0 ? (
-              filteredWords.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => handleSelectWordFromList(item)}
+          {/* LIST FILTER TABS & SEARCH */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+              {(["all", "new", "learning", "mastered"] as const).map((filterKey) => (
+                <button
+                  key={filterKey}
+                  onClick={() => setListFilter(filterKey)}
                   className={cn(
-                    "p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 group hover:border-primary/40",
-                    selectedWordId === item.id || activeCardWord?.id === item.id
-                      ? "bg-primary/5 border-primary shadow-sm"
-                      : "bg-surface border-border hover:bg-muted/5",
+                    "px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition-all border",
+                    listFilter === filterKey
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-surface text-muted border-border hover:border-primary/30",
                   )}
                 >
-                  <div className="space-y-1 min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-extrabold text-foreground text-sm">
-                        {item.word.term}
-                      </span>
-                      {item.word.partOfSpeech && (
-                        <span className="text-[11px] italic text-muted">
-                          {item.word.partOfSpeech}
-                        </span>
-                      )}
-                      <span
-                        className={cn(
-                          "text-[10px] font-bold rounded-full px-2 py-0.5 ml-auto",
-                          item.status === "mastered"
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                            : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-                        )}
-                      >
-                        {item.status === "mastered" ? "Đã thuộc" : "Đang học"}
-                      </span>
-                    </div>
+                  {filterKey === "all" && "Tất cả"}
+                  {filterKey === "new" && "Mới"}
+                  {filterKey === "learning" && "Đang học"}
+                  {filterKey === "mastered" && "Đã thuộc"}
+                </button>
+              ))}
+            </div>
 
-                    <p className="text-xs text-muted truncate">
-                      {item.word.definition || item.personalNote || "Chưa có nghĩa"}
-                    </p>
+            {/* SEARCH INPUT */}
+            <div className="relative min-w-[240px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm từ vựng..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-10 rounded-2xl border border-border bg-muted/5 pl-10 pr-4 text-xs focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+          </div>
 
-                    <div className="flex items-center gap-2 text-[10px] text-muted pt-1">
-                      <span className="bg-muted/20 px-2 py-0.5 rounded-md font-medium">
-                        {item.word.language?.name || "GB English"}
-                      </span>
-                      <span>•</span>
-                      <span>
-                        Nguồn:{" "}
-                        {item.source === "chat"
-                          ? "Chat · Sarah"
-                          : item.source === "manual"
-                          ? "Sổ tay"
-                          : "Cộng đồng"}
-                      </span>
-                    </div>
-                  </div>
+          {/* WORD ITEMS GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
+            {filteredWords.length > 0 ? (
+              filteredWords.map((item) => {
+                const viDef = getVietnameseDefinition(item);
 
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void handleDeleteWord(item.id, item.word.term);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all shrink-0"
-                    title="Xóa từ"
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "p-4 rounded-2xl border transition-all flex items-start justify-between gap-3 group hover:border-primary/40 bg-surface border-border hover:bg-muted/5 shadow-sm",
+                      selectedWordId === item.id && "ring-2 ring-primary/40",
+                    )}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-extrabold text-foreground text-base">
+                          {item.word.term}
+                        </span>
+                        {item.word.partOfSpeech && (
+                          <span className="text-xs italic text-muted">
+                            {item.word.partOfSpeech}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            speakWord(
+                              item.word.term,
+                              item.word.language?.code || "en",
+                            )
+                          }
+                          className="p-1 rounded-md text-muted hover:text-primary transition-colors"
+                          title="Nghe phát âm"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                        </button>
+                        <span
+                          className={cn(
+                            "text-[10px] font-bold rounded-full px-2.5 py-0.5 ml-auto",
+                            item.status === "mastered"
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                              : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20",
+                          )}
+                        >
+                          {item.status === "mastered" ? "Đã thuộc" : "Đang học"}
+                        </span>
+                      </div>
+
+                      <p className="text-sm font-semibold text-foreground/90">
+                        {viDef}
+                      </p>
+
+                      {item.word.example && (
+                        <p className="text-xs text-muted italic truncate">
+                          &quot;{item.word.example}&quot;
+                        </p>
+                      )}
+
+                      <div className="flex items-center gap-2 text-[10px] text-muted pt-1">
+                        <span className="bg-muted/20 px-2 py-0.5 rounded-md font-medium">
+                          {item.word.language?.name || "GB English"}
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Nguồn:{" "}
+                          {item.source === "chat"
+                            ? "Chat · Sarah"
+                            : item.source === "manual"
+                            ? "Sổ tay"
+                            : "Cộng đồng"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteWord(item.id, item.word.term)}
+                      className="opacity-0 group-hover:opacity-100 p-2 rounded-xl text-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all shrink-0"
+                      title="Xóa từ"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })
             ) : (
-              <div className="py-12 text-center text-muted text-xs">
-                Chưa có từ nào trong danh sách này.
+              <div className="col-span-full py-16 text-center text-muted text-sm">
+                Chưa tìm thấy từ vựng nào phù hợp trong sổ tay.
               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
 
       {toast}
     </div>
