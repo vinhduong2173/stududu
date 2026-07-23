@@ -1,6 +1,6 @@
-# Tài liệu Yêu cầu & Thiết kế API Backend cho Chức năng Sổ Từ Vựng & Flashcard (SRS)
+# Tài liệu Yêu cầu & Thiết kế API Backend cho Chức năng Sổ Từ Vựng & Quiz Trắc Nghiệm (Vocabulary Quiz)
 
-Tài liệu này tổng hợp toàn bộ thông tin chi tiết về cơ sở dữ liệu, các API RESTful, và logic xử lý nghiệp vụ cho chức năng **Sổ từ vựng (Vocabulary Notebook) & Ôn tập Flashcard** để chuyển cho lập trình viên Backend.
+Tài liệu này tổng hợp toàn bộ thông tin chi tiết về cơ sở dữ liệu, các API RESTful, và logic xử lý nghiệp vụ cho chức năng **Sổ từ vựng (Vocabulary Notebook) & Quiz Trắc Nghiệm (Vocabulary Quiz)** để chuyển cho lập trình viên Backend.
 
 ---
 
@@ -14,11 +14,11 @@ model WordLibrary {
   id          Int      @id @default(autoincrement())
   term        String   @db.VarChar(100)
   languageId  Int      @map("language_id")
-  phonetic    String?  // [THÊM MỚI] Phiên âm IPA (ví dụ: "/ˌser.ənˈdɪp.ə.ti/")
-  partOfSpeech String? // [THÊM MỚI] Loại từ (ví dụ: "danh từ", "noun", "tính từ"...)
-  definition  String?  
-  example     String?
-  audioUrl    String?  // [THÊM MỚI] Link audio mp3 phát âm từ điển (nếu có)
+  phonetic    String?  // Phiên âm IPA (ví dụ: "/ˌser.ənˈdɪp.ə.ti/")
+  partOfSpeech String? // Loại từ (ví dụ: "danh từ", "noun", "tính từ"...)
+  definition  String?  // Định nghĩa từ vựng
+  example     String?  // Ví dụ minh họa
+  audioUrl    String?  // Link audio mp3 phát âm từ điển (nếu có)
   saveCount   Int      @default(0) @map("save_count")
   isPublic    Boolean  @default(false) @map("is_public")
   updatedById Int?     @map("updated_by_id")
@@ -38,7 +38,7 @@ model UserSavedWord {
   wordLibraryId Int             @map("word_library_id")
   personalNote  String?         @map("personal_note")
   source        SavedWordSource // 'chat' | 'manual' (hoặc 'highlight')
-  status        String          @default("learning") // [THÊM MỚI] Trạng thái từ: 'learning' (Đang học / Cần ôn) | 'mastered' (Đã thuộc)
+  status        String          @default("learning") // Trạng thái từ: 'learning' (Đang học / Cần ôn) | 'mastered' (Đã thuộc)
   createdAt     DateTime        @default(now()) @map("created_at")
 
   user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -67,7 +67,7 @@ model UserSavedWord {
   "dictionary": {
     "phonetic": "/ˌser.ənˈdɪp.ə.ti/",
     "partOfSpeech": "danh từ",
-    "definition": "the occurrence and development of events by chance in a happy or beneficial way",
+    "definition": "sự tình cờ may mắn",
     "example": "a fortunate stroke of serendipity",
     "audioUrl": "https://api.dictionaryapi.dev/media/pronunciations/en/serendipity-us.mp3"
   }
@@ -166,17 +166,37 @@ model UserSavedWord {
 
 ---
 
+### 2.6. Dịch thuật Động (Dynamic Translation Service)
+- **Endpoint**: `POST /translate`
+- **Auth**: Optional / Required
+- **Request Body**:
+```json
+{
+  "text": "twilight",
+  "source": "auto",
+  "target": "vi"
+}
+```
+- **Response mẫu**:
+```json
+{
+  "translation": "hoàng hôn, chạng vạng"
+}
+```
+
+---
+
 ## 3. Quy tắc Nghiệp vụ Quiz Trắc Nghệm (Multiple Choice Quiz Business Logic)
 
 1. **Khởi tạo trạng thái**: Tất cả các từ khi được thêm vào Sổ từ vựng (qua bôi đen dịch từ hoặc chat) mặc định có `status = "learning"` (**Đang học / Cần ôn**).
 2. **Cơ chế câu hỏi Quiz Trắc Nghiệm**:
-   - Thay thế thẻ Flashcard tự chọn bằng **Quiz 4 lựa chọn (Multiple Choice)**: Cho Từ vựng tiếng Anh (Term + Audio + Phonetic) $\rightarrow$ Chọn 1 trong 4 Nghĩa tiếng Việt.
-   - **Tạo đáp án nhiễu (Distractors)**: 1 đáp án đúng là nghĩa của từ + 3 đáp án sai được lấy ngẫu nhiên từ nghĩa của các từ khác trong Sổ từ vựng / Từ điển hệ thống.
+   - Thẻ câu hỏi hiển thị **Từ vựng tiếng Anh (Term + Audio TTS + Phiên âm)** $\rightarrow$ Chọn 1 trong 4 Nghĩa tiếng Việt.
+   - **Tạo đáp án nhiễu (Distractors)**: 1 đáp án đúng là nghĩa tiếng Việt của từ + 3 đáp án sai được lấy ngẫu nhiên từ nghĩa của các từ khác trong Sổ từ vựng / Từ điển hệ thống.
 3. **Quy tắc chuyển đổi Trạng thái & Chấm điểm**:
    - **Trả lời ĐÚNG**:
      - Frontend gọi `PATCH /vocabulary/my-words/:id/status` với `{ "status": "mastered" }`.
      - Từ vựng được đánh dấu **"Đã thuộc"** (`mastered`) và sẽ không xuất hiện trong các lượt làm Quiz "Ôn từ chưa thuộc" tiếp theo.
-     - Tăng điểm câu đúng của lượt Quiz.
+     - Tăng điểm câu đúng của lượt Quiz (+10 điểm / câu đúng).
    - **Trả lời SAI**:
      - Từ vựng **giữ nguyên** `status = "learning"`.
      - **Không đẩy từ bị sai xuống cuối hàng chờ lượt hiện tại** (để giữ nguyên điểm số chính xác của phiên làm bài).
@@ -186,4 +206,3 @@ model UserSavedWord {
    - **"Ôn toàn bộ" (`all`)**: Lấy tất cả từ vựng trong sổ tay không phân biệt trạng thái.
 5. **Tổng kết lượt làm (Quiz Summary)**:
    - Khi làm xong tất cả các câu hỏi trong lượt, hiển thị kết quả: Điểm số, phần trăm chính xác (Accuracy %), số từ thuộc mới, và danh sách các từ trả lời sai cần ôn tiếp.
-
