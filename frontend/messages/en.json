@@ -65,7 +65,13 @@
     "google": "Continue with Google",
     "google_notice": "Sign in with Google: UI is ready. API integration will be configured once the Backend is complete.",
     "no_account": "Don't have an account?",
-    "register_link": "Sign up now"
+    "register_link": "Sign up now",
+    "hero_title": "Learn languages with real native speakers.",
+    "hero_sub": "You teach your language, they teach theirs. A fair exchange — no scores, no fees.",
+    "hero_p1": "Matched by complementary languages, not by score",
+    "hero_p2": "Direct 1:1 chat, practise your reflexes every day",
+    "hero_p3": "Contributions recognised with praise, not rankings",
+    "hero_footer": "stududu — language exchange, Tandem style"
   },
   "register": {
     "title": "Create an account",
@@ -287,7 +293,21 @@
     "preferred_language": "Preferred language",
     "no_preference": "No preference",
     "desired_level": "Desired partner level",
-    "any_level": "Any"
+    "any_level": "Any",
+    "edit_subtitle": "A complete profile gets you more matches — update it any time.",
+    "this_is_you": "This is your profile",
+    "your_name": "Your name",
+    "change_avatar": "Change profile photo",
+    "preview": "Preview",
+    "preview_hint": "This is how others see you in Discover.",
+    "preview_speaks": "Speaks:",
+    "preview_learns": "Learns:",
+    "preview_not_added": "Not added",
+    "preview_online": "Active now",
+    "preview_like": "Like",
+    "shared_interests": "Shared interests",
+    "interests_hint": "Pick topics you enjoy talking about.",
+    "intent_hint": "Helps us suggest better partners."
   },
   "chat": {
     "say_hi": "Say hi to start the conversation 👋",
