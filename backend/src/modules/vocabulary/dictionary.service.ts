@@ -14,6 +14,7 @@ export interface DictionaryResult {
   partOfSpeech: string | null;
   definition: string | null;
   example: string | null;
+  audioUrl: string | null;
 }
 
 interface DictionaryApiMeaning {
@@ -23,7 +24,7 @@ interface DictionaryApiMeaning {
 
 interface DictionaryApiEntry {
   phonetic?: string;
-  phonetics?: Array<{ text?: string }>;
+  phonetics?: Array<{ text?: string; audio?: string }>;
   meanings?: DictionaryApiMeaning[];
 }
 
@@ -62,6 +63,10 @@ export class DictionaryService {
         entry.phonetics?.find((p) => p.text)?.text ||
         null;
 
+      // Lấy audioUrl từ phonetics array
+      const audioUrl =
+        entry.phonetics?.find((p) => p.audio && p.audio.trim() !== '')?.audio || null;
+
       // Lấy meaning đầu tiên có definition
       const meaning = entry.meanings?.find(
         (m) => m.definitions && m.definitions.length > 0,
@@ -73,6 +78,7 @@ export class DictionaryService {
         partOfSpeech: meaning?.partOfSpeech || null,
         definition: firstDef?.definition || null,
         example: firstDef?.example || null,
+        audioUrl,
       };
     } catch (err) {
       this.logger.warn(`Dictionary API lỗi cho "${trimmed}": ${(err as Error).message}`);

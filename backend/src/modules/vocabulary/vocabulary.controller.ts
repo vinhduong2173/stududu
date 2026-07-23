@@ -13,7 +13,7 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { JwtPayload } from '../../common/types/jwt-payload';
-import { SaveWordDto, UpdateLibraryWordDto } from './dto/save-word.dto';
+import { SaveWordDto, UpdateLibraryWordDto, UpdateWordStatusDto } from './dto/save-word.dto';
 import { VocabularyService } from './vocabulary.service';
 
 @Controller('vocabulary')
@@ -35,8 +35,23 @@ export class VocabularyController {
 
   @Get('my-words')
   @UseGuards(JwtAuthGuard)
-  myWords(@CurrentUser() user: JwtPayload) {
-    return this.vocabularyService.myWords(user.sub);
+  myWords(
+    @CurrentUser() user: JwtPayload,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.vocabularyService.myWords(user.sub, status, search);
+  }
+
+  // Cập nhật trạng thái từ vựng (learning ↔ mastered)
+  @Patch('my-words/:id/status')
+  @UseGuards(JwtAuthGuard)
+  updateWordStatus(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateWordStatusDto,
+  ) {
+    return this.vocabularyService.updateWordStatus(user.sub, id, dto.status);
   }
 
   @Delete('my-words/:id')

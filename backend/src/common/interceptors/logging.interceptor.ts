@@ -37,6 +37,7 @@ export class LoggingInterceptor implements NestInterceptor {
           const userId = user?.sub ?? 'anonymous';
           this.logger.error(
             `${method} ${originalUrl} ${err.status ?? 500} - ${Date.now() - start}ms - user=${userId} ip=${ip} - ${err.message}`,
+            err.stack,
           );
         },
       }),

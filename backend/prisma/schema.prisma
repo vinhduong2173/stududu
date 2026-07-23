@@ -333,15 +333,18 @@ model VocabWord {
 
 // Kho từ chung — 1 bản ghi cho mỗi (term, language); public khi đủ 3 người lưu (BR-12)
 model WordLibrary {
-  id          Int      @id @default(autoincrement())
-  term        String   @db.VarChar(100)
-  languageId  Int      @map("language_id")
-  definition  String? // có thể null — chờ cộng đồng bổ sung (FS-24)
-  example     String?
-  saveCount   Int      @default(0) @map("save_count") // = số user khác nhau đã lưu (UNIQUE bên dưới)
-  isPublic    Boolean  @default(false) @map("is_public")
-  updatedById Int?     @map("updated_by_id") // ai bổ sung định nghĩa gần nhất — để Admin revert nếu spam
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           Int      @id @default(autoincrement())
+  term         String   @db.VarChar(100)
+  languageId   Int      @map("language_id")
+  phonetic     String?
+  partOfSpeech String?  @map("part_of_speech")
+  definition   String?
+  example      String?
+  audioUrl     String?  @map("audio_url")
+  saveCount    Int      @default(0) @map("save_count")
+  isPublic     Boolean  @default(false) @map("is_public")
+  updatedById  Int?     @map("updated_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   language Language        @relation(fields: [languageId], references: [id])
   savedBy  UserSavedWord[]
@@ -355,8 +358,9 @@ model UserSavedWord {
   id            Int             @id @default(autoincrement())
   userId        Int             @map("user_id")
   wordLibraryId Int             @map("word_library_id")
-  personalNote  String?         @map("personal_note") // nghĩa/ví dụ riêng của user
+  personalNote  String?         @map("personal_note")
   source        SavedWordSource
+  status        String          @default("learning")
   createdAt     DateTime        @default(now()) @map("created_at")
 
   user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
