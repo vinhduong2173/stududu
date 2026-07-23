@@ -15,12 +15,16 @@ export type SavedWord = {
   id: number;
   personalNote?: string | null;
   source: "chat" | "manual";
+  status?: "learning" | "mastered" | "new" | string;
   createdAt: string;
   word: {
     id: number;
     term: string;
+    phonetic?: string | null;
+    partOfSpeech?: string | null;
     definition?: string | null;
     example?: string | null;
+    audioUrl?: string | null;
     level?: string | null;
     saveCount: number;
     isPublic: boolean;

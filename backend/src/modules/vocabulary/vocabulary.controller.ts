@@ -20,6 +20,12 @@ import { VocabularyService } from './vocabulary.service';
 export class VocabularyController {
   constructor(private readonly vocabularyService: VocabularyService) {}
 
+  // FS-23 — tra từ vựng (dịch + từ điển + thư viện từ)
+  @Get('lookup')
+  lookup(@Query('term') term: string, @Query('target') target?: string) {
+    return this.vocabularyService.lookup(term, target);
+  }
+
   // FS-23 — lưu từ (từ chat hoặc thêm tay)
   @Post('save-word')
   @UseGuards(JwtAuthGuard)

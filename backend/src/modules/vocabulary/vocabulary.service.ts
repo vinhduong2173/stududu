@@ -2,7 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ActivityPostType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SaveWordDto, UpdateLibraryWordDto } from './dto/save-word.dto';
-import { I18nService, I18nContext } from 'nestjs-i18n';
+import { I18nService } from 'nestjs-i18n';
+import { DictionaryService } from './dictionary.service';
+import { TranslateService } from '../translate/translate.service';
 
 // BR-12 — WORD_LIBRARY công khai khi đủ ngưỡng người lưu (mỗi user chỉ tính 1 lần
 // nhờ UNIQUE(user_id, word_library_id) → save_count = số user khác nhau)
@@ -13,7 +15,87 @@ export class VocabularyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly i18n: I18nService,
+    private readonly dictionaryService: DictionaryService,
+    private readonly translateService: TranslateService,
   ) {}
+
+  // FS-23 — tra từ vựng thông minh (dịch + từ điển + thư viện từ)
+  async lookup(term: string, target = 'vi') {
+    const trimmed = term?.trim();
+    if (!trimmed) return null;
+
+    // 1. Dịch từ / câu qua TranslateService
+    let translation: string | null = null;
+    let detectedLang: string | null = null;
+
+    try {
+      const transRes = await this.translateService.translate({
+        text: trimmed,
+        target,
+        source: 'auto',
+      });
+      translation = transRes.translation ?? null;
+      detectedLang = transRes.source ?? null;
+    } catch {
+      detectedLang = 'en';
+    }
+
+    // 2. Map sang Language id trong DB
+    let language = detectedLang
+      ? await this.prisma.language.findUnique({
+          where: { code: detectedLang.toLowerCase() },
+        })
+      : null;
+
+    if (!language) {
+      language = await this.prisma.language.findUnique({
+        where: { code: 'en' },
+      });
+    }
+
+    if (!language) {
+      language = await this.prisma.language.findFirst();
+    }
+
+    const languageId = language?.id ?? 1;
+
+    // 3. Tra từ điển (Free Dictionary API)
+    const dictResult = await this.dictionaryService.lookup(trimmed, detectedLang || 'en');
+
+    // 4. Tra thư viện từ chung (WordLibrary)
+    const wordLib = await this.prisma.wordLibrary.findFirst({
+      where: {
+        term: { equals: trimmed, mode: 'insensitive' },
+        languageId,
+      },
+      include: { language: true },
+    });
+
+    return {
+      term: trimmed,
+      translation,
+      detectedLang,
+      languageId,
+      dictionary: dictResult
+        ? {
+            phonetic: dictResult.phonetic,
+            partOfSpeech: dictResult.partOfSpeech,
+            definition: dictResult.definition,
+            example: dictResult.example,
+          }
+        : null,
+      library: wordLib
+        ? {
+            id: wordLib.id,
+            definition: wordLib.definition,
+            example: wordLib.example,
+            languageId: wordLib.languageId,
+            languageName: wordLib.language.name,
+            saveCount: wordLib.saveCount,
+          }
+        : null,
+    };
+  }
 
   // FS-23 — tìm/tạo WORD_LIBRARY theo (term, language) rồi gắn USER_SAVED_WORD
   async saveWord(userId: number, dto: SaveWordDto) {
@@ -24,7 +106,20 @@ export class VocabularyService {
     });
     if (!word) {
       word = await this.prisma.wordLibrary.create({
-        data: { term, languageId: dto.languageId },
+        data: {
+          term,
+          languageId: dto.languageId,
+          definition: dto.definition,
+          example: dto.example,
+        },
+      });
+    } else if ((!word.definition && dto.definition) || (!word.example && dto.example)) {
+      word = await this.prisma.wordLibrary.update({
+        where: { id: word.id },
+        data: {
+          definition: word.definition || dto.definition,
+          example: word.example || dto.example,
+        },
       });
     }
 
