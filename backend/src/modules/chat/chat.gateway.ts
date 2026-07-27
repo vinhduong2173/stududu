@@ -127,4 +127,91 @@ export class ChatGateway implements OnGatewayConnection {
   private room(conversationId: number): string {
     return `conversation:${conversationId}`;
   }
+  // ===== VIDEO CALL SIGNALING (WebRTC) =====
+
+  @SubscribeMessage('call:invite')
+  async handleCallInvite(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody()
+    body: {
+      conversationId: number;
+      targetUserId: number;
+      callerName: string;
+      callerAvatar?: string | null;
+    },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:incoming', {
+      conversationId: body.conversationId,
+      callerId: client.data.user.sub,
+      callerName: body.callerName,
+      callerAvatar: body.callerAvatar,
+    });
+  }
+
+  @SubscribeMessage('call:accept')
+  async handleCallAccept(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number; targetUserId: number },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:accepted', {
+      conversationId: body.conversationId,
+      responderId: client.data.user.sub,
+    });
+  }
+
+  @SubscribeMessage('call:reject')
+  async handleCallReject(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number; targetUserId: number; reason?: string },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:rejected', {
+      conversationId: body.conversationId,
+      responderId: client.data.user.sub,
+      reason: body.reason,
+    });
+  }
+
+  @SubscribeMessage('call:end')
+  async handleCallEnd(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number; targetUserId: number },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:ended', {
+      conversationId: body.conversationId,
+      endedBy: client.data.user.sub,
+    });
+  }
+
+  @SubscribeMessage('webrtc:offer')
+  async handleWebrtcOffer(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { targetUserId: number; offer: any },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('webrtc:offer', {
+      senderId: client.data.user.sub,
+      offer: body.offer,
+    });
+  }
+
+  @SubscribeMessage('webrtc:answer')
+  async handleWebrtcAnswer(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { targetUserId: number; answer: any },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('webrtc:answer', {
+      senderId: client.data.user.sub,
+      answer: body.answer,
+    });
+  }
+
+  @SubscribeMessage('webrtc:ice-candidate')
+  async handleWebrtcIceCandidate(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { targetUserId: number; candidate: any },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('webrtc:ice-candidate', {
+      senderId: client.data.user.sub,
+      candidate: body.candidate,
+    });
+  }
 }
