@@ -6,9 +6,9 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
-import { Pencil, Settings } from "lucide-react";
+import { Pencil, Settings, Heart } from "lucide-react";
 import { TIME_SLOTS, getTimezone } from "@/lib/timezones";
-import { ageFromDob } from "@/lib/utils";
+import { ageFromDob, cn } from "@/lib/utils";
 import { ChatStats, EndorsementBadges } from "@/components/features/Endorsements";
 import { useTranslations } from "next-intl";
 import { getTopicTranslation, getIntentTranslation } from "@/lib/i18nHelper";
@@ -59,13 +59,44 @@ export default function MyProfilePage() {
   const tDisc = useTranslations("discover");
   const tRoot = useTranslations();
   const [me, setMe] = React.useState<Me | null>(null);
+  const [myPosts, setMyPosts] = React.useState<any[]>([]);
   const [error, setError] = React.useState("");
 
   React.useEffect(() => {
     api<Me>("/users/me")
-      .then(setMe)
+      .then((userData) => {
+        setMe(userData);
+        if (userData?.id) {
+          api<any[]>(`/community/feed?userId=${userData.id}`)
+            .then(setMyPosts)
+            .catch(() => []);
+        }
+      })
       .catch((err) => setError(err.message || t("loading_error")));
   }, [t]);
+
+  const handleTogglePostLike = async (postId: number, likedByMe: boolean) => {
+    try {
+      if (likedByMe) {
+        await api(`/community/posts/${postId}/like`, { method: "DELETE" });
+      } else {
+        await api(`/community/posts/${postId}/like`, { method: "POST" });
+      }
+      setMyPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                likedByMe: !likedByMe,
+                likeCount: p.likeCount + (likedByMe ? -1 : 1),
+              }
+            : p,
+        ),
+      );
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
 
   if (error) return <div className="p-8 text-center text-error">{error}</div>;
   if (!me)
@@ -80,56 +111,59 @@ export default function MyProfilePage() {
   const learnLangs = me.languages.filter((l) => l.role === "learning");
 
   return (
-    <div className="max-w-3xl mx-auto p-4 md:p-8 pb-24">
-      {/* Header — cover banner + avatar đè mép */}
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-20 pt-4">
+      {/* Profile Header Banner + Info Card */}
       <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-6">
-        <div className="sd-cover relative h-32 md:h-44">
+        <div className="sd-cover relative h-36 md:h-48 w-full">
           <div className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
         </div>
-        <div className="px-6 pb-6">
-          <div className="flex items-end justify-between -mt-12 mb-4">
-            <div className="inline-block rounded-full ring-4 ring-surface bg-surface">
-              <Avatar
-                src={me.avatarUrl ?? undefined}
-                fallback={me.displayName.charAt(0)}
-                size="xl"
-                className="shadow-lg"
-              />
-            </div>
-            <div className="flex gap-2 sm:gap-3">
-              <Button asChild size="sm">
-                <Link href="/profile/me/edit">
-                  <Pencil className="h-4 w-4 mr-2" /> {t("edit_profile")}
-                </Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/settings">
-                  <Settings className="h-4 w-4 mr-2" /> {t("settings")}
-                </Link>
-              </Button>
+        
+        {/* Info row positioned cleanly BELOW the cover banner */}
+        <div className="p-6 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Avatar
+              src={me.avatarUrl ?? undefined}
+              fallback={me.displayName.charAt(0)}
+              size="xl"
+              className="shadow-md shrink-0"
+            />
+            <div>
+              <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
+                {me.displayName}
+                {ageFromDob(me.dob) !== null && (
+                  <span className="font-medium text-muted">, {ageFromDob(me.dob)}</span>
+                )}
+              </h1>
+              <p className="text-sm text-muted mt-1">{me.email}</p>
+              {(me.city || me.gender) && (
+                <p className="text-xs text-muted mt-0.5">
+                  {[me.gender, me.city].filter(Boolean).join(" · ")}
+                </p>
+              )}
             </div>
           </div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
-            {me.displayName}
-            {ageFromDob(me.dob) !== null && (
-              <span className="font-medium text-muted">, {ageFromDob(me.dob)}</span>
-            )}
-          </h1>
-          <p className="text-muted mt-1">{me.email}</p>
-          {(me.city || me.gender) && (
-            <p className="text-sm text-muted mt-1">
-              {[me.gender, me.city].filter(Boolean).join(" · ")}
-            </p>
-          )}
+
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            <Button asChild size="sm" className="rounded-xl font-semibold shadow-sm">
+              <Link href="/profile/me/edit">
+                <Pencil className="h-4 w-4 mr-1.5" /> {t("edit_profile")}
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="rounded-xl font-semibold">
+              <Link href="/settings">
+                <Settings className="h-4 w-4 mr-1.5" /> {t("settings")}
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Thanh hoàn thiện hồ sơ */}
       <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border mb-6">
         <div className="flex items-center justify-between mb-2">
-          <p className="font-semibold text-foreground">{t("completion")}</p>
-          <p className="font-bold text-primary">{percent}%</p>
+          <p className="font-semibold text-foreground text-sm">{t("completion")}</p>
+          <p className="font-bold text-primary text-sm">{percent}%</p>
         </div>
         <div className="h-2.5 rounded-full bg-muted/15 overflow-hidden">
           <div
@@ -140,7 +174,7 @@ export default function MyProfilePage() {
         {missing.length > 0 && (
           <ul className="mt-4 space-y-1.5">
             {missing.map((hint) => (
-              <li key={hint} className="text-sm text-muted flex items-center gap-2">
+              <li key={hint} className="text-xs text-muted flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-warning shrink-0" /> {hint}
               </li>
             ))}
@@ -148,103 +182,162 @@ export default function MyProfilePage() {
         )}
       </div>
 
-      {/* Nội dung hồ sơ */}
-      <div className="space-y-8 bg-surface rounded-3xl p-6 shadow-sm border border-border">
-        {/* FS-26/27 — trust signals */}
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>🏅</span> {t("trust_activity")}
-          </h2>
-          <div className="space-y-3">
-            <EndorsementBadges userId={me.id} />
-            <ChatStats userId={me.id} />
-          </div>
-        </div>
+      {/* Main Content Layout — Horizontal 2-Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>🗣️</span> {t("languages")}
-          </h2>
-          <div className="flex flex-col gap-4 bg-muted/5 p-4 rounded-2xl">
-            <div>
-              <p className="text-sm font-semibold text-muted mb-2 uppercase tracking-wider">{t("can_teach")}</p>
-              <div className="flex flex-wrap gap-2">
-                {teachLangs.length === 0 && <p className="text-sm text-muted">{t("none")}</p>}
-                {teachLangs.map((l) => (
-                  <Chip key={l.id} variant="default" className="text-sm py-1">
-                    {l.language.name} {l.role === "native" ? tDisc("card_native") : tDisc("card_fluent")}
-                  </Chip>
-                ))}
-              </div>
-            </div>
-            <div className="h-px bg-border w-full" />
-            <div>
-              <p className="text-sm font-semibold text-muted mb-2 uppercase tracking-wider">{t("want_learn")}</p>
-              <div className="flex flex-wrap gap-2">
-                {learnLangs.length === 0 && <p className="text-sm text-muted">{t("none")}</p>}
-                {learnLangs.map((l) => (
-                  <Chip key={l.id} variant="secondary" className="text-sm py-1">
-                    {l.language.name} (Level {l.level})
-                  </Chip>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Left Column (60% width on desktop) */}
+        <div className="lg:col-span-2 space-y-6">
 
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>👋</span> {t("intro")}
-          </h2>
-          <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-            {me.bio || t("no_intro_me")}
-          </p>
-        </div>
-
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>🎯</span> {t("intent")}
-          </h2>
-          <Chip variant="outline" className="text-sm font-medium py-1">
-            {getIntentTranslation(me.intent, tRoot)}
-          </Chip>
-        </div>
-
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>⏰</span> {t("availability")}
-          </h2>
-          <div className="flex flex-wrap gap-2 items-center">
-            <Chip variant="outline" className="text-sm py-1">
-              {getTimezone(me.timezone).flag} {getTimezone(me.timezone).name} (UTC
-              {getTimezone(me.timezone).offset >= 0 ? "+" : ""}
-              {getTimezone(me.timezone).offset})
-            </Chip>
-            {(me.availableSlots ?? []).length === 0 ? (
-              <p className="text-sm text-muted">{t("no_availability")}</p>
-            ) : (
-              TIME_SLOTS.filter((s) => (me.availableSlots ?? []).includes(s.id)).map((s) => (
-                <Chip key={s.id} variant="secondary" className="text-sm py-1">
-                  ⏰ {s.label}
+          {/* Card 1: Giới thiệu (Bio) */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+              <span>📝</span> {t("intro")}
+            </h2>
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm md:text-base">
+              {me.bio || t("no_intro_me")}
+            </p>
+            {me.intent && (
+              <div className="mt-4 pt-4 border-t border-border flex items-center gap-2">
+                <span className="text-sm font-semibold text-muted">🎯 {t("intent")}:</span>
+                <Chip variant="outline" className="text-xs font-medium py-0.5">
+                  {getIntentTranslation(me.intent, tRoot)}
                 </Chip>
-              ))
+              </div>
             )}
           </div>
+
+          {/* Card 2: Bài viết (User Posts) */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <span>💬</span> {t("posts_title")}
+            </h2>
+            {myPosts.length === 0 ? (
+              <p className="text-sm text-muted py-2">{t("no_posts_me")}</p>
+            ) : (
+              <div className="space-y-4">
+                {myPosts.map((post) => (
+                  <div key={post.id} className="p-4 rounded-2xl bg-muted/5 border border-border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar src={me.avatarUrl ?? undefined} fallback={me.displayName.charAt(0)} size="sm" />
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{me.displayName}</p>
+                          <p className="text-xs text-muted">
+                            {new Date(post.createdAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                      {post.content || (post.type === "word_public" && post.word ? `Đã góp từ "${post.word.term}" vào Thư viện chung` : "")}
+                    </p>
+
+                    <div className="flex items-center gap-4 pt-1">
+                      <button
+                        onClick={() => handleTogglePostLike(post.id, post.likedByMe)}
+                        className={cn(
+                          "flex items-center gap-1.5 text-xs font-medium transition-colors py-1 px-2.5 rounded-lg",
+                          post.likedByMe
+                            ? "text-error bg-error/10"
+                            : "text-muted hover:text-foreground hover:bg-muted/10"
+                        )}
+                      >
+                        <Heart className={cn("w-4 h-4", post.likedByMe && "fill-current")} />
+                        <span>{post.likeCount || 0}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Card 3: Hoạt động luyện tập */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <span>⏱️</span> {t("practice_activity")}
+            </h2>
+            <ChatStats userId={me.id} />
+          </div>
+
         </div>
 
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>⭐</span> {t("interests")}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {me.interests.length === 0 && <p className="text-sm text-muted">{t("no_interests")}</p>}
-            {me.interests.map((i) => (
-              <Chip key={i.id} variant="outline" className="text-sm py-1">
-                {getTopicTranslation(i.topic.name, tRoot)}
-              </Chip>
-            ))}
+        {/* Right Column (40% width on desktop) */}
+        <div className="space-y-6">
+
+          {/* Card 1: Ngôn ngữ */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <span>🗣️</span> {t("languages")}
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">{t("speaks_label")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {teachLangs.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
+                  {teachLangs.map((l) => (
+                    <Chip key={l.id} variant="default" className="text-xs py-1">
+                      {l.language.name} {l.role === "native" ? `(${t("native_label")})` : `(${t("fluent_label")})`}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+              <div className="h-px bg-border w-full" />
+              <div>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">{t("learns_label")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {learnLangs.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
+                  {learnLangs.map((l) => (
+                    <Chip key={l.id} variant="secondary" className="text-xs py-1">
+                      {l.language.name} ({t("level_label")} {l.level})
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Card 2: Khung giờ rảnh & Múi giờ */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <span>⏰</span> {t("availability")}
+            </h2>
+            <div className="flex flex-wrap gap-2 items-center">
+              <Chip variant="outline" className="text-xs py-1">
+                {getTimezone(me.timezone).flag} {getTimezone(me.timezone).name} (UTC
+                {getTimezone(me.timezone).offset >= 0 ? "+" : ""}
+                {getTimezone(me.timezone).offset})
+              </Chip>
+              {(me.availableSlots ?? []).length === 0 ? (
+                <p className="text-xs text-muted">{t("no_availability")}</p>
+              ) : (
+                TIME_SLOTS.filter((s) => (me.availableSlots ?? []).includes(s.id)).map((s) => (
+                  <Chip key={s.id} variant="secondary" className="text-xs py-1">
+                    ⏰ {s.label}
+                  </Chip>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Card 3: Sở thích */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <span>⭐</span> {t("interests")}
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {me.interests.length === 0 && <p className="text-xs text-muted">{t("no_interests")}</p>}
+              {me.interests.map((i) => (
+                <Chip key={i.id} variant="outline" className="text-xs py-1">
+                  {getTopicTranslation(i.topic.name, tRoot)}
+                </Chip>
+              ))}
+            </div>
+          </div>
+
         </div>
+
       </div>
     </div>
   );
