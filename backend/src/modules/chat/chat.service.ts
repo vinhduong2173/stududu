@@ -310,4 +310,13 @@ export class ChatService {
     });
     if (blocked) throw new ForbiddenException(this.i18n.t('translation.chat.blockedUser', { lang }));
   }
+
+  async getConversationParticipants(conversationId: number): Promise<[number, number] | null> {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { match: { select: { memberId: true, candidateId: true } } },
+    });
+    if (!conversation) return null;
+    return [conversation.match.memberId, conversation.match.candidateId];
+  }
 }

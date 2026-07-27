@@ -19,7 +19,7 @@ interface AuthedSocket extends Socket {
 
 // US-14 — chat real-time; Socket.IO tự reconnect (AC2), room theo conversation
 @WebSocketGateway({
-  cors: { origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000' },
+  cors: { origin: true, credentials: true },
   maxHttpBufferSize: 2e6, // cho phép tin nhắn ảnh (data URL ~500KB sau nén)
 })
 export class ChatGateway implements OnGatewayConnection {
@@ -77,8 +77,14 @@ export class ChatGateway implements OnGatewayConnection {
       body.type ?? 'text',
       body.payload,
     );
-    // phát cho cả 2 phía trong room (kể cả người gửi — làm ack)
-    this.server.to(this.room(body.conversationId)).emit('message:new', message);
+    // Chỉ phát qua user room — mỗi client nhận đúng 1 lần, tránh race condition
+    const participants = await this.chatService.getConversationParticipants(body.conversationId);
+    if (participants) {
+      this.server
+        .to(`user:${participants[0]}`)
+        .to(`user:${participants[1]}`)
+        .emit('message:new', message);
+    }
     return message;
   }
 
@@ -93,7 +99,13 @@ export class ChatGateway implements OnGatewayConnection {
       body.messageId,
       body.emoji,
     );
-    this.server.to(this.room(message.conversationId)).emit('message:update', message);
+    const participants = await this.chatService.getConversationParticipants(message.conversationId);
+    if (participants) {
+      this.server
+        .to(`user:${participants[0]}`)
+        .to(`user:${participants[1]}`)
+        .emit('message:update', message);
+    }
     return message;
   }
 
@@ -108,7 +120,13 @@ export class ChatGateway implements OnGatewayConnection {
       body.messageId,
       body.response,
     );
-    this.server.to(this.room(message.conversationId)).emit('message:update', message);
+    const participants = await this.chatService.getConversationParticipants(message.conversationId);
+    if (participants) {
+      this.server
+        .to(`user:${participants[0]}`)
+        .to(`user:${participants[1]}`)
+        .emit('message:update', message);
+    }
     return message;
   }
 
@@ -118,13 +136,107 @@ export class ChatGateway implements OnGatewayConnection {
     @MessageBody() body: { conversationId: number },
   ) {
     await this.chatService.markRead(client.data.user.sub, body.conversationId);
-    this.server.to(this.room(body.conversationId)).emit('conversation:read', {
+    const readPayload = {
       conversationId: body.conversationId,
       readerId: client.data.user.sub,
-    });
+    };
+    const participants = await this.chatService.getConversationParticipants(body.conversationId);
+    if (participants) {
+      this.server
+        .to(`user:${participants[0]}`)
+        .to(`user:${participants[1]}`)
+        .emit('conversation:read', readPayload);
+    }
   }
 
   private room(conversationId: number): string {
     return `conversation:${conversationId}`;
+  }
+  // ===== VIDEO CALL SIGNALING (WebRTC) =====
+
+  @SubscribeMessage('call:invite')
+  async handleCallInvite(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody()
+    body: {
+      conversationId: number;
+      targetUserId: number;
+      callerName: string;
+      callerAvatar?: string | null;
+    },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:incoming', {
+      conversationId: body.conversationId,
+      callerId: client.data.user.sub,
+      callerName: body.callerName,
+      callerAvatar: body.callerAvatar,
+    });
+  }
+
+  @SubscribeMessage('call:accept')
+  async handleCallAccept(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number; targetUserId: number },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:accepted', {
+      conversationId: body.conversationId,
+      responderId: client.data.user.sub,
+    });
+  }
+
+  @SubscribeMessage('call:reject')
+  async handleCallReject(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number; targetUserId: number; reason?: string },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:rejected', {
+      conversationId: body.conversationId,
+      responderId: client.data.user.sub,
+      reason: body.reason,
+    });
+  }
+
+  @SubscribeMessage('call:end')
+  async handleCallEnd(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number; targetUserId: number },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:ended', {
+      conversationId: body.conversationId,
+      endedBy: client.data.user.sub,
+    });
+  }
+
+  @SubscribeMessage('webrtc:offer')
+  async handleWebrtcOffer(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { targetUserId: number; offer: any },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('webrtc:offer', {
+      senderId: client.data.user.sub,
+      offer: body.offer,
+    });
+  }
+
+  @SubscribeMessage('webrtc:answer')
+  async handleWebrtcAnswer(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { targetUserId: number; answer: any },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('webrtc:answer', {
+      senderId: client.data.user.sub,
+      answer: body.answer,
+    });
+  }
+
+  @SubscribeMessage('webrtc:ice-candidate')
+  async handleWebrtcIceCandidate(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { targetUserId: number; candidate: any },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('webrtc:ice-candidate', {
+      senderId: client.data.user.sub,
+      candidate: body.candidate,
+    });
   }
 }

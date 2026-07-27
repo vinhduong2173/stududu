@@ -23,6 +23,7 @@ import {
   ShieldBan,
   Smile,
   UserRound,
+  Video,
   X,
 } from "lucide-react";
 import { ReportDialog, BlockDialog, useToast } from "@/components/features/TrustDialogs";
@@ -31,6 +32,7 @@ import { WordSaveModal } from "@/components/features/WordSaveModal";
 import { TranslationModal } from "@/components/features/TranslationModal";
 import { ScheduleChatModal } from "@/components/features/ScheduleChatModal";
 import { CancelScheduleModal } from "@/components/features/CancelScheduleModal";
+import { VideoCallModal, type CallInfo } from "@/components/features/VideoCallModal";
 import { useTranslations } from "next-intl";
 import {
   TIME_SLOTS,
@@ -131,6 +133,7 @@ function InboxContent() {
 
   const [me, setMe] = React.useState<{
     id: number;
+    displayName?: string;
     avatarUrl?: string | null;
     timezone?: string | null;
     availableSlots?: string[];
@@ -165,6 +168,11 @@ function InboxContent() {
   const [cancellingRequestId, setCancellingRequestId] = React.useState<number | null>(null);
   const [cancellingLoading, setCancellingLoading] = React.useState(false);
 
+  // Video call states
+  const [videoCallOpen, setVideoCallOpen] = React.useState(false);
+  const [isIncomingCall, setIsIncomingCall] = React.useState(false);
+  const [incomingCallInfo, setIncomingCallInfo] = React.useState<CallInfo | null>(null);
+
   // FS-14: nút lưu từ nổi khi bôi đen văn bản trong tin nhắn
   const [selectionSave, setSelectionSave] = React.useState<{
     text: string;
@@ -193,7 +201,7 @@ function InboxContent() {
       return;
     }
 
-    api<{ id: number; avatarUrl?: string | null; timezone?: string | null; availableSlots?: string[] }>(
+    api<{ id: number; displayName?: string; avatarUrl?: string | null; timezone?: string | null; availableSlots?: string[] }>(
       "/users/me",
     )
       .then(setMe)
@@ -211,25 +219,35 @@ function InboxContent() {
     const socket = getSocket(token);
     socketRef.current = socket;
 
-    const onConnect = () => setConnected(true);
+    const onConnect = () => {
+      setConnected(true);
+      if (selectedIdRef.current) {
+        socket.emit("conversation:join", { conversationId: selectedIdRef.current });
+      }
+    };
     const onDisconnect = () => setConnected(false);
 
     const onNewMessage = (message: Message) => {
       if (Number(message.conversationId) === Number(selectedIdRef.current)) {
         setMessages((prev) => {
-          // Đã có bản thật (ack về trước) → bỏ qua
+          // Đã có bản thật → bỏ qua
           if (prev.some((m) => String(m.id) === String(message.id))) return prev;
-          // Tin của chính mình: thay bản optimistic tương ứng thay vì thêm mới
-          // (chống trùng khi message:new về trước ack, hoặc ack bị mất)
+
+          // Tin của chính mình: thay bản optimistic nếu còn pending
           if (Number(message.senderId) === Number(meRef.current)) {
             const tempIdx = prev.findIndex(
               (m) => m.pending && m.content === message.content && m.type === message.type,
             );
-            if (tempIdx === -1) return prev; // ack sẽ xử lý (hoặc đã xử lý) — không thêm
-            const next = [...prev];
-            next[tempIdx] = { ...message, pending: false };
-            return next;
+            if (tempIdx !== -1) {
+              const next = [...prev];
+              next[tempIdx] = { ...message, pending: false };
+              return next;
+            }
+            // Ack đã xử lý rồi (message đã có ID thật), hoặc chưa pending → thêm vào để chắc chắn
+            return [...prev, { ...message, pending: false }];
           }
+
+          // Tin của đối tác
           return [...prev, message];
         });
         if (Number(message.senderId) !== Number(meRef.current)) {
@@ -248,7 +266,7 @@ function InboxContent() {
             type: message.type,
           },
           unreadCount:
-            message.conversationId === selectedIdRef.current || message.senderId === meRef.current
+            Number(message.conversationId) === Number(selectedIdRef.current) || Number(message.senderId) === Number(meRef.current)
               ? prev[idx].unreadCount
               : prev[idx].unreadCount + 1,
         };
@@ -278,12 +296,41 @@ function InboxContent() {
       }
     };
 
+    const onIncomingCall = (data: CallInfo) => {
+      setIncomingCallInfo(data);
+      setIsIncomingCall(true);
+      setVideoCallOpen(true);
+    };
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("message:new", onNewMessage);
     socket.on("message:update", onMessageUpdate);
     socket.on("conversation:read", onRead);
+    socket.on("call:incoming", onIncomingCall);
     setConnected(socket.connected);
+
+    // Polling fallback: nếu socket mất kết nối, làm mới tin nhắn + conversations mỗi 5s
+    const pollInterval = setInterval(() => {
+      if (socket.disconnected) {
+        const convId = selectedIdRef.current;
+        if (convId) {
+          api<Message[]>(`/conversations/${convId}/messages`)
+            .then((data) => {
+              setMessages((prev) => {
+                // chỉ cập nhật nếu có tin nhắn mới (ID lớn hơn bản hiện tại)
+                const maxPrevId = Math.max(0, ...prev.filter((m) => !m.pending).map((m) => m.id));
+                const hasNew = data.some((m) => m.id > maxPrevId);
+                return hasNew ? data : prev;
+              });
+            })
+            .catch(() => undefined);
+        }
+        api<Conversation[]>("/conversations")
+          .then((data) => setConversations(data))
+          .catch(() => undefined);
+      }
+    }, 5000);
 
     return () => {
       socket.off("connect", onConnect);
@@ -291,6 +338,8 @@ function InboxContent() {
       socket.off("message:new", onNewMessage);
       socket.off("message:update", onMessageUpdate);
       socket.off("conversation:read", onRead);
+      socket.off("call:incoming", onIncomingCall);
+      clearInterval(pollInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -667,6 +716,17 @@ function InboxContent() {
           </div>
         </Link>
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => {
+              setIsIncomingCall(false);
+              setIncomingCallInfo(null);
+              setVideoCallOpen(true);
+            }}
+            className="p-2 text-muted hover:text-primary rounded-full hover:bg-primary/10 transition-colors"
+            title="Cuộc gọi video"
+          >
+            <Video className="w-5 h-5" />
+          </button>
           <button
             onClick={() => setScheduleOpen(true)}
             className="p-2 text-muted hover:text-primary rounded-full hover:bg-primary/10 transition-colors"
@@ -1172,6 +1232,20 @@ function InboxContent() {
                   : t("chat.word_save_success", { term: item.word.term }),
               )
             }
+          />
+          <VideoCallModal
+            isOpen={videoCallOpen}
+            onClose={() => {
+              setVideoCallOpen(false);
+              setIsIncomingCall(false);
+              setIncomingCallInfo(null);
+            }}
+            socket={socketRef.current}
+            conversationId={selected.id}
+            partner={selected.partner}
+            currentUser={{ id: me?.id ?? 0, displayName: me?.displayName }}
+            isIncoming={isIncomingCall}
+            incomingCallInfo={incomingCallInfo}
           />
         </>
       )}
