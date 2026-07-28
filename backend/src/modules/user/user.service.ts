@@ -127,6 +127,10 @@ export class UserService {
 
   // FS-27/BR-14 — thống kê giờ chat: cắt phiên khi idle > 30 phút, tính lại khi đọc
   // (không cache — cùng triết lý MATCH_SCORE), bỏ qua hội thoại đã block nhau
+  //
+  // BR-24 — cộng thêm thời lượng cuộc gọi thoại. Đây là ngoại lệ có chủ đích của
+  // BR-14: thời lượng cuộc gọi KHÔNG suy ra được từ tin nhắn nên bắt buộc phải
+  // lưu (CallSession.durationSec), xem audio-call-design.md mục 6.
   async getChatStats(userId: number) {
     const IDLE_MS = 30 * 60 * 1000;
 
@@ -147,11 +151,13 @@ export class UserService {
 
     let totalMs = 0;
     let conversationCount = 0;
+    const countedConversationIds: number[] = [];
     for (const conv of conversations) {
       const partnerId =
         conv.match.memberId === userId ? conv.match.candidateId : conv.match.memberId;
       if (blockedWith.has(partnerId)) continue;
       conversationCount += 1;
+      countedConversationIds.push(conv.id);
 
       const times = conv.messages.map((m) => m.sentAt.getTime());
       if (times.length === 0) continue;
@@ -166,6 +172,13 @@ export class UserService {
       }
       totalMs += prev - sessionStart;
     }
+
+    // BR-24 — chỉ cuộc gọi đã kết thúc bình thường mới tính (nhỡ/từ chối = 0 giây)
+    const callTime = await this.prisma.callSession.aggregate({
+      where: { conversationId: { in: countedConversationIds }, status: 'ended' },
+      _sum: { durationSec: true },
+    });
+    totalMs += (callTime._sum.durationSec ?? 0) * 1000;
 
     return {
       totalChatHours: Math.round((totalMs / 3_600_000) * 10) / 10,

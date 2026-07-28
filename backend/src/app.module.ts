@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CallsModule } from './modules/calls/calls.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { LanguageModule } from './modules/language/language.module';
 import { MatchingModule } from './modules/matching/matching.module';
@@ -76,6 +77,7 @@ import * as path from 'path';
     LanguageModule,
     MatchingModule,
     ChatModule,
+    CallsModule, // gọi thoại (audio-call-design.md)
     TrustModule,
     AdminModule,
     VocabularyModule, // FS-23/24 — thay module vocab cũ

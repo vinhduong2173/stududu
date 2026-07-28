@@ -52,7 +52,8 @@
     "missingScheduleInfo": "Thiếu thông tin lời mời hẹn giờ",
     "notInConversation": "Bạn không thuộc hội thoại này",
     "conversationNotFound": "Không tìm thấy hội thoại",
-    "blockedUser": "Không thể nhắn tin với người này"
+    "blockedUser": "Không thể nhắn tin với người này",
+    "callMessageNotAllowed": "Tin nhắn cuộc gọi do hệ thống tạo, không gửi tay được"
   },
   "vocab": {
     "wordNotFound": "Không tìm thấy từ trong sổ của bạn",
@@ -63,5 +64,12 @@
   },
   "common": {
     "accessDenied": "Không đủ quyền truy cập"
+  },
+  "calls": {
+    "notFound": "Không tìm thấy cuộc gọi",
+    "notInConversation": "Chỉ gọi được người trong cùng hội thoại",
+    "suspendedNoCall": "Tài khoản của bạn đang bị tạm khóa, không thể gọi",
+    "notYourCall": "Bạn không thuộc cuộc gọi này",
+    "notRinging": "Cuộc gọi không còn đổ chuông"
   }
 }
