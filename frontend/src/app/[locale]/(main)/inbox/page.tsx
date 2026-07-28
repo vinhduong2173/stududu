@@ -23,6 +23,7 @@ import {
   ShieldBan,
   Smile,
   UserRound,
+  Video,
   X,
 } from "lucide-react";
 import { ReportDialog, BlockDialog, useToast } from "@/components/features/TrustDialogs";
@@ -31,6 +32,7 @@ import { WordSaveModal } from "@/components/features/WordSaveModal";
 import { TranslationModal } from "@/components/features/TranslationModal";
 import { ScheduleChatModal } from "@/components/features/ScheduleChatModal";
 import { CancelScheduleModal } from "@/components/features/CancelScheduleModal";
+import { VideoCallModal, type CallInfo } from "@/components/features/VideoCallModal";
 import { useTranslations } from "next-intl";
 import {
   TIME_SLOTS,
@@ -131,6 +133,7 @@ function InboxContent() {
 
   const [me, setMe] = React.useState<{
     id: number;
+    displayName?: string;
     avatarUrl?: string | null;
     timezone?: string | null;
     availableSlots?: string[];
@@ -165,6 +168,11 @@ function InboxContent() {
   const [cancellingRequestId, setCancellingRequestId] = React.useState<number | null>(null);
   const [cancellingLoading, setCancellingLoading] = React.useState(false);
 
+  // Video call states
+  const [videoCallOpen, setVideoCallOpen] = React.useState(false);
+  const [isIncomingCall, setIsIncomingCall] = React.useState(false);
+  const [incomingCallInfo, setIncomingCallInfo] = React.useState<CallInfo | null>(null);
+
   // FS-14: nút lưu từ nổi khi bôi đen văn bản trong tin nhắn
   const [selectionSave, setSelectionSave] = React.useState<{
     text: string;
@@ -193,7 +201,7 @@ function InboxContent() {
       return;
     }
 
-    api<{ id: number; avatarUrl?: string | null; timezone?: string | null; availableSlots?: string[] }>(
+    api<{ id: number; displayName?: string; avatarUrl?: string | null; timezone?: string | null; availableSlots?: string[] }>(
       "/users/me",
     )
       .then(setMe)
@@ -211,7 +219,12 @@ function InboxContent() {
     const socket = getSocket(token);
     socketRef.current = socket;
 
-    const onConnect = () => setConnected(true);
+    const onConnect = () => {
+      setConnected(true);
+      if (selectedIdRef.current) {
+        socket.emit("conversation:join", { conversationId: selectedIdRef.current });
+      }
+    };
     const onDisconnect = () => setConnected(false);
 
     const onNewMessage = (message: Message) => {
@@ -278,11 +291,18 @@ function InboxContent() {
       }
     };
 
+    const onIncomingCall = (data: CallInfo) => {
+      setIncomingCallInfo(data);
+      setIsIncomingCall(true);
+      setVideoCallOpen(true);
+    };
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("message:new", onNewMessage);
     socket.on("message:update", onMessageUpdate);
     socket.on("conversation:read", onRead);
+    socket.on("call:incoming", onIncomingCall);
     setConnected(socket.connected);
 
     return () => {
@@ -291,6 +311,7 @@ function InboxContent() {
       socket.off("message:new", onNewMessage);
       socket.off("message:update", onMessageUpdate);
       socket.off("conversation:read", onRead);
+      socket.off("call:incoming", onIncomingCall);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -668,6 +689,17 @@ function InboxContent() {
         </Link>
         <div className="flex items-center gap-1">
           <button
+            onClick={() => {
+              setIsIncomingCall(false);
+              setIncomingCallInfo(null);
+              setVideoCallOpen(true);
+            }}
+            className="p-2 text-muted hover:text-primary rounded-full hover:bg-primary/10 transition-colors"
+            title="Cuộc gọi video"
+          >
+            <Video className="w-5 h-5" />
+          </button>
+          <button
             onClick={() => setScheduleOpen(true)}
             className="p-2 text-muted hover:text-primary rounded-full hover:bg-primary/10 transition-colors"
             title={t("chat.schedule_btn_tooltip")}
@@ -795,12 +827,12 @@ function InboxContent() {
               const isNewShape = Boolean(sd.requestId && sd.timeUtc);
               const localTime = sd.timeUtc
                 ? new Date(sd.timeUtc).toLocaleString(undefined, {
-                    weekday: "short",
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
+                  weekday: "short",
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
                 : null;
               return (
                 <div key={m.id} className="flex justify-center">
@@ -1172,6 +1204,20 @@ function InboxContent() {
                   : t("chat.word_save_success", { term: item.word.term }),
               )
             }
+          />
+          <VideoCallModal
+            isOpen={videoCallOpen}
+            onClose={() => {
+              setVideoCallOpen(false);
+              setIsIncomingCall(false);
+              setIncomingCallInfo(null);
+            }}
+            socket={socketRef.current}
+            conversationId={selected.id}
+            partner={selected.partner}
+            currentUser={{ id: me?.id ?? 0, displayName: me?.displayName }}
+            isIncoming={isIncomingCall}
+            incomingCallInfo={incomingCallInfo}
           />
         </>
       )}

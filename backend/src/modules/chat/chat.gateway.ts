@@ -17,9 +17,26 @@ interface AuthedSocket extends Socket {
   data: { user: JwtPayload };
 }
 
-// US-14 — chat real-time; Socket.IO tự reconnect (AC2), room theo conversation
+const isOriginAllowed = (origin: string | undefined): boolean => {
+  if (!origin) return true;
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',')
+    : ['http://localhost:3000'];
+  if (allowedOrigins.includes(origin)) return true;
+  return /^(https?:\/\/)(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin);
+};
+
 @WebSocketGateway({
-  cors: { origin: process.env.CORS_ORIGIN ?? 'http://localhost:3000' },
+  cors: {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      if (isOriginAllowed(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  },
   maxHttpBufferSize: 2e6, // cho phép tin nhắn ảnh (data URL ~500KB sau nén)
 })
 export class ChatGateway implements OnGatewayConnection {
@@ -126,5 +143,92 @@ export class ChatGateway implements OnGatewayConnection {
 
   private room(conversationId: number): string {
     return `conversation:${conversationId}`;
+  }
+  // ===== VIDEO CALL SIGNALING (WebRTC) =====
+
+  @SubscribeMessage('call:invite')
+  async handleCallInvite(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody()
+    body: {
+      conversationId: number;
+      targetUserId: number;
+      callerName: string;
+      callerAvatar?: string | null;
+    },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:incoming', {
+      conversationId: body.conversationId,
+      callerId: client.data.user.sub,
+      callerName: body.callerName,
+      callerAvatar: body.callerAvatar,
+    });
+  }
+
+  @SubscribeMessage('call:accept')
+  async handleCallAccept(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number; targetUserId: number },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:accepted', {
+      conversationId: body.conversationId,
+      responderId: client.data.user.sub,
+    });
+  }
+
+  @SubscribeMessage('call:reject')
+  async handleCallReject(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number; targetUserId: number; reason?: string },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:rejected', {
+      conversationId: body.conversationId,
+      responderId: client.data.user.sub,
+      reason: body.reason,
+    });
+  }
+
+  @SubscribeMessage('call:end')
+  async handleCallEnd(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number; targetUserId: number },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('call:ended', {
+      conversationId: body.conversationId,
+      endedBy: client.data.user.sub,
+    });
+  }
+
+  @SubscribeMessage('webrtc:offer')
+  async handleWebrtcOffer(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { targetUserId: number; offer: any },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('webrtc:offer', {
+      senderId: client.data.user.sub,
+      offer: body.offer,
+    });
+  }
+
+  @SubscribeMessage('webrtc:answer')
+  async handleWebrtcAnswer(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { targetUserId: number; answer: any },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('webrtc:answer', {
+      senderId: client.data.user.sub,
+      answer: body.answer,
+    });
+  }
+
+  @SubscribeMessage('webrtc:ice-candidate')
+  async handleWebrtcIceCandidate(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { targetUserId: number; candidate: any },
+  ) {
+    this.server.to(`user:${body.targetUserId}`).emit('webrtc:ice-candidate', {
+      senderId: client.data.user.sub,
+      candidate: body.candidate,
+    });
   }
 }
