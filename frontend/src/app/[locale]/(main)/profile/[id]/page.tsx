@@ -338,6 +338,16 @@ export default function ProfilePage() {
                       {post.content || (post.type === "word_public" && post.word ? `Đã góp từ "${post.word.term}" vào Thư viện chung` : "")}
                     </p>
 
+                    {post.imageUrl && (
+                      <div className="rounded-2xl overflow-hidden border border-border/50 max-w-md bg-muted/5 inline-block">
+                        <img
+                          src={post.imageUrl}
+                          alt="Đính kèm"
+                          className="w-full h-auto object-contain max-h-80"
+                        />
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-4 pt-1">
                       <button
                         onClick={() => handleTogglePostLike(post.id, post.likedByMe)}

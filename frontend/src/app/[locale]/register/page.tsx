@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { api, ApiError } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/features/LanguageSwitcher";
+import { promptGoogleAuth } from "@/lib/google-auth";
 
 export default function RegisterPage() {
   const t = useTranslations();
@@ -18,7 +19,19 @@ export default function RegisterPage() {
   const [error, setError] = React.useState("");
 
   const handleGoogleClick = () => {
-    alert(t("register.google_notice"));
+    setError("");
+    promptGoogleAuth({
+      onSuccess: ({ role, needsOnboarding }) => {
+        if (role === "admin") {
+          router.push("/admin");
+        } else {
+          router.push(needsOnboarding ? "/onboarding" : "/discover");
+        }
+      },
+      onError: (errMessage) => {
+        setError(errMessage);
+      },
+    });
   };
 
   const handleRegister = async (e: React.FormEvent) => {

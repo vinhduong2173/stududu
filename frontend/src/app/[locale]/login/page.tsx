@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { api, ApiError } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/features/LanguageSwitcher";
+import { promptGoogleAuth } from "@/lib/google-auth";
 
 export default function LoginPage() {
   const t = useTranslations();
@@ -29,7 +30,19 @@ export default function LoginPage() {
   }, []);
 
   const handleGoogleClick = () => {
-    alert(t("login.google_notice"));
+    setError("");
+    promptGoogleAuth({
+      onSuccess: ({ role, needsOnboarding }) => {
+        if (role === "admin") {
+          router.push("/admin");
+        } else {
+          router.push(needsOnboarding ? "/onboarding" : "/discover");
+        }
+      },
+      onError: (errMessage) => {
+        setError(errMessage);
+      },
+    });
   };
 
   const handleLogin = async (e: React.FormEvent) => {

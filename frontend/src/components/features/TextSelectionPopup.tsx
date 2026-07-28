@@ -70,8 +70,8 @@ export function TextSelectionPopup({
         body: {
           term: selectedText.trim(),
           languageId: result.languageId,
-          definition: definition?.trim() || undefined,
-          example: example?.trim() || undefined,
+          definition: definition?.trim().slice(0, 1000) || undefined,
+          example: example?.trim().slice(0, 1000) || undefined,
           source: "manual",
         },
       });

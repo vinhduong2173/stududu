@@ -1,9 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { I18nService, I18nContext } from 'nestjs-i18n';
+import type { UpdatePostDto } from './community.controller';
 
-// FS-25 — Community feed: CHỈ auto-generated post (word_public, chat_hours_milestone),
-// chưa làm free-form post ở đợt này.
 @Injectable()
 export class CommunityService {
   constructor(
@@ -11,8 +10,9 @@ export class CommunityService {
     private readonly i18n: I18nService,
   ) {}
 
-  async feed(viewerId?: number) {
+  async feed(viewerId?: number, authorId?: number) {
     const posts = await this.prisma.activityPost.findMany({
+      where: authorId ? { userId: authorId } : undefined,
       include: {
         user: { select: { id: true, displayName: true, avatarUrl: true } },
         _count: { select: { likes: true } },
@@ -39,6 +39,7 @@ export class CommunityService {
       type: p.type,
       contentRef: p.contentRef,
       content: p.content,
+      imageUrl: p.imageUrl,
       createdAt: p.createdAt,
       user: p.user,
       likeCount: p._count.likes,
@@ -51,14 +52,65 @@ export class CommunityService {
   }
 
   // Bài chia sẻ tự do của member (mở rộng theo yêu cầu — ngoài auto-post)
-  createPost(userId: number, content: string) {
+  createPost(userId: number, content?: string, imageUrl?: string) {
     return this.prisma.activityPost.create({
-      data: { userId, type: 'user_post', content: content.trim() },
+      data: {
+        userId,
+        type: 'user_post',
+        content: content ? content.trim() : null,
+        imageUrl: imageUrl ?? null,
+      },
       include: {
         user: { select: { id: true, displayName: true, avatarUrl: true } },
         _count: { select: { likes: true } },
       },
     });
+  }
+
+  async updatePost(userId: number, id: number, dto: UpdatePostDto) {
+    const post = await this.prisma.activityPost.findUnique({ where: { id } });
+    if (!post) {
+      throw new NotFoundException(
+        this.i18n.t('translation.community.postNotFound', { lang: I18nContext.current()?.lang }),
+      );
+    }
+    if (post.userId !== userId) {
+      throw new ForbiddenException('Bạn không có quyền chỉnh sửa bài viết này');
+    }
+
+    const updateData: { content?: string | null; imageUrl?: string | null } = {};
+    if (dto.content !== undefined) {
+      updateData.content = dto.content.trim() || null;
+    }
+    if (dto.removeImage) {
+      updateData.imageUrl = null;
+    } else if (dto.imageUrl !== undefined) {
+      updateData.imageUrl = dto.imageUrl;
+    }
+
+    return this.prisma.activityPost.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: { select: { id: true, displayName: true, avatarUrl: true } },
+        _count: { select: { likes: true } },
+      },
+    });
+  }
+
+  async deletePost(userId: number, id: number) {
+    const post = await this.prisma.activityPost.findUnique({ where: { id } });
+    if (!post) {
+      throw new NotFoundException(
+        this.i18n.t('translation.community.postNotFound', { lang: I18nContext.current()?.lang }),
+      );
+    }
+    if (post.userId !== userId) {
+      throw new ForbiddenException('Bạn không có quyền xóa bài viết này');
+    }
+
+    await this.prisma.activityPost.delete({ where: { id } });
+    return { success: true };
   }
 
   async like(userId: number, postId: number) {

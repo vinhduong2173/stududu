@@ -176,6 +176,7 @@
     "time_hours_ago": "{count} giờ trước",
     "report_post_target": "bài viết của {name}",
     "attach_image": "Đính kèm hình ảnh",
+    "delete_image": "Xóa ảnh",
     "image_size_error": "⚠️ Dung lượng ảnh không được vượt quá 2MB"
   },
   "langSwitcher": {

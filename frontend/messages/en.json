@@ -176,6 +176,7 @@
     "time_hours_ago": "{count}h ago",
     "report_post_target": "{name}'s post",
     "attach_image": "Attach image",
+    "delete_image": "Remove image",
     "image_size_error": "⚠️ Image size cannot exceed 2MB"
   },
   "langSwitcher": {
