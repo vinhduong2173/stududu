@@ -1,0 +1,59 @@
+# Walkthrough - Tái cấu trúc & Sửa lỗi Conflict Profile Pages
+
+Đã sửa lỗi xung đột giao diện và trùng lặp mã nguồn giữa 2 route `/profile/[id]` và `/profile/me` trong ứng dụng Frontend.
+
+## Changes Made
+
+### Frontend Components & Routes
+
+#### 1. [ProfileView.tsx](file:///f:/stududu/frontend/src/components/features/ProfileView.tsx)
+- Tạo mới component `ProfileView` tái sử dụng linh hoạt cho cả profile cá nhân và profile của người dùng khác.
+- Tự động so sánh ID người dùng đang đăng nhập (`currentUser.id`) với profile được yêu cầu để bật chế độ `isOwnProfile`.
+- Gộp toàn bộ giao diện Banner cover, Avatar, Thông tin chi tiết, Danh sách bài viết, Ngôn ngữ, Sở thích và ChatStats vào 1 nơi duy nhất.
+- Phân chia logic nút tương tác linh hoạt:
+  - Profile cá nhân: Hiển thị các nút "Chỉnh sửa hồ sơ", "Cài đặt", "Nút đăng bài nhanh".
+  - Profile người khác: Hiển thị các nút "Quay lại", "Báo cáo", "Chặn", "Thích / Huỷ thích", "Nhắn tin", "Endorse".
+
+#### 2. [page.tsx (me)](file:///f:/stududu/frontend/src/app/[locale]/(main)/profile/me/page.tsx)
+- Rút gọn file chỉ còn 7 dòng code sạch sẽ:
+  ```tsx
+  export default function MyProfilePage() {
+    return <ProfileView isOwnProfile />;
+  }
+  ```
+
+#### 3. [page.tsx ([id])](file:///f:/stududu/frontend/src/app/[locale]/(main)/profile/[id]/page.tsx)
+- Xử lý tham số `id`. Nếu `id === "me"` hoặc `id` hợp lệ, tự động render `ProfileView`:
+  ```tsx
+  export default function ProfilePage() {
+    const params = useParams();
+    const rawId = params.id;
+
+    if (rawId === "me") {
+      return <ProfileView isOwnProfile />;
+    }
+
+    const numericId = typeof rawId === "string" ? parseInt(rawId, 10) : 0;
+    return <ProfileView userId={isNaN(numericId) || numericId <= 0 ? "me" : numericId} />;
+  }
+  ```
+
+---
+
+## Verification Results
+
+### Automated Build Verification
+Chạy lệnh kiểm tra TypeScript và đóng gói ứng dụng: `cmd /c npm run build`
+- **Kết quả:** Biên dịch thành công 100% không có lỗi TypeScript hay Next.js Route Error.
+- **Next.js Build Output:**
+  ```text
+  ✓ Compiled successfully in 4.0s
+    Running TypeScript ...
+    Finished TypeScript in 5.8s ...
+    Generating static pages using 11 workers (3/3) in 343ms ...
+
+  Route (app)
+  ├ ƒ /[locale]/profile/[id]
+  ├ ƒ /[locale]/profile/me
+  ├ ƒ /[locale]/profile/me/edit
+  ```

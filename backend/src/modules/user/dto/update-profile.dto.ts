@@ -32,7 +32,7 @@ export class UpdateProfileDto {
   intent?: string; // study buddy | thi cử | casual…
 
   @IsOptional()
-  @IsIn(['nam', 'nữ', 'khác'], { message: 'Giới tính không hợp lệ' })
+  @IsIn(['male', 'female', 'other', 'nam', 'nữ', 'khác', ''], { message: 'Giới tính không hợp lệ' })
   gender?: string;
 
   @IsOptional()

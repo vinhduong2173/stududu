@@ -1,0 +1,56 @@
+# Sửa lỗi conflict & Trùng lặp code giữa `/profile/[id]` và `/profile/me`
+
+## Tổng quan (Overview)
+
+Hiện tại ở `frontend/src/app/[locale]/(main)/profile`:
+1. `profile/[id]/page.tsx` (Trang xem hồ sơ người dùng khác dựa trên ID)
+2. `profile/me/page.tsx` (Trang xem hồ sơ của chính mình)
+
+**Vấn đề / Conflict hiện tại:**
+- **Trùng lặp giao diện lớn (DRY violation):** Khoảng 85% mã nguồn UI (Cover photo, Avatar, Intro, Ngôn ngữ, Sở thích, Bài viết stream, ChatStats) bị lặp lại hoàn toàn giữa 2 file.
+- **Xung đột logic khi người dùng truy cập profile của chính mình qua ID:** Khi bấm vào avatar của chính mình từ trang bài viết (`/profile/${myUserId}`), trang `profile/[id]/page.tsx` lại hiển thị giao diện xem người khác (nút Thích, Nhắn tin, Báo cáo, Chặn) thay vì hiển thị giao diện cá nhân.
+- **Rủi ro rò rỉ URL/Route:** Nếu URL truyền tham số `id = "me"` vào route `profile/[id]`, hàm `parseInt("me")` trả về `0` hoặc `NaN` khiến API gọi thất bại (`/users/0`).
+
+## Giải pháp chuyên nghiệp (Proposed Solution)
+
+Tạo một component chung **`ProfileView`** duy nhất chứa toàn bộ giao diện và logic hiển thị hồ sơ cá nhân.
+Hai trang `profile/[id]/page.tsx` và `profile/me/page.tsx` sẽ sử dụng component này và truyền prop `isOwnProfile` dựa theo logic kiểm tra tự động.
+
+---
+
+## Proposed Changes
+
+### Frontend Components & Pages
+
+#### [NEW] [ProfileView.tsx](file:///f:/stududu/frontend/src/components/features/ProfileView.tsx)
+- Tạo component quản lý toàn bộ giao diện Profile.
+- Tiếp nhận các prop: `userId?: number | "me"`, `isOwnProfile?: boolean`.
+- Tự động tải thông tin người dùng (`/users/me` hoặc `/users/${id}`) và mối quan hệ (Like/Conversation).
+- Nếu `currentUser.id === targetUser.id`, tự động chuyển sang chế độ `isOwnProfile = true`.
+- Render đầy đủ các nút chức năng tương ứng với loại tài khoản:
+  - **Cá nhân (`isOwnProfile = true`):** Chỉnh sửa hồ sơ, Cài đặt, Tạo bài viết nhanh, Nút camera avatar/cover.
+  - **Người khác (`isOwnProfile = false`):** Nút Quay lại, Menu Báo cáo/Chặn, Thích/Huỷ thích, Nhắn tin, Endorse, Match modal.
+
+#### [MODIFY] [page.tsx (me)](file:///f:/stududu/frontend/src/app/[locale]/(main)/profile/me/page.tsx)
+- Rút gọn file xuống chỉ còn vài dòng code chuyên nghiệp bằng cách render `<ProfileView isOwnProfile={true} />`.
+
+#### [MODIFY] [page.tsx ([id])](file:///f:/stududu/frontend/src/app/[locale]/(main)/profile/[id]/page.tsx)
+- Nhận `params.id`. Nếu `params.id === "me"`, chuyển hướng hoặc render `<ProfileView isOwnProfile={true} />`.
+- Ngược lại render `<ProfileView userId={id} />`.
+
+---
+
+## User Review Required
+
+> [!NOTE]
+> Giải pháp này hoàn toàn giữ nguyên mọi đường dẫn URL hiện có (`/profile/me`, `/profile/me/edit`, `/profile/[id]`) nên sẽ **không gây ảnh hưởng (breaking changes)** đến bất kỳ liên kết hoặc tính năng nào khác trong ứng dụng.
+
+---
+
+## Verification Plan
+
+### Manual Verification
+1. Truy cập `/profile/me`: Đảm bảo hiển thị đầy đủ giao diện cá nhân (nút Sửa hồ sơ, Cài đặt, Đăng bài).
+2. Truy cập `/profile/[other_user_id]`: Đảm bảo hiển thị đầy đủ giao diện xem người dùng khác (nút Thích, Nhắn tin, Báo cáo, Chặn).
+3. Truy cập `/profile/[my_user_id]`: Đảm bảo tự động nhận diện là hồ sơ cá nhân và hiển thị các nút chỉnh sửa (thay vì nút Thích bản thân).
+4. Kiểm tra TypeScript & Next.js Build: Chạy `cmd /c npm run build` trong thư mục `frontend`.

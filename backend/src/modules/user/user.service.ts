@@ -69,10 +69,21 @@ export class UserService {
   }
 
   updateProfile(userId: number, dto: UpdateProfileDto) {
-    const { dob, ...rest } = dto;
+    const { dob, gender, ...rest } = dto;
+
+    let normGender = gender;
+    if (gender) {
+      const g = gender.toLowerCase().trim();
+      normGender = g === 'nam' ? 'male' : g === 'nữ' ? 'female' : g === 'khác' ? 'other' : gender;
+    }
+
     return this.prisma.user.update({
       where: { id: userId },
-      data: { ...rest, ...(dob !== undefined ? { dob: dob ? new Date(dob) : null } : {}) },
+      data: {
+        ...rest,
+        ...(gender !== undefined ? { gender: normGender } : {}),
+        ...(dob !== undefined ? { dob: dob ? new Date(dob) : null } : {}),
+      },
       select: {
         id: true,
         displayName: true,
@@ -82,6 +93,10 @@ export class UserService {
         gender: true,
         dob: true,
         city: true,
+        timezone: true,
+        availableSlots: true,
+        languages: { include: { language: true } },
+        interests: { include: { topic: true } },
       },
     });
   }

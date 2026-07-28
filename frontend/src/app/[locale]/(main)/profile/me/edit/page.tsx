@@ -83,7 +83,10 @@ export default function EditProfilePage() {
         setAvatarUrl(me.avatarUrl ?? "");
         setBio(me.bio ?? "");
         setIntent(me.intent ?? INTENTS[0]);
-        setGender(me.gender ?? "");
+        const rawGender = me.gender ?? "";
+        const lowerGender = rawGender.toLowerCase().trim();
+        const normGender = lowerGender === "nam" ? "male" : lowerGender === "nữ" ? "female" : lowerGender === "khác" ? "other" : rawGender;
+        setGender(normGender);
         setDob(me.dob ? String(me.dob).slice(0, 10) : "");
         setCity(me.city ?? "");
         setMyLanguages(
@@ -317,9 +320,9 @@ export default function EditProfilePage() {
               <label className={fieldLabel}>{t("gender")}</label>
               <select className={`${selectClass} w-full`} value={gender} onChange={(e) => setGender(e.target.value)}>
                 <option value="">{t("gender_private")}</option>
-                <option value="nam">{t("gender_male")}</option>
-                <option value="nữ">{t("gender_female")}</option>
-                <option value="khác">{t("gender_other")}</option>
+                <option value="male">{t("gender_male")}</option>
+                <option value="female">{t("gender_female")}</option>
+                <option value="other">{t("gender_other")}</option>
               </select>
             </div>
           </div>
