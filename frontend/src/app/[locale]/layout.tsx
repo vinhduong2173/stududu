@@ -19,8 +19,8 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "stududu — Luyện nói tiếng nước ngoài",
-  description: "Web trao đổi ngôn ngữ và luyện nói 1:1",
+  title: "stududu — Language Exchange & 1:1 Speaking Practice",
+  description: "Find your ideal language exchange partner and practice speaking 1-on-1.",
 };
 
 export default async function RootLayout({

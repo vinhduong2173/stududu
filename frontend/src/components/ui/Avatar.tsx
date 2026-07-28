@@ -24,11 +24,12 @@ const dotClasses = {
 
 export function Avatar({ src, fallback, online, size = "md", className, ...props }: AvatarProps) {
   return (
-    <div className={cn("relative inline-block", className)} {...props}>
+    <div className="relative inline-block shrink-0" {...props}>
       <div 
         className={cn(
           "relative flex shrink-0 overflow-hidden rounded-full items-center justify-center bg-gradient-to-br from-primary to-secondary text-white font-bold",
-          sizeClasses[size]
+          sizeClasses[size],
+          className
         )}
       >
         {src ? (

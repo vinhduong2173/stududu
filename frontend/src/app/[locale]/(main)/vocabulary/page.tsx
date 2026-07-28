@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Zap,
 } from "lucide-react";
+import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
 import { type SavedWord } from "@/components/features/WordSaveModal";
@@ -76,8 +77,12 @@ function saveWordStatusToStorage(id: number, status: string) {
   }
 }
 
-// Rich Vietnamese distractors pool for quiz (natural, meaningful vocabulary definitions)
-const FALLBACK_DISTRACTORS = [
+const hasVietnameseChars = (text: string): boolean => {
+  return /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(text);
+};
+
+// Distractors pools for quiz (natural, meaningful vocabulary definitions)
+const FALLBACK_DISTRACTORS_VI = [
   "Sự kiên trì và nỗ lực bền bỉ",
   "Tình cờ phát hiện ra điều may mắn",
   "Khả năng thích ứng với hoàn cảnh mới",
@@ -98,21 +103,43 @@ const FALLBACK_DISTRACTORS = [
   "Thực tế và có tính ứng dụng cao",
 ];
 
+const FALLBACK_DISTRACTORS_EN = [
+  "Perseverance and sustained effort",
+  "Accidental discovery of something fortunate",
+  "Ability to adapt to new circumstances",
+  "Abundant source of creative inspiration",
+  "Deep empathy and understanding",
+  "Outstanding and notable achievement",
+  "High degree of focus on goals",
+  "Sudden outburst of positive energy",
+  "Far-reaching and positive impact",
+  "Creative logical thinking method",
+  "Thoughtfulness and attention to detail",
+  "Long-term strategic vision",
+  "Solid foundation and groundwork",
+  "Unexpected irony and sarcasm",
+  "Dusk and twilight scenery",
+  "Ability to recover mental strength quickly",
+  "Sociability and friendliness with everyone",
+  "Practical and highly applicable",
+];
+
 // Clean dynamic semantic fallback generator when API translation is pending or unavailable
-function formatCleanFallbackDefinition(wordItem: SavedWord): string {
+function formatCleanFallbackDefinition(wordItem: SavedWord, locale: string): string {
   const pos = (wordItem.word.partOfSpeech || "").toLowerCase();
+  const isEn = locale === "en";
 
   if (pos.includes("danh") || pos.includes("noun")) {
-    return "Khái niệm và thuật ngữ đặc trưng";
+    return isEn ? "Characteristic concept and term" : "Khái niệm và thuật ngữ đặc trưng";
   }
   if (pos.includes("tính") || pos.includes("adj")) {
-    return "Có đặc điểm và tính chất nổi bật";
+    return isEn ? "Prominent characteristic and quality" : "Có đặc điểm và tính chất nổi bật";
   }
   if (pos.includes("động") || pos.includes("verb")) {
-    return "Hành động tác động và phát triển";
+    return isEn ? "Action of impacting and developing" : "Hành động tác động và phát triển";
   }
 
-  return "Định nghĩa và ý nghĩa cốt lõi";
+  return isEn ? "Core definition and meaning" : "Định nghĩa và ý nghĩa cốt lõi";
 }
 
 type MainTab = "quiz" | "notebook";
@@ -120,14 +147,16 @@ type ReviewMode = "learning_only" | "all";
 type ListFilterType = "all" | "new" | "learning" | "mastered";
 
 export default function VocabularyPage() {
+  const t = useTranslations("vocabulary");
+  const locale = useLocale();
   const { show: showToast, toast } = useToast();
   const [words, setWords] = React.useState<SavedWord[]>([]);
   const [loading, setLoading] = React.useState(true);
 
-  // Dynamic async translation cache (wordId -> Vietnamese definition)
+  // Dynamic async translation cache (wordId -> definition in user locale)
   const [translatedDefsMap, setTranslatedDefsMap] = React.useState<Record<number, string>>({});
 
-  // Main Navigation Tabs: "quiz" (Làm Quiz Ôn Tập) or "notebook" (Sổ Từ Vựng)
+  // Main Navigation Tabs: "quiz" or "notebook"
   const [activeTab, setActiveTab] = React.useState<MainTab>("quiz");
 
   // Review Deck State
@@ -149,60 +178,55 @@ export default function VocabularyPage() {
   const [search, setSearch] = React.useState("");
   const [selectedWordId, setSelectedWordId] = React.useState<number | null>(null);
 
-  // Resolve clean Vietnamese definition for any given SavedWord dynamically
-  const getVietnameseDefinition = React.useCallback(
+  // Resolve clean definition for any given SavedWord dynamically in current locale
+  const getDefinition = React.useCallback(
     (wordItem: SavedWord): string => {
       if (translatedDefsMap[wordItem.id]) {
         return translatedDefsMap[wordItem.id];
       }
 
-      if (
-        wordItem.personalNote &&
-        /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(
-          wordItem.personalNote,
-        )
-      ) {
-        return wordItem.personalNote.trim();
+      const personalNote = wordItem.personalNote?.trim() || "";
+      const rawDef = wordItem.word.definition?.trim() || "";
+
+      if (locale === "vi") {
+        if (personalNote && hasVietnameseChars(personalNote)) return personalNote;
+        if (rawDef && hasVietnameseChars(rawDef)) return rawDef;
+      } else {
+        if (personalNote && !hasVietnameseChars(personalNote)) return personalNote;
+        if (rawDef && !hasVietnameseChars(rawDef)) return rawDef;
       }
 
-      const def = wordItem.word.definition || "";
-      if (
-        def &&
-        /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(def)
-      ) {
-        return def.trim();
-      }
-
-      return formatCleanFallbackDefinition(wordItem);
+      return formatCleanFallbackDefinition(wordItem, locale);
     },
-    [translatedDefsMap],
+    [translatedDefsMap, locale],
   );
 
-  // Dynamic Translation Pipeline: Pre-fetches translations for ANY new English terms via API
-  const ensureVietnameseTranslations = React.useCallback(async (wordList: SavedWord[]) => {
+  // Dynamic Translation Pipeline: Pre-fetches translations for terms via API if definition in locale is missing
+  const ensureTranslations = React.useCallback(async (wordList: SavedWord[]) => {
     const newMap: Record<number, string> = {};
     const unmappedWords: SavedWord[] = [];
+    const targetLang = locale === "en" ? "en" : "vi";
 
     for (const item of wordList) {
       const personalNote = item.personalNote?.trim() || "";
       const rawDef = item.word.definition?.trim() || "";
 
-      if (
-        personalNote &&
-        /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(
-          personalNote,
-        )
-      ) {
-        newMap[item.id] = personalNote;
-      } else if (
-        rawDef &&
-        /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(
-          rawDef,
-        )
-      ) {
-        newMap[item.id] = rawDef;
+      if (locale === "vi") {
+        if (personalNote && hasVietnameseChars(personalNote)) {
+          newMap[item.id] = personalNote;
+        } else if (rawDef && hasVietnameseChars(rawDef)) {
+          newMap[item.id] = rawDef;
+        } else {
+          unmappedWords.push(item);
+        }
       } else {
-        unmappedWords.push(item);
+        if (personalNote && !hasVietnameseChars(personalNote)) {
+          newMap[item.id] = personalNote;
+        } else if (rawDef && !hasVietnameseChars(rawDef)) {
+          newMap[item.id] = rawDef;
+        } else {
+          unmappedWords.push(item);
+        }
       }
     }
 
@@ -214,7 +238,7 @@ export default function VocabularyPage() {
           try {
             const res = await api<{ translation: string }>("/translate", {
               method: "POST",
-              body: { text: item.word.term, source: "auto", target: "vi" },
+              body: { text: item.word.term, source: "auto", target: targetLang },
             });
             if (res?.translation) {
               return { id: item.id, translation: res.translation };
@@ -236,7 +260,7 @@ export default function VocabularyPage() {
         return updated;
       });
     }
-  }, []);
+  }, [locale]);
 
   // Fetch saved words from API & merge persistent localStorage statuses
   const loadWords = React.useCallback(async () => {
@@ -252,13 +276,13 @@ export default function VocabularyPage() {
       });
 
       setWords(mergedWords);
-      void ensureVietnameseTranslations(mergedWords);
+      void ensureTranslations(mergedWords);
     } catch (err) {
       console.error("Failed to load words:", err);
     } finally {
       setLoading(false);
     }
-  }, [ensureVietnameseTranslations]);
+  }, [ensureTranslations]);
 
   React.useEffect(() => {
     void loadWords();
@@ -294,20 +318,22 @@ export default function VocabularyPage() {
     }
   }, [words, reviewMode, initReviewDeck]);
 
-  // Generate 4 Quiz options in Vietnamese (1 correct answer + 3 distractors)
+  // Generate 4 Quiz options (1 correct answer + 3 distractors)
   const generateOptionsForWord = React.useCallback(
     (targetWord: SavedWord, allWords: SavedWord[]): string[] => {
-      const correctDef = getVietnameseDefinition(targetWord);
+      const correctDef = getDefinition(targetWord);
 
       const candidateDefs = allWords
         .filter((w) => w.id !== targetWord.id)
-        .map((w) => getVietnameseDefinition(w))
+        .map((w) => getDefinition(w))
         .filter(
           (def) =>
             def.trim() !== "" &&
             def !== correctDef &&
-            !def.startsWith("Khái niệm và") &&
-            !def.startsWith("Định nghĩa và"),
+            !def.startsWith("Khái niệm") &&
+            !def.startsWith("Định nghĩa") &&
+            !def.startsWith("Characteristic") &&
+            !def.startsWith("Core definition"),
         );
 
       const uniqueCandidates = Array.from(new Set(candidateDefs));
@@ -323,7 +349,8 @@ export default function VocabularyPage() {
       }
 
       if (distractors.length < needed) {
-        const shuffledFallbacks = shuffleArray(FALLBACK_DISTRACTORS);
+        const fallbacks = locale === "en" ? FALLBACK_DISTRACTORS_EN : FALLBACK_DISTRACTORS_VI;
+        const shuffledFallbacks = shuffleArray(fallbacks);
         for (const fallback of shuffledFallbacks) {
           if (
             distractors.length < needed &&
@@ -337,7 +364,7 @@ export default function VocabularyPage() {
 
       return shuffleArray([correctDef, ...distractors]);
     },
-    [getVietnameseDefinition],
+    [getDefinition, locale],
   );
 
   // Active word in current quiz
@@ -381,7 +408,7 @@ export default function VocabularyPage() {
     setSelectedOption(option);
     setIsAnswered(true);
 
-    const correctDef = getVietnameseDefinition(activeQuizWord);
+    const correctDef = getDefinition(activeQuizWord);
     const isCorrect =
       option.trim().toLowerCase() === correctDef.trim().toLowerCase();
 
@@ -431,7 +458,7 @@ export default function VocabularyPage() {
 
     try {
       await api(`/vocabulary/my-words/${id}`, { method: "DELETE" });
-      showToast(`Đã xóa "${term}" khỏi sổ từ vựng.`);
+      showToast(t("delete_toast", { term }));
     } catch (err) {
       console.error(err);
     }
@@ -460,10 +487,10 @@ export default function VocabularyPage() {
   const accuracyPercent = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
 
   const getRankBadge = (acc: number) => {
-    if (acc >= 90) return { title: "Xuất Sắc! 🌟", color: "text-amber-500 bg-amber-500/10 border-amber-500/30" };
-    if (acc >= 70) return { title: "Giỏi! 👏", color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/30" };
-    if (acc >= 50) return { title: "Khá! 👍", color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/30" };
-    return { title: "Cần Cố Gắng! 💡", color: "text-rose-500 bg-rose-500/10 border-rose-500/30" };
+    if (acc >= 90) return { title: t("rank_excellent"), color: "text-amber-500 bg-amber-500/10 border-amber-500/30" };
+    if (acc >= 70) return { title: t("rank_good"), color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/30" };
+    if (acc >= 50) return { title: t("rank_fair"), color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/30" };
+    return { title: t("rank_needs_effort"), color: "text-rose-500 bg-rose-500/10 border-rose-500/30" };
   };
 
   const rankInfo = getRankBadge(accuracyPercent);
@@ -474,13 +501,13 @@ export default function VocabularyPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface p-6 rounded-3xl border border-border shadow-sm">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary mb-1">
-            <BookOpen className="w-4 h-4" /> HỌC TỪ VỰNG TRẮC NGHIỆM
+            <BookOpen className="w-4 h-4" /> {t("badge_title")}
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight">
-            Sổ từ vựng & Quiz
+            {t("page_title")}
           </h1>
           <p className="text-sm text-muted mt-1">
-            Ôn tập trắc nghiệm nghĩa tiếng Việt và quản lý sổ từ vựng cá nhân của bạn.
+            {t("page_desc")}
           </p>
         </div>
 
@@ -488,14 +515,14 @@ export default function VocabularyPage() {
         <div className="flex items-center gap-3 self-start md:self-auto">
           <div className="bg-muted/10 border border-border rounded-2xl px-5 py-3 text-center min-w-[84px]">
             <div className="text-2xl font-black text-foreground">{totalCount}</div>
-            <div className="text-[11px] font-semibold text-muted">Tổng từ</div>
+            <div className="text-[11px] font-semibold text-muted">{t("stat_total")}</div>
           </div>
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-5 py-3 text-center min-w-[84px]">
             <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
               {masteredCount}
             </div>
             <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              Đã thuộc
+              {t("stat_mastered")}
             </div>
           </div>
           <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl px-5 py-3 text-center min-w-[84px]">
@@ -503,13 +530,13 @@ export default function VocabularyPage() {
               {learningCount}
             </div>
             <div className="text-[11px] font-semibold text-rose-600 dark:text-rose-400">
-              Cần ôn
+              {t("stat_learning")}
             </div>
           </div>
         </div>
       </div>
 
-      {/* MAIN TABS SWITCHER: LÀM QUIZ ÔN TẬP VS SỔ TỪ VỰNG (2 TAB RIÊNG BIỆT) */}
+      {/* MAIN TABS SWITCHER: LÀM QUIZ ÔN TẬP VS SỔ TỪ VỰNG */}
       <div className="flex items-center bg-surface p-1.5 rounded-2xl border border-border shadow-sm">
         <button
           onClick={() => setActiveTab("quiz")}
@@ -520,7 +547,7 @@ export default function VocabularyPage() {
               : "text-muted hover:text-foreground hover:bg-muted/10",
           )}
         >
-          <Brain className="w-4 h-4" /> 🎯 Ôn Tập Quiz
+          <Brain className="w-4 h-4" /> {t("tab_quiz")}
         </button>
         <button
           onClick={() => setActiveTab("notebook")}
@@ -531,11 +558,11 @@ export default function VocabularyPage() {
               : "text-muted hover:text-foreground hover:bg-muted/10",
           )}
         >
-          <BookOpen className="w-4 h-4" /> 📚 Sổ Từ Vựng ({totalCount})
+          <BookOpen className="w-4 h-4" /> {t("tab_notebook", { count: totalCount })}
         </button>
       </div>
 
-      {/* TAB 1: LÀM QUIZ ÔN TẬP (HOÀN TOÀN TÁCH BIỆT NỘI DUNG SỔ TỪ) */}
+      {/* TAB 1: LÀM QUIZ ÔN TẬP */}
       {activeTab === "quiz" && (
         <div className="space-y-4">
           {/* REVIEW MODE TOGGLE TABS */}
@@ -551,7 +578,7 @@ export default function VocabularyPage() {
                 )}
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                Ôn từ chưa thuộc ({learningCount})
+                {t("mode_learning", { count: learningCount })}
               </button>
               <button
                 onClick={() => handleModeChange("all")}
@@ -563,17 +590,17 @@ export default function VocabularyPage() {
                 )}
               >
                 <RotateCw className="w-3.5 h-3.5" />
-                Ôn toàn bộ ({totalCount})
+                {t("mode_all", { count: totalCount })}
               </button>
             </div>
           </div>
 
           {loading ? (
             <div className="h-96 rounded-3xl bg-muted/10 animate-pulse flex items-center justify-center text-muted text-sm">
-              Đang tải dữ liệu Quiz...
+              {t("loading_quiz")}
             </div>
           ) : quizCompleted ? (
-            /* QUIZ SCORE COMPLETION CARD (HIỂN THỊ ĐIỂM SỐ & XẾP LOẠI CHI TIẾT) */
+            /* QUIZ SCORE COMPLETION CARD */
             <div className="rounded-3xl bg-surface border-2 border-border shadow-xl p-6 md:p-10 text-center space-y-6 animate-in zoom-in-95 duration-300">
               <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-amber-400 to-amber-200 flex items-center justify-center shadow-lg text-amber-950">
                 <Trophy className="w-12 h-12 animate-bounce" />
@@ -584,10 +611,10 @@ export default function VocabularyPage() {
                   {rankInfo.title}
                 </span>
                 <h2 className="text-3xl md:text-4xl font-black text-foreground">
-                  Kết Quả Lượt Quiz
+                  {t("quiz_result_title")}
                 </h2>
                 <p className="text-sm text-muted">
-                  Bạn đã hoàn thành lượt ôn tập với bộ {totalQuestions} câu hỏi.
+                  {t("quiz_result_desc", { totalQuestions })}
                 </p>
               </div>
 
@@ -595,35 +622,35 @@ export default function VocabularyPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-xl mx-auto pt-2">
                 <div className="bg-gradient-to-br from-primary/10 to-indigo-500/10 border border-primary/20 p-5 rounded-2xl text-center shadow-sm">
                   <div className="flex items-center justify-center gap-1 text-primary text-xs font-bold uppercase mb-1">
-                    <Zap className="w-3.5 h-3.5" /> Tổng Điểm
+                    <Zap className="w-3.5 h-3.5" /> {t("total_score")}
                   </div>
                   <div className="text-3xl font-black text-primary">
                     {earnedPoints} <span className="text-xs text-muted font-normal">/ {maxPossiblePoints}</span>
                   </div>
-                  <div className="text-[11px] text-muted mt-1 font-semibold">+10 điểm / câu đúng</div>
+                  <div className="text-[11px] text-muted mt-1 font-semibold">{t("points_per_correct")}</div>
                 </div>
 
                 <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-2xl text-center shadow-sm">
                   <div className="flex items-center justify-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase mb-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Câu Đúng
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {t("correct_answers")}
                   </div>
                   <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
                     {score} <span className="text-xs text-muted font-normal">/ {totalQuestions}</span>
                   </div>
                   <div className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-1 font-semibold">
-                    Đã chuyển Đã thuộc
+                    {t("marked_as_mastered")}
                   </div>
                 </div>
 
                 <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-2xl text-center shadow-sm">
                   <div className="flex items-center justify-center gap-1 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase mb-1">
-                    <Award className="w-3.5 h-3.5" /> Tỷ Lệ Đúng
+                    <Award className="w-3.5 h-3.5" /> {t("accuracy_rate")}
                   </div>
                   <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400">
                     {accuracyPercent}%
                   </div>
                   <div className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-1 font-semibold">
-                    Độ chính xác
+                    {t("accuracy_label")}
                   </div>
                 </div>
               </div>
@@ -634,14 +661,14 @@ export default function VocabularyPage() {
                   onClick={handleRestartQuiz}
                   className="rounded-2xl h-12 px-6 font-bold shadow-md bg-primary text-primary-foreground hover:opacity-90"
                 >
-                  <RotateCw className="w-4 h-4 mr-2" /> Bắt đầu lượt Quiz mới
+                  <RotateCw className="w-4 h-4 mr-2" /> {t("start_new_quiz")}
                 </Button>
                 <Button
                   onClick={() => setActiveTab("notebook")}
                   variant="outline"
                   className="rounded-2xl h-12 px-6 font-bold border-border"
                 >
-                  <BookOpen className="w-4 h-4 mr-2" /> Xem Sổ Từ Vựng
+                  <BookOpen className="w-4 h-4 mr-2" /> {t("view_notebook")}
                 </Button>
               </div>
             </div>
@@ -652,17 +679,17 @@ export default function VocabularyPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span className="text-muted flex items-center gap-1.5">
-                    <HelpCircle className="w-4 h-4 text-primary" /> Câu {currentIndex + 1} / {deck.length}
+                    <HelpCircle className="w-4 h-4 text-primary" /> {t("question_counter", { current: currentIndex + 1, total: deck.length })}
                   </span>
 
                   <div className="flex items-center gap-3">
                     <span className="text-primary font-black bg-primary/10 px-3 py-1 rounded-full text-xs">
-                      ⚡ {score * 10} điểm
+                      {t("points_earned", { points: score * 10 })}
                     </span>
 
                     {streak > 1 && (
                       <span className="bg-amber-500/15 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-full flex items-center gap-1 text-[11px] font-extrabold animate-pulse">
-                        🔥 Chuỗi {streak}!
+                        {t("streak_counter", { streak })}
                       </span>
                     )}
 
@@ -674,7 +701,7 @@ export default function VocabularyPage() {
                           : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
                       )}
                     >
-                      {activeQuizWord.status === "mastered" ? "Đã thuộc" : "Đang học"}
+                      {activeQuizWord.status === "mastered" ? t("status_mastered") : t("status_learning")}
                     </span>
                   </div>
                 </div>
@@ -708,28 +735,30 @@ export default function VocabularyPage() {
                       )
                     }
                     className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors active:scale-95"
-                    title="Nghe phát âm"
+                    title={t("audio_listen")}
                   >
                     <Volume2 className="w-5 h-5" />
                   </button>
                 </div>
 
-                <p className="text-sm font-semibold text-rose-500">
-                  {activeQuizWord.word.phonetic || "/ˌser.ənˈdɪp.ə.ti/"}
-                  {activeQuizWord.word.partOfSpeech && (
-                    <span className="text-muted"> · {activeQuizWord.word.partOfSpeech}</span>
-                  )}
-                </p>
+                {activeQuizWord.word.phonetic && (
+                  <p className="text-sm font-semibold text-rose-500">
+                    {activeQuizWord.word.phonetic}
+                    {activeQuizWord.word.partOfSpeech && (
+                      <span className="text-muted"> · {activeQuizWord.word.partOfSpeech}</span>
+                    )}
+                  </p>
+                )}
 
                 <p className="text-xs text-muted font-medium pt-1">
-                  👉 Chọn 1 đáp án nghĩa tiếng Việt đúng nhất ở bên dưới:
+                  {t("quiz_hint_prompt")}
                 </p>
               </div>
 
               {/* 4 MULTIPLE CHOICE OPTIONS GRID */}
               <div className="grid grid-cols-1 gap-3">
                 {quizOptions.map((opt, idx) => {
-                  const correctDef = getVietnameseDefinition(activeQuizWord);
+                  const correctDef = getDefinition(activeQuizWord);
                   const isThisCorrect =
                     opt.trim().toLowerCase() === correctDef.trim().toLowerCase();
                   const isThisSelected = selectedOption === opt;
@@ -788,7 +817,7 @@ export default function VocabularyPage() {
                     onClick={handleNextQuestion}
                     className="rounded-2xl h-12 px-6 font-bold shadow-md bg-gradient-to-r from-primary to-indigo-600 text-white hover:opacity-95"
                   >
-                    {currentIndex + 1 < deck.length ? "Câu tiếp theo" : "Xem điểm số Quiz"}{" "}
+                    {currentIndex + 1 < deck.length ? t("next_question") : t("see_quiz_results")}{" "}
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 </div>
@@ -800,17 +829,17 @@ export default function VocabularyPage() {
               <div className="text-5xl">🎉</div>
               <h3 className="text-xl font-extrabold text-foreground">
                 {reviewMode === "learning_only"
-                  ? "Bạn đã thuộc hết các từ cần ôn!"
-                  : "Chưa có từ vựng nào trong sổ!"}
+                  ? t("deck_empty_learning_title")
+                  : t("deck_empty_all_title")}
               </h3>
               <p className="text-sm text-muted max-w-xs">
                 {reviewMode === "learning_only"
-                  ? "Tuyệt vời! Bạn có thể chuyển sang chế độ Ôn toàn bộ để củng cố lại kiến thức."
-                  : "Hãy thêm từ mới vào sổ tay bằng cách bôi đen khi dịch hoặc chat nhé."}
+                  ? t("deck_empty_learning_desc")
+                  : t("deck_empty_all_desc")}
               </p>
               {reviewMode === "learning_only" && (
                 <Button onClick={() => handleModeChange("all")} variant="ghost">
-                  Ôn toàn bộ từ vựng ({totalCount})
+                  {t("btn_review_all", { count: totalCount })}
                 </Button>
               )}
             </div>
@@ -818,16 +847,16 @@ export default function VocabularyPage() {
         </div>
       )}
 
-      {/* TAB 2: SỔ TỪ VỰNG (TRANG ĐẬP TRUNG XEM & QUẢN LÝ DẠNG SỔ TAY) */}
+      {/* TAB 2: SỔ TỪ VỰNG */}
       {activeTab === "notebook" && (
         <div className="bg-surface rounded-3xl border border-border shadow-sm p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
             <div>
-              <h2 className="font-extrabold text-xl text-foreground">Sổ Từ Vựng Cá Nhân</h2>
-              <p className="text-xs text-muted mt-0.5">Danh sách toàn bộ các từ đã lưu, bôi đen dịch hoặc học trong chat.</p>
+              <h2 className="font-extrabold text-xl text-foreground">{t("notebook_title")}</h2>
+              <p className="text-xs text-muted mt-0.5">{t("notebook_desc")}</p>
             </div>
             <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full self-start sm:self-auto">
-              Tổng số: {filteredWords.length} từ
+              {t("notebook_total", { count: filteredWords.length })}
             </span>
           </div>
 
@@ -845,10 +874,10 @@ export default function VocabularyPage() {
                       : "bg-surface text-muted border-border hover:border-primary/30",
                   )}
                 >
-                  {filterKey === "all" && "Tất cả"}
-                  {filterKey === "new" && "Mới"}
-                  {filterKey === "learning" && "Đang học"}
-                  {filterKey === "mastered" && "Đã thuộc"}
+                  {filterKey === "all" && t("filter_all")}
+                  {filterKey === "new" && t("filter_new")}
+                  {filterKey === "learning" && t("filter_learning")}
+                  {filterKey === "mastered" && t("filter_mastered")}
                 </button>
               ))}
             </div>
@@ -858,7 +887,7 @@ export default function VocabularyPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
               <input
                 type="text"
-                placeholder="Tìm kiếm từ vựng..."
+                placeholder={t("search_placeholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full h-10 rounded-2xl border border-border bg-muted/5 pl-10 pr-4 text-xs focus:outline-none focus:border-primary transition-colors"
@@ -870,7 +899,7 @@ export default function VocabularyPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
             {filteredWords.length > 0 ? (
               filteredWords.map((item) => {
-                const viDef = getVietnameseDefinition(item);
+                const defText = getDefinition(item);
 
                 return (
                   <div
@@ -899,7 +928,7 @@ export default function VocabularyPage() {
                             )
                           }
                           className="p-1 rounded-md text-muted hover:text-primary transition-colors"
-                          title="Nghe phát âm"
+                          title={t("audio_listen")}
                         >
                           <Volume2 className="w-3.5 h-3.5" />
                         </button>
@@ -911,12 +940,12 @@ export default function VocabularyPage() {
                               : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20",
                           )}
                         >
-                          {item.status === "mastered" ? "Đã thuộc" : "Đang học"}
+                          {item.status === "mastered" ? t("status_mastered") : t("status_learning")}
                         </span>
                       </div>
 
                       <p className="text-sm font-semibold text-foreground/90">
-                        {viDef}
+                        {defText}
                       </p>
 
                       {item.word.example && (
@@ -931,12 +960,12 @@ export default function VocabularyPage() {
                         </span>
                         <span>•</span>
                         <span>
-                          Nguồn:{" "}
+                          {t("source_label")}{" "}
                           {item.source === "chat"
-                            ? "Chat · Sarah"
+                            ? t("source_chat_author")
                             : item.source === "manual"
-                            ? "Sổ tay"
-                            : "Cộng đồng"}
+                            ? t("source_manual_notebook")
+                            : t("source_community_lib")}
                         </span>
                       </div>
                     </div>
@@ -945,7 +974,7 @@ export default function VocabularyPage() {
                       type="button"
                       onClick={() => void handleDeleteWord(item.id, item.word.term)}
                       className="opacity-0 group-hover:opacity-100 p-2 rounded-xl text-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all shrink-0"
-                      title="Xóa từ"
+                      title={t("delete_word")}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -954,7 +983,7 @@ export default function VocabularyPage() {
               })
             ) : (
               <div className="col-span-full py-16 text-center text-muted text-sm">
-                Chưa tìm thấy từ vựng nào phù hợp trong sổ tay.
+                {t("empty_notebook_search")}
               </div>
             )}
           </div>
