@@ -37,6 +37,29 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const videoCallOpenRef = React.useRef(videoCallOpen);
   videoCallOpenRef.current = videoCallOpen;
 
+  // Unread messages count state
+  const [unreadMessagesCount, setUnreadMessagesCount] = React.useState(0);
+  const meRef = React.useRef<number | undefined>(undefined);
+
+  React.useEffect(() => {
+    if (me?.id) meRef.current = me.id;
+  }, [me]);
+
+  const fetchUnreadMessages = React.useCallback(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    api<any[]>("/conversations")
+      .then((convs) => {
+        const total = convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+        setUnreadMessagesCount(total);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  React.useEffect(() => {
+    fetchUnreadMessages();
+  }, [pathname, fetchUnreadMessages]);
+
   React.useEffect(() => {
     api<{ id?: number; displayName: string; avatarUrl?: string | null; role?: string; nativeLang?: string | null }>("/users/me")
       .then(setMe)
@@ -80,8 +103,20 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       setVideoCallOpen(true);
     };
 
+    const onNewMessageGlobal = (msg: any) => {
+      if (Number(msg.senderId) !== Number(meRef.current)) {
+        setUnreadMessagesCount((prev) => prev + 1);
+      }
+    };
+
+    const onReadGlobal = () => {
+      fetchUnreadMessages();
+    };
+
     socket.on("notification", onNotification);
     socket.on("call:incoming", onIncomingCall);
+    socket.on("message:new", onNewMessageGlobal);
+    socket.on("conversation:read", onReadGlobal);
 
     const handleStartCallEvent = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -100,6 +135,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     return () => {
       socket.off("notification", onNotification);
       socket.off("call:incoming", onIncomingCall);
+      socket.off("message:new", onNewMessageGlobal);
+      socket.off("conversation:read", onReadGlobal);
       window.removeEventListener("start-video-call", handleStartCallEvent);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,16 +207,24 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <nav className="flex gap-8">
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
+            const isMessages = item.href === "/inbox";
             return (
               <Link 
                 key={item.name} 
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+                  "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary relative",
                   isActive ? "text-primary" : "text-muted"
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <div className="relative flex items-center">
+                  <item.icon className="h-5 w-5" />
+                  {isMessages && unreadMessagesCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-error text-[10px] font-bold text-white ring-2 ring-surface animate-in zoom-in duration-200">
+                      {unreadMessagesCount > 99 ? "99+" : unreadMessagesCount}
+                    </span>
+                  )}
+                </div>
                 {item.name}
               </Link>
             );
@@ -356,16 +401,24 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <nav className="md:hidden flex h-16 border-t border-border bg-surface shadow-[0_-4px_12px_rgba(0,0,0,0.03)] pb-safe">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
+          const isMessages = item.href === "/inbox";
           return (
             <Link 
               key={item.name} 
               href={item.href}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-1 transition-colors",
+                "flex flex-1 flex-col items-center justify-center gap-1 transition-colors relative",
                 isActive ? "text-primary" : "text-muted"
               )}
             >
-              <item.icon className={cn("h-6 w-6", isActive && "fill-primary/10")} />
+              <div className="relative flex items-center justify-center">
+                <item.icon className={cn("h-6 w-6", isActive && "fill-primary/10")} />
+                {isMessages && unreadMessagesCount > 0 && (
+                  <span className="absolute -top-1 -right-2 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-error text-[10px] font-bold text-white ring-2 ring-surface animate-in zoom-in duration-200">
+                    {unreadMessagesCount > 99 ? "99+" : unreadMessagesCount}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] font-medium">{item.name}</span>
             </Link>
           );
