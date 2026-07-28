@@ -3,39 +3,94 @@
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
 
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-error: var(--error);
 
-  --font-sans: "Times New Roman", Times, Baskerville, Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* stududu redesign — vibrant sunset: nền trắng, primary tím, secondary hồng,
+   warm end cam. Chữ ký thương hiệu = banner gradient tím→hồng→cam
+   (theo Stududu Mockups). */
 :root {
-  --background: #FEF9EF;
+  --background: #FFFFFF;
   --surface: #FFFFFF;
-  --foreground: #1D2D35;
-  --muted: #5C6E78;
-  --border: #EDE7DC;
+  --surface-2: #FAF8FE;        /* bề mặt lõm / hover, ám tím nhạt */
+  --foreground: #1E1B2E;       /* mực tím đậm */
+  --muted: #6B6786;            /* xám ám tím */
+  --border: #ECE9F5;           /* viền tóc ám tím */
+  --border-strong: #DED8EC;
 
-  --primary: #227C9D;
-  --primary-hover: #1C6580;
-  --secondary: #FE6D73;
-  --accent: #17C3B2;
-  --success: #17C3B2;
-  --warning: #FFCB77;
-  --error: #FE6D73;
+  --primary: #7C3AED;          /* violet-600 — nút chính / trạng thái active */
+  --primary-hover: #6D28D9;    /* violet-700 */
+  --secondary: #EC4899;        /* pink-500 — chip "muốn học" / nút phụ */
+  --accent: #8B5CF6;           /* violet-500 — link / tương tác */
+  --accent-hover: #7C3AED;
+  --success: #16A34A;
+  --warning: #F59E0B;          /* amber — khớp đầu ấm của gradient */
+  --error: #EF4444;
+
+  /* chữ ký thương hiệu — cover banner, nút nổi bật, avatar fallback */
+  --gradient-brand: linear-gradient(120deg, #8B5CF6 0%, #EC4899 55%, #F59E0B 100%);
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tiêu đề dùng Plus Jakarta Sans (display), hơi âm tracking cho cảm giác premium */
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Nhãn eyebrow nhỏ trên tiêu đề trang (Discover, Community, Vocabulary…) */
+.sd-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Cover banner / bề mặt gradient thương hiệu (tím→hồng→cam) */
+.sd-cover {
+  background: var(--gradient-brand);
+}
+
+/* Nút gradient nổi bật — đè lên nền bg-primary của Button nhờ nằm ngoài @layer */
+.sd-btn-gradient {
+  background: var(--gradient-brand);
+  color: #fff;
+  border: 0;
+}
+.sd-btn-gradient:hover {
+  filter: brightness(1.05);
+}
+
+/* Chữ gradient (wordmark, số liệu nổi bật) */
+.sd-gradient-text {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

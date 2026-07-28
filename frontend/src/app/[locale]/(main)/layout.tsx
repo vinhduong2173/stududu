@@ -12,19 +12,33 @@ import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/features/LanguageSwitcher";
 import { TextSelectionPopup } from "@/components/features/TextSelectionPopup";
 import { Logo } from "@/components/ui/Logo";
+import { VideoCallModal, type CallInfo } from "@/components/features/VideoCallModal";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations();
   const pathname = usePathname();
   const router = useRouter();
-  const [me, setMe] = React.useState<{ displayName: string; avatarUrl?: string | null; role?: string; nativeLang?: string | null } | null>(null);
+  const [me, setMe] = React.useState<{ id?: number; displayName: string; avatarUrl?: string | null; role?: string; nativeLang?: string | null } | null>(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<any[]>([]);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const { show: showToast, toast } = useToast();
 
+  // Global Video Call states
+  const [videoCallOpen, setVideoCallOpen] = React.useState(false);
+  const [isIncomingCall, setIsIncomingCall] = React.useState(false);
+  const [incomingCallInfo, setIncomingCallInfo] = React.useState<CallInfo | null>(null);
+  const [outgoingCallInfo, setOutgoingCallInfo] = React.useState<{
+    conversationId: number;
+    partner: { id: number; displayName: string; avatarUrl?: string | null };
+  } | null>(null);
+
+  const socketRef = React.useRef<any>(null);
+  const videoCallOpenRef = React.useRef(videoCallOpen);
+  videoCallOpenRef.current = videoCallOpen;
+
   React.useEffect(() => {
-    api<{ displayName: string; avatarUrl?: string | null; role?: string; nativeLang?: string | null }>("/users/me")
+    api<{ id?: number; displayName: string; avatarUrl?: string | null; role?: string; nativeLang?: string | null }>("/users/me")
       .then(setMe)
       .catch(() => router.push("/login"));
 
@@ -32,10 +46,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       .then(setNotifications)
       .catch(console.error);
 
-    // FS-28 — in-app notification (nhắc lịch hẹn trước 30 phút) qua Socket.IO
+    // FS-28 — in-app notification (nhắc lịch hẹn trước 30 phút) & Video call qua Socket.IO
     const token = localStorage.getItem("accessToken");
     if (!token) return;
     const socket = getSocket(token);
+    socketRef.current = socket;
+
     const onNotification = (n: any) => {
       if (n.type === "schedule_reminder" && n.timeUtc) {
         const local = new Date(n.timeUtc).toLocaleTimeString("vi-VN", {
@@ -48,9 +64,43 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       }
       setNotifications((prev) => [n, ...prev]);
     };
+
+    const onIncomingCall = (data: CallInfo) => {
+      if (videoCallOpenRef.current) {
+        socket.emit("call:reject", {
+          conversationId: data.conversationId,
+          targetUserId: data.callerId,
+          reason: "busy",
+        });
+        return;
+      }
+      setIncomingCallInfo(data);
+      setIsIncomingCall(true);
+      setOutgoingCallInfo(null);
+      setVideoCallOpen(true);
+    };
+
     socket.on("notification", onNotification);
+    socket.on("call:incoming", onIncomingCall);
+
+    const handleStartCallEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.partner) {
+        setIncomingCallInfo(null);
+        setIsIncomingCall(false);
+        setOutgoingCallInfo({
+          conversationId: detail.conversationId,
+          partner: detail.partner,
+        });
+        setVideoCallOpen(true);
+      }
+    };
+    window.addEventListener("start-video-call", handleStartCallEvent);
+
     return () => {
       socket.off("notification", onNotification);
+      socket.off("call:incoming", onIncomingCall);
+      window.removeEventListener("start-video-call", handleStartCallEvent);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -277,6 +327,29 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           onWordSaved={(item, dup) => showToast(dup ? t("vocabulary.save_exists", { term: item.word.term }) : t("vocabulary.save_success", { term: item.word.term }))}
         />
       </main>
+      <VideoCallModal
+        isOpen={videoCallOpen}
+        onClose={() => {
+          setVideoCallOpen(false);
+          setIsIncomingCall(false);
+          setIncomingCallInfo(null);
+          setOutgoingCallInfo(null);
+        }}
+        socket={socketRef.current}
+        conversationId={incomingCallInfo?.conversationId ?? outgoingCallInfo?.conversationId ?? null}
+        partner={
+          incomingCallInfo
+            ? {
+                id: incomingCallInfo.callerId,
+                displayName: incomingCallInfo.callerName,
+                avatarUrl: incomingCallInfo.callerAvatar,
+              }
+            : (outgoingCallInfo?.partner ?? null)
+        }
+        currentUser={{ id: me?.id ?? 0, displayName: me?.displayName }}
+        isIncoming={isIncomingCall}
+        incomingCallInfo={incomingCallInfo}
+      />
       {toast}
 
       {/* Mobile Bottom Tab Bar */}

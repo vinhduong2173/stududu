@@ -1,13 +1,7 @@
 // typeof-guard: file này còn được bundle ngoài Next (design-sync) — nơi không có `process`
-const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    return `http://${hostname}:3001`;
-  }
-  return (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined) ?? 'http://localhost:3001';
-};
-
-const API_URL = getApiUrl();
+const API_URL =
+  (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined) ??
+  'http://localhost:3001';
 
 export class ApiError extends Error {
   constructor(

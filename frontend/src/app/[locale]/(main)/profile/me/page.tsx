@@ -81,38 +81,47 @@ export default function MyProfilePage() {
 
   return (
     <div className="max-w-3xl mx-auto p-4 md:p-8 pb-24">
-      {/* Header */}
-      <div className="flex flex-col items-center text-center mb-6">
-        <Avatar
-          src={me.avatarUrl ?? undefined}
-          fallback={me.displayName.charAt(0)}
-          size="xl"
-          className="mb-4 shadow-lg"
-        />
-        <h1 className="text-3xl font-bold text-foreground">
-          {me.displayName}
-          {ageFromDob(me.dob) !== null && (
-            <span className="font-medium text-muted">, {ageFromDob(me.dob)}</span>
+      {/* Header — cover banner + avatar đè mép */}
+      <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-6">
+        <div className="sd-cover relative h-32 md:h-44">
+          <div className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+        </div>
+        <div className="px-6 pb-6">
+          <div className="flex items-end justify-between -mt-12 mb-4">
+            <div className="inline-block rounded-full ring-4 ring-surface bg-surface">
+              <Avatar
+                src={me.avatarUrl ?? undefined}
+                fallback={me.displayName.charAt(0)}
+                size="xl"
+                className="shadow-lg"
+              />
+            </div>
+            <div className="flex gap-2 sm:gap-3">
+              <Button asChild size="sm">
+                <Link href="/profile/me/edit">
+                  <Pencil className="h-4 w-4 mr-2" /> {t("edit_profile")}
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/settings">
+                  <Settings className="h-4 w-4 mr-2" /> {t("settings")}
+                </Link>
+              </Button>
+            </div>
+          </div>
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
+            {me.displayName}
+            {ageFromDob(me.dob) !== null && (
+              <span className="font-medium text-muted">, {ageFromDob(me.dob)}</span>
+            )}
+          </h1>
+          <p className="text-muted mt-1">{me.email}</p>
+          {(me.city || me.gender) && (
+            <p className="text-sm text-muted mt-1">
+              {[me.gender, me.city].filter(Boolean).join(" · ")}
+            </p>
           )}
-        </h1>
-        <p className="text-muted mt-1">{me.email}</p>
-        {(me.city || me.gender) && (
-          <p className="text-sm text-muted mt-1">
-            {[me.gender, me.city].filter(Boolean).join(" · ")}
-          </p>
-        )}
-
-        <div className="flex gap-3 mt-5">
-          <Button asChild size="sm">
-            <Link href="/profile/me/edit">
-              <Pencil className="h-4 w-4 mr-2" /> {t("edit_profile")}
-            </Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/settings">
-              <Settings className="h-4 w-4 mr-2" /> {t("settings")}
-            </Link>
-          </Button>
         </div>
       </div>
 

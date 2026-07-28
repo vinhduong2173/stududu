@@ -17,26 +17,9 @@ interface AuthedSocket extends Socket {
   data: { user: JwtPayload };
 }
 
-const isOriginAllowed = (origin: string | undefined): boolean => {
-  if (!origin) return true;
-  const allowedOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',')
-    : ['http://localhost:3000'];
-  if (allowedOrigins.includes(origin)) return true;
-  return /^(https?:\/\/)(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin);
-};
-
+// US-14 — chat real-time; Socket.IO tự reconnect (AC2), room theo conversation
 @WebSocketGateway({
-  cors: {
-    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      if (isOriginAllowed(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-  },
+  cors: { origin: true, credentials: true },
   maxHttpBufferSize: 2e6, // cho phép tin nhắn ảnh (data URL ~500KB sau nén)
 })
 export class ChatGateway implements OnGatewayConnection {
@@ -94,8 +77,14 @@ export class ChatGateway implements OnGatewayConnection {
       body.type ?? 'text',
       body.payload,
     );
-    // phát cho cả 2 phía trong room (kể cả người gửi — làm ack)
-    this.server.to(this.room(body.conversationId)).emit('message:new', message);
+    // Chỉ phát qua user room — mỗi client nhận đúng 1 lần, tránh race condition
+    const participants = await this.chatService.getConversationParticipants(body.conversationId);
+    if (participants) {
+      this.server
+        .to(`user:${participants[0]}`)
+        .to(`user:${participants[1]}`)
+        .emit('message:new', message);
+    }
     return message;
   }
 
@@ -110,7 +99,13 @@ export class ChatGateway implements OnGatewayConnection {
       body.messageId,
       body.emoji,
     );
-    this.server.to(this.room(message.conversationId)).emit('message:update', message);
+    const participants = await this.chatService.getConversationParticipants(message.conversationId);
+    if (participants) {
+      this.server
+        .to(`user:${participants[0]}`)
+        .to(`user:${participants[1]}`)
+        .emit('message:update', message);
+    }
     return message;
   }
 
@@ -125,7 +120,13 @@ export class ChatGateway implements OnGatewayConnection {
       body.messageId,
       body.response,
     );
-    this.server.to(this.room(message.conversationId)).emit('message:update', message);
+    const participants = await this.chatService.getConversationParticipants(message.conversationId);
+    if (participants) {
+      this.server
+        .to(`user:${participants[0]}`)
+        .to(`user:${participants[1]}`)
+        .emit('message:update', message);
+    }
     return message;
   }
 
@@ -135,14 +136,57 @@ export class ChatGateway implements OnGatewayConnection {
     @MessageBody() body: { conversationId: number },
   ) {
     await this.chatService.markRead(client.data.user.sub, body.conversationId);
-    this.server.to(this.room(body.conversationId)).emit('conversation:read', {
+    const readPayload = {
       conversationId: body.conversationId,
       readerId: client.data.user.sub,
-    });
+    };
+    const participants = await this.chatService.getConversationParticipants(body.conversationId);
+    if (participants) {
+      this.server
+        .to(`user:${participants[0]}`)
+        .to(`user:${participants[1]}`)
+        .emit('conversation:read', readPayload);
+    }
   }
 
   private room(conversationId: number): string {
     return `conversation:${conversationId}`;
+  }
+
+  // ===== TYPING INDICATOR =====
+
+  @SubscribeMessage('typing:start')
+  async handleTypingStart(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number },
+  ) {
+    const participants = await this.chatService.getConversationParticipants(body.conversationId);
+    if (participants) {
+      const otherId = participants.find((id) => id !== client.data.user.sub);
+      if (otherId) {
+        this.server.to(`user:${otherId}`).emit('typing:start', {
+          conversationId: body.conversationId,
+          userId: client.data.user.sub,
+        });
+      }
+    }
+  }
+
+  @SubscribeMessage('typing:stop')
+  async handleTypingStop(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { conversationId: number },
+  ) {
+    const participants = await this.chatService.getConversationParticipants(body.conversationId);
+    if (participants) {
+      const otherId = participants.find((id) => id !== client.data.user.sub);
+      if (otherId) {
+        this.server.to(`user:${otherId}`).emit('typing:stop', {
+          conversationId: body.conversationId,
+          userId: client.data.user.sub,
+        });
+      }
+    }
   }
   // ===== VIDEO CALL SIGNALING (WebRTC) =====
 

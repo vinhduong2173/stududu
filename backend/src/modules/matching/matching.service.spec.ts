@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { LanguageRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { I18nService } from 'nestjs-i18n';
 import {
   MatchingService,
   SUGGESTIONS_MIN,
@@ -70,16 +69,8 @@ async function buildService(candidates: unknown[]) {
     match: { findMany: jest.fn().mockResolvedValue([]) },
   };
 
-  const i18nMock = {
-    t: jest.fn().mockImplementation((key) => key),
-  };
-
   const moduleRef = await Test.createTestingModule({
-    providers: [
-      MatchingService,
-      { provide: PrismaService, useValue: prismaMock },
-      { provide: I18nService, useValue: i18nMock },
-    ],
+    providers: [MatchingService, { provide: PrismaService, useValue: prismaMock }],
   }).compile();
 
   return moduleRef.get(MatchingService);

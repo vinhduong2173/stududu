@@ -110,6 +110,7 @@ function formatBubbleTime(iso: string): string {
 
 function previewText(m: Conversation["lastMessage"], mine: boolean, t: any): string {
   if (!m) return t("chat.say_hi");
+  if (m.content.startsWith("📹") || m.content.startsWith("📞")) return m.content;
   const prefix = mine ? t("chat.you") : "";
   if (m.type === "image") return `${prefix}${t("chat.photo")}`;
   if (m.type === "schedule") return `${prefix}${t("chat.schedule_invite")}`;
@@ -168,10 +169,7 @@ function InboxContent() {
   const [cancellingRequestId, setCancellingRequestId] = React.useState<number | null>(null);
   const [cancellingLoading, setCancellingLoading] = React.useState(false);
 
-  // Video call states
-  const [videoCallOpen, setVideoCallOpen] = React.useState(false);
-  const [isIncomingCall, setIsIncomingCall] = React.useState(false);
-  const [incomingCallInfo, setIncomingCallInfo] = React.useState<CallInfo | null>(null);
+
 
   // FS-14: nút lưu từ nổi khi bôi đen văn bản trong tin nhắn
   const [selectionSave, setSelectionSave] = React.useState<{
@@ -181,6 +179,9 @@ function InboxContent() {
   } | null>(null);
   // FS-14: message đang mở reaction picker
   const [reactionPickerFor, setReactionPickerFor] = React.useState<number | null>(null);
+  // Typing indicator
+  const [partnerTyping, setPartnerTyping] = React.useState<Record<number, boolean>>({});
+  const typingTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const socketRef = React.useRef<Socket | null>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
@@ -228,21 +229,30 @@ function InboxContent() {
     const onDisconnect = () => setConnected(false);
 
     const onNewMessage = (message: Message) => {
+      // Khi nhận tin nhắn mới từ partner → tắt typing indicator của họ
+      if (Number(message.senderId) !== Number(meRef.current)) {
+        setPartnerTyping((prev) => ({ ...prev, [message.conversationId]: false }));
+      }
       if (Number(message.conversationId) === Number(selectedIdRef.current)) {
         setMessages((prev) => {
-          // Đã có bản thật (ack về trước) → bỏ qua
+          // Đã có bản thật → bỏ qua
           if (prev.some((m) => String(m.id) === String(message.id))) return prev;
-          // Tin của chính mình: thay bản optimistic tương ứng thay vì thêm mới
-          // (chống trùng khi message:new về trước ack, hoặc ack bị mất)
+
+          // Tin của chính mình: thay bản optimistic nếu còn pending
           if (Number(message.senderId) === Number(meRef.current)) {
             const tempIdx = prev.findIndex(
               (m) => m.pending && m.content === message.content && m.type === message.type,
             );
-            if (tempIdx === -1) return prev; // ack sẽ xử lý (hoặc đã xử lý) — không thêm
-            const next = [...prev];
-            next[tempIdx] = { ...message, pending: false };
-            return next;
+            if (tempIdx !== -1) {
+              const next = [...prev];
+              next[tempIdx] = { ...message, pending: false };
+              return next;
+            }
+            // Ack đã xử lý rồi (message đã có ID thật), hoặc chưa pending → thêm vào để chắc chắn
+            return [...prev, { ...message, pending: false }];
           }
+
+          // Tin của đối tác
           return [...prev, message];
         });
         if (Number(message.senderId) !== Number(meRef.current)) {
@@ -261,7 +271,7 @@ function InboxContent() {
             type: message.type,
           },
           unreadCount:
-            message.conversationId === selectedIdRef.current || message.senderId === meRef.current
+            Number(message.conversationId) === Number(selectedIdRef.current) || Number(message.senderId) === Number(meRef.current)
               ? prev[idx].unreadCount
               : prev[idx].unreadCount + 1,
         };
@@ -291,10 +301,11 @@ function InboxContent() {
       }
     };
 
-    const onIncomingCall = (data: CallInfo) => {
-      setIncomingCallInfo(data);
-      setIsIncomingCall(true);
-      setVideoCallOpen(true);
+    const onTypingStart = (data: { conversationId: number; userId: number }) => {
+      setPartnerTyping((prev) => ({ ...prev, [data.conversationId]: true }));
+    };
+    const onTypingStop = (data: { conversationId: number; userId: number }) => {
+      setPartnerTyping((prev) => ({ ...prev, [data.conversationId]: false }));
     };
 
     socket.on("connect", onConnect);
@@ -302,8 +313,31 @@ function InboxContent() {
     socket.on("message:new", onNewMessage);
     socket.on("message:update", onMessageUpdate);
     socket.on("conversation:read", onRead);
-    socket.on("call:incoming", onIncomingCall);
+    socket.on("typing:start", onTypingStart);
+    socket.on("typing:stop", onTypingStop);
     setConnected(socket.connected);
+
+    // Polling fallback: nếu socket mất kết nối, làm mới tin nhắn + conversations mỗi 5s
+    const pollInterval = setInterval(() => {
+      if (socket.disconnected) {
+        const convId = selectedIdRef.current;
+        if (convId) {
+          api<Message[]>(`/conversations/${convId}/messages`)
+            .then((data) => {
+              setMessages((prev) => {
+                // chỉ cập nhật nếu có tin nhắn mới (ID lớn hơn bản hiện tại)
+                const maxPrevId = Math.max(0, ...prev.filter((m) => !m.pending).map((m) => m.id));
+                const hasNew = data.some((m) => m.id > maxPrevId);
+                return hasNew ? data : prev;
+              });
+            })
+            .catch(() => undefined);
+        }
+        api<Conversation[]>("/conversations")
+          .then((data) => setConversations(data))
+          .catch(() => undefined);
+      }
+    }, 5000);
 
     return () => {
       socket.off("connect", onConnect);
@@ -311,7 +345,9 @@ function InboxContent() {
       socket.off("message:new", onNewMessage);
       socket.off("message:update", onMessageUpdate);
       socket.off("conversation:read", onRead);
-      socket.off("call:incoming", onIncomingCall);
+      socket.off("typing:start", onTypingStart);
+      socket.off("typing:stop", onTypingStop);
+      clearInterval(pollInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -399,6 +435,11 @@ function InboxContent() {
     if (!content) return;
     setDraft("");
     setShowEmoji(false);
+    // Dừng typing indicator khi gửi tin
+    if (selectedId && socketRef.current) {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      socketRef.current.emit("typing:stop", { conversationId: selectedId });
+    }
     sendMessage(content, "text");
   };
 
@@ -625,12 +666,18 @@ function InboxContent() {
                   <span
                     className={cn(
                       "text-sm truncate",
-                      c.unreadCount > 0 ? "text-foreground font-medium" : "text-muted",
+                      partnerTyping[c.id]
+                        ? "text-primary italic font-medium"
+                        : c.unreadCount > 0
+                          ? "text-foreground font-medium"
+                          : "text-muted",
                     )}
                   >
-                    {previewText(c.lastMessage, c.lastMessage?.senderId === me?.id, t)}
+                    {partnerTyping[c.id]
+                      ? "đang nhập..."
+                      : previewText(c.lastMessage, c.lastMessage?.senderId === me?.id, t)}
                   </span>
-                  {c.unreadCount > 0 && (
+                  {c.unreadCount > 0 && !partnerTyping[c.id] && (
                     <span className="shrink-0 h-5 min-w-5 px-1.5 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
                       {c.unreadCount > 9 ? "9+" : c.unreadCount}
                     </span>
@@ -676,7 +723,9 @@ function InboxContent() {
             <p className="font-semibold text-foreground truncate">{selected.partner.displayName}</p>
             <p className="text-xs text-muted flex items-center gap-1.5 flex-wrap">
               <span>
-                {isOnline(selected.partner.lastActive) ? tDisc("card_online") : tDisc("card_recent")}
+                {partnerTyping[selectedId!] ? (
+                  <span className="text-primary font-medium animate-pulse">đang nhập...</span>
+                ) : isOnline(selected.partner.lastActive) ? tDisc("card_online") : tDisc("card_recent")}
               </span>
               {partnerTz && (
                 <span className="hidden sm:inline-flex items-center gap-1">
@@ -690,9 +739,16 @@ function InboxContent() {
         <div className="flex items-center gap-1">
           <button
             onClick={() => {
-              setIsIncomingCall(false);
-              setIncomingCallInfo(null);
-              setVideoCallOpen(true);
+              if (selected) {
+                window.dispatchEvent(
+                  new CustomEvent("start-video-call", {
+                    detail: {
+                      conversationId: selected.id,
+                      partner: selected.partner,
+                    },
+                  })
+                );
+              }
             }}
             className="p-2 text-muted hover:text-primary rounded-full hover:bg-primary/10 transition-colors"
             title="Cuộc gọi video"
@@ -827,12 +883,12 @@ function InboxContent() {
               const isNewShape = Boolean(sd.requestId && sd.timeUtc);
               const localTime = sd.timeUtc
                 ? new Date(sd.timeUtc).toLocaleString(undefined, {
-                  weekday: "short",
-                  day: "2-digit",
-                  month: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
+                    weekday: "short",
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
                 : null;
               return (
                 <div key={m.id} className="flex justify-center">
@@ -927,6 +983,27 @@ function InboxContent() {
                       </div>
                     )}
                     <p className="text-[10px] text-muted mt-2">{formatBubbleTime(m.sentAt)}</p>
+                  </div>
+                </div>
+              );
+            }
+
+            const isCallLog = m.content.startsWith("📹") || m.content.startsWith("📞");
+            if (isCallLog) {
+              const isMissed = m.content.includes("nhỡ");
+              return (
+                <div key={m.id} className="flex justify-center my-3">
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-semibold shadow-sm transition-all",
+                      isMissed
+                        ? "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400"
+                        : "bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-300",
+                    )}
+                  >
+                    <span className="text-sm">{isMissed ? "📞" : "📹"}</span>
+                    <span>{m.content}</span>
+                    <span className="text-[10px] opacity-60 ml-1.5">{formatBubbleTime(m.sentAt)}</span>
                   </div>
                 </div>
               );
@@ -1081,6 +1158,35 @@ function InboxContent() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Typing indicator — nằm ngoài scroll, ngay trên ô nhập */}
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-200 ease-in-out",
+          selected && partnerTyping[selectedId!] ? "h-9" : "h-0",
+        )}
+      >
+        <div className="flex items-center gap-2.5 px-5 py-2 bg-surface border-t border-border/40">
+          <div className="flex items-center gap-1">
+            <span
+              className="block w-2 h-2 rounded-full bg-primary animate-bounce"
+              style={{ animationDelay: "0ms" }}
+            />
+            <span
+              className="block w-2 h-2 rounded-full bg-primary animate-bounce"
+              style={{ animationDelay: "150ms" }}
+            />
+            <span
+              className="block w-2 h-2 rounded-full bg-primary animate-bounce"
+              style={{ animationDelay: "300ms" }}
+            />
+          </div>
+          <span className="text-xs text-muted">
+            <span className="font-semibold text-foreground">{selected?.partner.displayName}</span>
+            {" "}đang nhập...
+          </span>
+        </div>
+      </div>
+
       {/* Ô soạn tin */}
       <div className="relative border-t border-border bg-surface px-4 py-3">
         {showEmoji && (
@@ -1126,7 +1232,17 @@ function InboxContent() {
               className="flex-1 h-11 rounded-full border border-border bg-background px-4 text-[15px] outline-none focus:border-primary"
               placeholder={t("chat.input_placeholder")}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                // Emit typing:start, tự dừng sau 2s không gõ
+                if (selectedId && socketRef.current) {
+                  socketRef.current.emit("typing:start", { conversationId: selectedId });
+                  if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                  typingTimeoutRef.current = setTimeout(() => {
+                    socketRef.current?.emit("typing:stop", { conversationId: selectedId });
+                  }, 2000);
+                }
+              }}
               onFocus={() => setShowEmoji(false)}
             />
             <Button
@@ -1204,20 +1320,6 @@ function InboxContent() {
                   : t("chat.word_save_success", { term: item.word.term }),
               )
             }
-          />
-          <VideoCallModal
-            isOpen={videoCallOpen}
-            onClose={() => {
-              setVideoCallOpen(false);
-              setIsIncomingCall(false);
-              setIncomingCallInfo(null);
-            }}
-            socket={socketRef.current}
-            conversationId={selected.id}
-            partner={selected.partner}
-            currentUser={{ id: me?.id ?? 0, displayName: me?.displayName }}
-            isIncoming={isIncomingCall}
-            incomingCallInfo={incomingCallInfo}
           />
         </>
       )}

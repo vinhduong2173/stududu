@@ -172,24 +172,34 @@ export default function ProfilePage() {
       />
       {toast}
 
-      <div className="p-6 md:p-8">
-        <div className="flex flex-col items-center text-center mb-8">
-          <Avatar src={user.avatarUrl} fallback={user.displayName.charAt(0)} size="xl" online={isOnline} className="mb-4 shadow-lg" />
-          <h1 className="text-3xl font-bold text-foreground">
-            {user.displayName}
-            {ageFromDob(user.dob) !== null && (
-              <span className="font-medium text-muted">, {ageFromDob(user.dob)}</span>
-            )}
-          </h1>
-          <p className="text-muted mt-1 flex items-center gap-1.5 justify-center">
-            {isOnline ? tDisc("card_online") : tDisc("card_recent")}
-            {user.city && (
-              <span className="inline-flex items-center gap-0.5">
-                · <MapPin className="w-4 h-4" /> {user.city}
-              </span>
-            )}
-            {user.gender && <span>· {user.gender}</span>}
-          </p>
+      <div className="p-4 md:p-8">
+        {/* Header — cover banner + avatar đè mép */}
+        <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-8">
+          <div className="sd-cover relative h-32 md:h-44">
+            <div className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+          </div>
+          <div className="px-6 pb-6">
+            <div className="-mt-12 mb-4 inline-block rounded-full ring-4 ring-surface bg-surface">
+              <Avatar src={user.avatarUrl} fallback={user.displayName.charAt(0)} size="xl" online={isOnline} className="shadow-lg" />
+            </div>
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
+              {user.displayName}
+              {ageFromDob(user.dob) !== null && (
+                <span className="font-medium text-muted">, {ageFromDob(user.dob)}</span>
+              )}
+            </h1>
+            <p className="text-muted mt-1 flex items-center gap-1.5">
+              <span className={`inline-block h-2 w-2 rounded-full ${isOnline ? "bg-success" : "bg-muted"}`} />
+              {isOnline ? tDisc("card_online") : tDisc("card_recent")}
+              {user.city && (
+                <span className="inline-flex items-center gap-0.5">
+                  · <MapPin className="w-4 h-4" /> {user.city}
+                </span>
+              )}
+              {user.gender && <span>· {user.gender}</span>}
+            </p>
+          </div>
         </div>
 
         <div className="space-y-8 bg-surface rounded-3xl p-6 shadow-sm border border-border">

@@ -28,12 +28,12 @@ interface VideoCallModalProps {
   isOpen: boolean;
   onClose: () => void;
   socket: Socket | null;
-  conversationId: number;
+  conversationId: number | null;
   partner: {
     id: number;
     displayName: string;
     avatarUrl?: string | null;
-  };
+  } | null;
   currentUser: {
     id: number;
     displayName?: string;
@@ -61,15 +61,54 @@ export function VideoCallModal({
   const [callDuration, setCallDuration] = React.useState(0);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
+  const closeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const clearCloseTimeout = React.useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
+
+  const activePartner = (isIncoming && incomingCallInfo
+    ? { id: incomingCallInfo.callerId, displayName: incomingCallInfo.callerName, avatarUrl: incomingCallInfo.callerAvatar ?? null }
+    : partner) ?? null;
+
+  const callLogSentRef = React.useRef(false);
+  const isCallingInitiatedRef = React.useRef(false);
+
+  const sendCallLog = React.useCallback(
+    (durationSeconds: number, isMissed = false) => {
+      // Chỉ phía Người Gọi (Caller) gửi log tin nhắn lịch sử để tránh nhân đôi tin nhắn ở 2 phía
+      if (callLogSentRef.current || !socket || !conversationId || isIncoming) return;
+      callLogSentRef.current = true;
+
+      let content = "";
+      if (isMissed || durationSeconds <= 0) {
+        content = "📞 Cuộc gọi video nhỡ";
+      } else {
+        const mins = Math.floor(durationSeconds / 60);
+        const secs = durationSeconds % 60;
+        const durationStr = mins > 0 ? `${mins} phút ${secs} giây` : `${secs} giây`;
+        content = `📹 Cuộc gọi video • ${durationStr}`;
+      }
+
+      socket.emit("message:send", {
+        conversationId,
+        content,
+        type: "text",
+      });
+    },
+    [socket, conversationId, isIncoming],
+  );
+
   const localVideoRef = React.useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = React.useRef<HTMLVideoElement | null>(null);
   const pcRef = React.useRef<RTCPeerConnection | null>(null);
   const localStreamRef = React.useRef<MediaStream | null>(null);
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const activePartner = isIncoming && incomingCallInfo
-    ? { id: incomingCallInfo.callerId, displayName: incomingCallInfo.callerName, avatarUrl: incomingCallInfo.callerAvatar }
-    : partner;
+  const iceCandidatesQueueRef = React.useRef<RTCIceCandidateInit[]>([]);
 
   // Cấu hình STUN Server cho WebRTC Peer Connection
   const rtcConfig: RTCConfiguration = {
@@ -77,11 +116,15 @@ export function VideoCallModal({
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun3.l.google.com:19302" },
+      { urls: "stun:stun4.l.google.com:19302" },
     ],
   };
 
   // ----- Dọn dẹp stream & peer connection -----
   const cleanupCall = React.useCallback(() => {
+    clearCloseTimeout();
+    iceCandidatesQueueRef.current = [];
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -96,29 +139,52 @@ export function VideoCallModal({
     }
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-  }, []);
+  }, [clearCloseTimeout]);
+
+  // Reset toàn bộ state mỗi khi modal mở hoặc có partner mới gọi đến — tránh giữ callState "ended" cũ
+  React.useEffect(() => {
+    if (isOpen) {
+      clearCloseTimeout();
+      callLogSentRef.current = false;
+      setCallState(isIncoming ? "incoming" : "calling");
+      setCallDuration(0);
+      setErrorMessage(null);
+      setIsMicMuted(false);
+      setIsCamOff(false);
+    } else {
+      clearCloseTimeout();
+      cleanupCall();
+      isCallingInitiatedRef.current = false;
+    }
+  }, [isOpen, isIncoming, activePartner?.id, clearCloseTimeout, cleanupCall]);
 
   // ----- Kết thúc cuộc gọi -----
   const handleEndCall = React.useCallback(
     (notifyPartner = true) => {
-      if (notifyPartner && socket) {
+      if (notifyPartner && socket && activePartner) {
         socket.emit("call:end", {
           conversationId,
           targetUserId: activePartner.id,
         });
       }
+      sendCallLog(callDuration, callState !== "connected");
       setCallState("ended");
       cleanupCall();
-      setTimeout(() => {
+      clearCloseTimeout();
+      closeTimeoutRef.current = setTimeout(() => {
         onClose();
       }, 1500);
     },
-    [socket, conversationId, activePartner.id, cleanupCall, onClose],
+    [socket, conversationId, activePartner?.id, cleanupCall, clearCloseTimeout, onClose, sendCallLog, callDuration, callState],
   );
 
   // ----- Khởi tạo camera & mic bản thân -----
   const initLocalStream = async () => {
     try {
+      if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setErrorMessage("Trình duyệt chặn Camera/Microphone trên kết nối không an toàn HTTP (Cần dùng localhost, HTTPS hoặc bật Chrome flag).");
+        return null;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
@@ -135,8 +201,24 @@ export function VideoCallModal({
     }
   };
 
+  const processQueuedIceCandidates = async (pc: RTCPeerConnection) => {
+    while (iceCandidatesQueueRef.current.length > 0) {
+      const candidate = iceCandidatesQueueRef.current.shift();
+      if (candidate) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+          console.error("Lỗi khi thêm queued ICE candidate:", err);
+        }
+      }
+    }
+  };
+
   // ----- Tạo WebRTC Peer Connection -----
   const createPeerConnection = (stream: MediaStream) => {
+    if (pcRef.current) {
+      pcRef.current.close();
+    }
     const pc = new RTCPeerConnection(rtcConfig);
     pcRef.current = pc;
 
@@ -152,7 +234,7 @@ export function VideoCallModal({
 
     // Gửi ICE candidate qua socket
     pc.onicecandidate = (event) => {
-      if (event.candidate && socket) {
+      if (event.candidate && socket && activePartner) {
         socket.emit("webrtc:ice-candidate", {
           targetUserId: activePartner.id,
           candidate: event.candidate,
@@ -186,7 +268,7 @@ export function VideoCallModal({
 
   // ----- Bắt đầu gọi (Phía Người Gọi) -----
   const startCalling = React.useCallback(async () => {
-    if (!socket) return;
+    if (!socket || !activePartner) return;
     setCallState("calling");
     setErrorMessage(null);
 
@@ -199,11 +281,11 @@ export function VideoCallModal({
       targetUserId: activePartner.id,
       callerName: currentUser.displayName || "Người dùng",
     });
-  }, [socket, conversationId, activePartner.id, currentUser.displayName]);
+  }, [socket, conversationId, activePartner?.id, currentUser.displayName]);
 
   // ----- Chấp nhận cuộc gọi (Phía Người Nhận) -----
   const acceptCall = async () => {
-    if (!socket) return;
+    if (!socket || !activePartner) return;
     setCallState("calling");
     setErrorMessage(null);
 
@@ -221,12 +303,13 @@ export function VideoCallModal({
 
   // ----- Từ chối cuộc gọi -----
   const rejectCall = () => {
-    if (socket) {
+    if (socket && activePartner) {
       socket.emit("call:reject", {
         conversationId,
         targetUserId: activePartner.id,
       });
     }
+    sendCallLog(0, true);
     setCallState("ended");
     cleanupCall();
     onClose();
@@ -256,7 +339,7 @@ export function VideoCallModal({
 
   // ----- Lắng nghe Socket Events cho cuộc gọi -----
   React.useEffect(() => {
-    if (!socket || !isOpen) return;
+    if (!socket || !isOpen || !activePartner) return;
 
     // Đối phương chấp nhận cuộc gọi → Tạo WebRTC Offer
     const onCallAccepted = async () => {
@@ -285,6 +368,7 @@ export function VideoCallModal({
       const pc = pcRef.current || createPeerConnection(stream);
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        await processQueuedIceCandidates(pc);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit("webrtc:answer", {
@@ -301,35 +385,45 @@ export function VideoCallModal({
       if (data.senderId !== activePartner.id || !pcRef.current) return;
       try {
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+        await processQueuedIceCandidates(pcRef.current);
       } catch (err) {
         console.error("Lỗi khi nhận WebRTC answer:", err);
       }
     };
 
-    // Nhận ICE Candidate
+    // Nhận ICE Candidate (với queue fallback nếu remoteDescription chưa sẵn sàng)
     const onWebrtcIceCandidate = async (data: { senderId: number; candidate: RTCIceCandidateInit }) => {
-      if (data.senderId !== activePartner.id || !pcRef.current) return;
-      try {
-        await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
-      } catch (err) {
-        console.error("Lỗi khi thêm ICE Candidate:", err);
+      if (data.senderId !== activePartner.id) return;
+      const pc = pcRef.current;
+      if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+        } catch (err) {
+          console.error("Lỗi khi thêm ICE Candidate:", err);
+        }
+      } else {
+        iceCandidatesQueueRef.current.push(data.candidate);
       }
     };
 
     // Đối phương từ chối
     const onCallRejected = () => {
+      sendCallLog(0, true);
       setErrorMessage("Đối phương đã từ chối cuộc gọi");
       setCallState("ended");
       cleanupCall();
-      setTimeout(() => onClose(), 2000);
+      clearCloseTimeout();
+      closeTimeoutRef.current = setTimeout(() => onClose(), 2000);
     };
 
     // Đối phương kết thúc cuộc gọi
     const onCallEnded = () => {
+      sendCallLog(callDuration, callState !== "connected");
       setErrorMessage("Cuộc gọi đã kết thúc");
       setCallState("ended");
       cleanupCall();
-      setTimeout(() => onClose(), 1500);
+      clearCloseTimeout();
+      closeTimeoutRef.current = setTimeout(() => onClose(), 1500);
     };
 
     socket.on("call:accepted", onCallAccepted);
@@ -339,7 +433,8 @@ export function VideoCallModal({
     socket.on("call:rejected", onCallRejected);
     socket.on("call:ended", onCallEnded);
 
-    if (!isIncoming && callState === "calling" && !localStreamRef.current) {
+    if (!isIncoming && !isCallingInitiatedRef.current) {
+      isCallingInitiatedRef.current = true;
       startCalling();
     }
 
@@ -351,7 +446,7 @@ export function VideoCallModal({
       socket.off("call:rejected", onCallRejected);
       socket.off("call:ended", onCallEnded);
     };
-  }, [socket, isOpen, isIncoming, activePartner.id, startCalling, cleanupCall, onClose]);
+  }, [socket, isOpen, isIncoming, activePartner?.id, startCalling, cleanupCall, onClose, sendCallLog, callDuration, callState]);
 
   // Clean up khi unmount
   React.useEffect(() => {
@@ -360,7 +455,7 @@ export function VideoCallModal({
     };
   }, [cleanupCall]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !activePartner) return null;
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

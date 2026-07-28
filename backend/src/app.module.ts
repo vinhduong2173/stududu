@@ -12,7 +12,6 @@ import { TranslateModule } from './modules/translate/translate.module';
 import { TrustModule } from './modules/trust/trust.module';
 import { UserModule } from './modules/user/user.module';
 import { VocabularyModule } from './modules/vocabulary/vocabulary.module';
-import { NotificationModule } from './modules/notification/notification.module';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 
@@ -82,7 +81,6 @@ import * as path from 'path';
     TranslateModule,
     CommunityModule, // FS-25
     ScheduleModule, // FS-28
-    NotificationModule, // FS-29 — thông báo in-app
   ],
 })
 export class AppModule {}

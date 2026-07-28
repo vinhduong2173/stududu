@@ -70,15 +70,51 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 relative">
-      <div className="absolute top-4 right-4">
-        <LanguageSwitcher />
-      </div>
-      <div className="w-full max-w-md rounded-2xl bg-surface p-8 shadow-xl">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-foreground">{t("login.title")}</h1>
-          <p className="mt-2 text-sm text-muted">{t("login.welcome")}</p>
+    <div className="grid min-h-screen lg:grid-cols-2 bg-background">
+      {/* Cột trái — hero thương hiệu (ẩn trên mobile) */}
+      <aside className="sd-cover relative hidden lg:flex flex-col justify-between overflow-hidden p-12 text-white">
+        <div className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-white/15 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
+
+        <div className="relative font-display text-2xl font-extrabold tracking-tight">stududu</div>
+
+        <div className="relative max-w-md">
+          <h2 className="font-display text-4xl font-extrabold leading-tight tracking-tight">
+            {t("login.hero_title")}
+          </h2>
+          <p className="mt-4 text-white/75 leading-relaxed">{t("login.hero_sub")}</p>
+
+          <div className="mt-10 space-y-4">
+            {[
+              ["🌍", t("login.hero_p1")],
+              ["💬", t("login.hero_p2")],
+              ["🤝", t("login.hero_p3")],
+            ].map(([icon, text]) => (
+              <div key={text} className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-lg">
+                  {icon}
+                </span>
+                <span className="text-sm text-white/90">{text}</span>
+              </div>
+            ))}
+          </div>
         </div>
+
+        <div className="relative text-xs text-white/50">{t("login.hero_footer")}</div>
+      </aside>
+
+      {/* Cột phải — form đăng nhập */}
+      <main className="relative flex items-center justify-center px-4 py-10 sm:px-8">
+        <div className="absolute top-4 right-4">
+          <LanguageSwitcher />
+        </div>
+        <div className="w-full max-w-md">
+          <div className="mb-8">
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
+              {t("login.title")}
+            </h1>
+            <p className="mt-2 text-sm text-muted">{t("login.welcome")}</p>
+          </div>
 
         {error && (
           <div className="mb-6 rounded-xl bg-error/10 p-4 text-sm text-error">
@@ -119,7 +155,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Button type="submit" disabled={loading} className="mt-2">
+          <Button type="submit" disabled={loading} className="sd-btn-gradient mt-2 h-14 text-base">
             {loading ? t("login.submitting") : t("login.submit")}
           </Button>
         </form>
@@ -160,13 +196,14 @@ export default function LoginPage() {
           {t("login.google")}
         </Button>
 
-        <div className="mt-8 text-center text-sm text-muted">
-          {t("login.no_account")}{" "}
-          <Link href="/register" className="font-semibold text-primary hover:underline">
-            {t("login.register_link")}
-          </Link>
+          <div className="mt-8 text-center text-sm text-muted">
+            {t("login.no_account")}{" "}
+            <Link href="/register" className="font-semibold text-primary hover:underline">
+              {t("login.register_link")}
+            </Link>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
