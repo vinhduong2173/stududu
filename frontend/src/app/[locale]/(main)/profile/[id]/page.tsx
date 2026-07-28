@@ -41,6 +41,8 @@ export default function ProfilePage() {
   const [isLikeHovered, setIsLikeHovered] = React.useState(false);
   const { show: showToast, toast } = useToast();
 
+  const [userPosts, setUserPosts] = React.useState<any[]>([]);
+
   React.useEffect(() => {
     if (id) fetchProfile();
   }, [id]);
@@ -48,17 +50,42 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const [data, relation] = await Promise.all([
+      const [data, relation, postsData] = await Promise.all([
         api<any>(`/users/${id}`),
         api<{ liked: boolean; conversationId: number | null }>(`/matching/relation/${id}`),
+        api<any[]>(`/community/feed?userId=${id}`).catch(() => []),
       ]);
       setUser(data);
       setLiked(relation.liked);
       setConversationId(relation.conversationId);
+      setUserPosts(postsData);
     } catch (err: any) {
       setError(err.message || t("loading_error_other"));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTogglePostLike = async (postId: number, likedByMe: boolean) => {
+    try {
+      if (likedByMe) {
+        await api(`/community/posts/${postId}/like`, { method: "DELETE" });
+      } else {
+        await api(`/community/posts/${postId}/like`, { method: "POST" });
+      }
+      setUserPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                likedByMe: !likedByMe,
+                likeCount: p.likeCount + (likedByMe ? -1 : 1),
+              }
+            : p,
+        ),
+      );
+    } catch (err: any) {
+      showToast(err.message || "Error");
     }
   };
 
@@ -102,22 +129,26 @@ export default function ProfilePage() {
   const learnLangs = user.languages.filter((l: any) => l.role === "learning");
 
   return (
-    <div className="max-w-3xl mx-auto pb-24">
-      <div className="sticky top-0 bg-background/80 backdrop-blur-md z-10 flex items-center justify-between p-4 border-b border-border">
-        <button onClick={() => router.back()} className="p-2 hover:bg-muted/10 rounded-full transition-colors">
-          <ArrowLeft className="w-6 h-6 text-foreground" />
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-20 pt-4">
+      {/* Header Bar Navigation */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-sm font-semibold text-muted hover:text-foreground transition-colors py-2 px-3 rounded-xl hover:bg-surface border border-transparent hover:border-border"
+        >
+          <ArrowLeft className="w-4 h-4" /> {tRoot("onboarding.back_btn") || "Quay lại"}
         </button>
         <div className="relative">
           <button
-            className="p-2 hover:bg-muted/10 rounded-full transition-colors"
+            className="p-2 hover:bg-surface rounded-full transition-colors border border-transparent hover:border-border"
             onClick={() => setMenuOpen((v) => !v)}
           >
-            <MoreHorizontal className="w-6 h-6 text-foreground" />
+            <MoreHorizontal className="w-5 h-5 text-foreground" />
           </button>
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-12 z-20 w-48 rounded-2xl border border-border bg-surface shadow-xl py-2 animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute right-0 top-10 z-20 w-48 rounded-2xl border border-border bg-surface shadow-xl py-2 animate-in fade-in zoom-in-95 duration-150">
                 <button
                   className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
                   onClick={() => { setMenuOpen(false); setReportOpen(true); }}
@@ -172,81 +203,199 @@ export default function ProfilePage() {
       />
       {toast}
 
-      <div className="p-4 md:p-8">
-        {/* Header — cover banner + avatar đè mép */}
-        <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-8">
-          <div className="sd-cover relative h-32 md:h-44">
-            <div className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-          </div>
-          <div className="px-6 pb-6">
-            <div className="-mt-12 mb-4 inline-block rounded-full ring-4 ring-surface bg-surface">
-              <Avatar src={user.avatarUrl} fallback={user.displayName.charAt(0)} size="xl" online={isOnline} className="shadow-lg" />
-            </div>
-            <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
-              {user.displayName}
-              {ageFromDob(user.dob) !== null && (
-                <span className="font-medium text-muted">, {ageFromDob(user.dob)}</span>
-              )}
-            </h1>
-            <p className="text-muted mt-1 flex items-center gap-1.5">
-              <span className={`inline-block h-2 w-2 rounded-full ${isOnline ? "bg-success" : "bg-muted"}`} />
-              {isOnline ? tDisc("card_online") : tDisc("card_recent")}
-              {user.city && (
-                <span className="inline-flex items-center gap-0.5">
-                  · <MapPin className="w-4 h-4" /> {user.city}
+      {/* Profile Header Banner + Info Card */}
+      <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-6">
+        <div className="sd-cover relative h-36 md:h-48 w-full">
+          <div className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+        </div>
+        
+        {/* Info row positioned cleanly BELOW the cover banner */}
+        <div className="p-6 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Avatar src={user.avatarUrl} fallback={user.displayName.charAt(0)} size="xl" online={isOnline} className="shadow-md shrink-0" />
+            <div>
+              <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
+                {user.displayName}
+                {ageFromDob(user.dob) !== null && (
+                  <span className="font-medium text-muted">, {ageFromDob(user.dob)}</span>
+                )}
+              </h1>
+              <p className="text-sm text-muted mt-1 flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className={`inline-block h-2 w-2 rounded-full ${isOnline ? "bg-success" : "bg-muted"}`} />
+                  {isOnline ? tDisc("card_online") : tDisc("card_recent")}
                 </span>
-              )}
-              {user.gender && <span>· {user.gender}</span>}
-            </p>
+                {user.city && (
+                  <span className="inline-flex items-center gap-1">
+                    · <MapPin className="w-3.5 h-3.5" /> {user.city}
+                  </span>
+                )}
+                {user.gender && <span>· {user.gender}</span>}
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Header Actions */}
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            {liked ? (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-xl font-semibold shadow-sm"
+                  onClick={() => router.push(conversationId ? `/inbox?conversation=${conversationId}` : "/inbox")}
+                >
+                  <MessageCircle className="w-4 h-4 mr-1.5 text-primary" />
+                  {t("message_btn")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleUnlike}
+                  className="text-error hover:bg-error/10 rounded-xl"
+                >
+                  <Heart className="w-4 h-4 mr-1 fill-error text-error" />
+                  {tDisc("card_liked")}
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleLike}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-xl px-5 shadow-sm"
+              >
+                <Heart className="w-4 h-4 mr-1.5 fill-current" />
+                {tDisc("card_like")}
+              </Button>
+            )}
+            <button
+              onClick={() => setReportOpen(true)}
+              className="p-2 text-muted hover:text-warning hover:bg-warning/10 rounded-xl transition-colors"
+              title={t("report")}
+            >
+              <Flag className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setBlockOpen(true)}
+              className="p-2 text-muted hover:text-error hover:bg-error/10 rounded-xl transition-colors"
+              title={t("block")}
+            >
+              <ShieldBan className="w-4 h-4" />
+            </button>
           </div>
         </div>
+      </div>
 
-        <div className="space-y-8 bg-surface rounded-3xl p-6 shadow-sm border border-border">
-
-          {/* FS-26/27 — trust signals: ghi nhận định tính + giờ luyện tập */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <span>🏅</span> {t("trust_activity_other")}
-              </h2>
-              {conversationId && (
-                <button
-                  onClick={() => setEndorseOpen(true)}
-                  className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                >
-                  <Award className="w-4 h-4" /> {t("endorse_btn")}
-                </button>
-              )}
-            </div>
-            <div className="space-y-3">
-              <EndorsementBadges userId={id} refreshKey={endorseRefresh} />
-              <ChatStats userId={id} />
-            </div>
+      {/* Main Content Layout — Horizontal 2-Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Left Column (60% width on desktop) */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Card 1: Giới thiệu (Bio) */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+              <span>📝</span> {t("intro")}
+            </h2>
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm md:text-base">
+              {user.bio || t("no_intro_other")}
+            </p>
+            {user.intent && (
+              <div className="mt-4 pt-4 border-t border-border flex items-center gap-2">
+                <span className="text-sm font-semibold text-muted">🎯 {t("intent")}:</span>
+                <Chip variant="outline" className="text-xs font-medium py-0.5">
+                  {getIntentTranslation(user.intent, tRoot)}
+                </Chip>
+              </div>
+            )}
           </div>
 
-          <div>
+          {/* Card 2: Bài viết (User Posts) */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <span>💬</span> {t("posts_title")}
+            </h2>
+            {userPosts.length === 0 ? (
+              <p className="text-sm text-muted py-2">{t("no_posts_other")}</p>
+            ) : (
+              <div className="space-y-4">
+                {userPosts.map((post) => (
+                  <div key={post.id} className="p-4 rounded-2xl bg-muted/5 border border-border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar src={post.user?.avatarUrl} fallback={post.user?.displayName?.charAt(0) || "U"} size="sm" />
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{post.user?.displayName}</p>
+                          <p className="text-xs text-muted">
+                            {new Date(post.createdAt).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                      {post.content || (post.type === "word_public" && post.word ? `Đã góp từ "${post.word.term}" vào Thư viện chung` : "")}
+                    </p>
+
+                    <div className="flex items-center gap-4 pt-1">
+                      <button
+                        onClick={() => handleTogglePostLike(post.id, post.likedByMe)}
+                        className={cn(
+                          "flex items-center gap-1.5 text-xs font-medium transition-colors py-1 px-2.5 rounded-lg",
+                          post.likedByMe
+                            ? "text-error bg-error/10"
+                            : "text-muted hover:text-foreground hover:bg-muted/10"
+                        )}
+                      >
+                        <Heart className={cn("w-4 h-4", post.likedByMe && "fill-current")} />
+                        <span>{post.likeCount || 0}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Card 3: Hoạt động luyện tập (Practice Activity) */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <span>⏱️</span> {t("practice_activity")}
+            </h2>
+            <ChatStats userId={id} />
+          </div>
+
+        </div>
+
+        {/* Right Column (40% width on desktop) */}
+        <div className="space-y-6">
+
+          {/* Card 1: Ngôn ngữ (Languages) */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
             <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <span>🗣️</span> {t("languages")}
             </h2>
-            <div className="flex flex-col gap-4 bg-muted/5 p-4 rounded-2xl">
+            <div className="space-y-4">
               <div>
-                <p className="text-sm font-semibold text-muted mb-2 uppercase tracking-wider">{t("can_teach")}</p>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">{t("speaks_label")}</p>
                 <div className="flex flex-wrap gap-2">
+                  {teachLangs.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
                   {teachLangs.map((l: any) => (
-                    <Chip key={l.id} variant="default" className="text-sm py-1">
-                      {l.language.name} {l.role === "native" ? tDisc("card_native") : tDisc("card_fluent")}
+                    <Chip key={l.id} variant="default" className="text-xs py-1">
+                      {l.language.name} {l.role === "native" ? `(${t("native_label")})` : `(${t("fluent_label")})`}
                     </Chip>
                   ))}
                 </div>
               </div>
               <div className="h-px bg-border w-full" />
               <div>
-                <p className="text-sm font-semibold text-muted mb-2 uppercase tracking-wider">{t("want_learn")}</p>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">{t("learns_label")}</p>
                 <div className="flex flex-wrap gap-2">
+                  {learnLangs.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
                   {learnLangs.map((l: any) => (
-                    <Chip key={l.id} variant="secondary" className="text-sm py-1">
-                      {l.language.name} (Level {l.level})
+                    <Chip key={l.id} variant="secondary" className="text-xs py-1">
+                      {l.language.name} ({t("level_label")} {l.level})
                     </Chip>
                   ))}
                 </div>
@@ -254,32 +403,15 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div>
-            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <span>👋</span> {t("intro")}
-            </h2>
-            <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-              {user.bio || t("no_intro_other")}
-            </p>
-          </div>
-
-          <div>
-            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <span>🎯</span> {t("intent")}
-            </h2>
-            <Chip variant="outline" className="text-sm font-medium py-1">
-              {getIntentTranslation(user.intent, tRoot)}
-            </Chip>
-          </div>
-
+          {/* Card 2: Sở thích chung (Interests) */}
           {user.interests && user.interests.length > 0 && (
-            <div>
+            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <span>⭐</span> {t("interests")}
+                <span>⭐</span> {t("shared_interests")}
               </h2>
               <div className="flex flex-wrap gap-2">
                 {user.interests.map((i: any) => (
-                  <Chip key={i.id} variant="outline" className="text-sm py-1">
+                  <Chip key={i.id} variant="outline" className="text-xs py-1">
                     {getTopicTranslation(i.topic.name, tRoot)}
                   </Chip>
                 ))}
@@ -287,50 +419,36 @@ export default function ProfilePage() {
             </div>
           )}
 
-        </div>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 md:left-[max(0px,calc(50%-24rem))] md:right-[max(0px,calc(50%-24rem))] p-4 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
-        <div className="flex gap-4 pointer-events-auto">
-          {liked ? (
-            <>
-              <div className="flex-1 h-14 relative" onMouseEnter={() => setIsLikeHovered(true)} onMouseLeave={() => setIsLikeHovered(false)}>
-                <Button
-                  variant={isLikeHovered ? "ghost" : "ghost"}
-                  onClick={handleUnlike}
-                  className={cn(
-                    "w-full h-full rounded-2xl border transition-all duration-200",
-                    isLikeHovered
-                      ? "border-error/40 text-error bg-error/5"
-                      : "border-success/40 text-success bg-success/5"
-                  )}
-                >
-                  <Heart className={cn("w-6 h-6 mr-2", isLikeHovered ? "fill-none text-error" : "fill-success")} />
-                  {isLikeHovered ? tDisc("card_unlike") : tDisc("card_liked")}
-                </Button>
-              </div>
+          {/* Card 3: An toàn (Safety Actions) */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
+              <span>🛡️</span> {t("safety_title")}
+            </h2>
+            <p className="text-xs text-muted mb-4 leading-relaxed">
+              {t("safety_desc")}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
               <Button
-                variant="secondary"
-                className="flex-1 h-14 rounded-2xl shadow-lg transition-transform hover:scale-[1.02]"
-                onClick={() =>
-                  router.push(conversationId ? `/inbox?conversation=${conversationId}` : "/inbox")
-                }
+                variant="outline"
+                size="sm"
+                onClick={() => setReportOpen(true)}
+                className="w-full text-xs font-semibold text-warning border-warning/30 hover:bg-warning/10"
               >
-                <MessageCircle className="w-6 h-6 mr-2" />
-                {t("message_btn")}
+                <Flag className="w-3.5 h-3.5 mr-1.5" /> {t("report")}
               </Button>
-            </>
-          ) : (
-            <Button
-              variant="secondary"
-              className="flex-1 h-14 rounded-2xl shadow-lg transition-transform hover:scale-[1.02]"
-              onClick={handleLike}
-            >
-              <Heart className="w-6 h-6 mr-2 fill-current" />
-              {tDisc("card_like")}
-            </Button>
-          )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBlockOpen(true)}
+                className="w-full text-xs font-semibold text-error border-error/30 hover:bg-error/10"
+              >
+                <ShieldBan className="w-3.5 h-3.5 mr-1.5" /> {t("block")}
+              </Button>
+            </div>
+          </div>
+
         </div>
+
       </div>
     </div>
   );
