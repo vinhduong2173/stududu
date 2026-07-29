@@ -456,6 +456,7 @@
     "error_insecure": "Your browser blocked the microphone because the page is not on HTTPS",
     "error_permission": "Allow microphone access in your browser settings",
     "error_no_device": "No microphone found",
+    "error_camera_busy": "Camera is currently used by another app or tab — continuing with audio call",
     "error_camera_permission": "Camera is blocked — the call continues, your partner just won't see you",
     "error_unknown": "Could not start the call",
     "log_ended": "Voice call · {duration}",

@@ -29,7 +29,12 @@ export function getMediaConstraints(
 }
 
 /** Lý do không xin được micro — dịch ở tầng UI, không hardcode chuỗi tiếng Việt ở đây. */
-export type MediaErrorReason = "insecure-context" | "permission-denied" | "no-device" | "unknown";
+export type MediaErrorReason =
+  | "insecure-context"
+  | "permission-denied"
+  | "no-device"
+  | "camera-busy"
+  | "unknown";
 
 /**
  * Trap mục 9 — trình duyệt chặn getUserMedia khi không có HTTPS (localhost được
@@ -42,6 +47,14 @@ export function classifyMediaError(err: unknown): MediaErrorReason {
   const name = (err as { name?: string })?.name;
   if (name === "NotAllowedError" || name === "SecurityError") return "permission-denied";
   if (name === "NotFoundError" || name === "DevicesNotFoundError") return "no-device";
+  if (
+    name === "NotReadableError" ||
+    name === "TrackStartError" ||
+    name === "OverconstrainedError" ||
+    name === "AbortError"
+  ) {
+    return "camera-busy";
+  }
   return "unknown";
 }
 
@@ -52,8 +65,9 @@ export interface LocalStreamResult {
 }
 
 /**
- * Trap mục 7 (video) — người dùng có thể cho micro nhưng chặn riêng camera.
- * `getUserMedia({audio, video})` khi đó hỏng CẢ HAI, nên phải thử lại chỉ với
+ * Trap mục 7 (video) — người dùng có thể cho micro nhưng chặn riêng camera hoặc
+ * camera bị chiếm bởi tab/ứng dụng khác (NotReadableError trên Windows khi test 2 tab).
+ * `getUserMedia({audio, video})` khi đó ném lỗi, nên phải thử lại chỉ với
  * micro: mất hình còn hơn mất cả cuộc gọi.
  */
 export async function getLocalStream(
@@ -73,10 +87,14 @@ export async function getLocalStream(
   } catch (err) {
     if (kind !== "video") throw err;
     const reason = classifyMediaError(err);
-    // Lỗi không phải do camera (không có HTTPS chẳng hạn) thì thử lại vô ích.
-    if (reason !== "permission-denied" && reason !== "no-device") throw err;
+    // Lỗi không phải do camera/micro (không có HTTPS chẳng hạn) thì thử lại vô ích.
+    if (reason === "insecure-context") throw err;
 
-    const stream = await navigator.mediaDevices.getUserMedia(getMediaConstraints("audio"));
-    return { stream, cameraBlocked: true };
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(getMediaConstraints("audio"));
+      return { stream, cameraBlocked: true };
+    } catch {
+      throw err;
+    }
   }
 }

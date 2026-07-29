@@ -150,6 +150,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       if (reason === "insecure-context") return t("error_insecure");
       if (reason === "permission-denied") return t("error_permission");
       if (reason === "no-device") return t("error_no_device");
+      if (reason === "camera-busy") return t("error_camera_busy");
       return t("error_unknown");
     },
     [t],

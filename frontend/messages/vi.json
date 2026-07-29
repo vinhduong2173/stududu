@@ -456,6 +456,7 @@
     "error_insecure": "Trình duyệt chặn micro vì trang không dùng HTTPS",
     "error_permission": "Bạn cần cho phép truy cập micro trong cài đặt trình duyệt",
     "error_no_device": "Không tìm thấy micro nào",
+    "error_camera_busy": "Camera đang được ứng dụng hoặc tab khác sử dụng — chuyển sang cuộc gọi thoại",
     "error_camera_permission": "Camera bị chặn — cuộc gọi vẫn tiếp tục, chỉ không có hình của bạn",
     "error_unknown": "Không bắt đầu được cuộc gọi",
     "log_ended": "Cuộc gọi thoại · {duration}",
