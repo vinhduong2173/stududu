@@ -200,6 +200,7 @@ export class ChatService {
   }
 
   // BR-14 — tổng giờ chat, cắt phiên khi idle > 30 phút (dùng cho trigger milestone)
+  // BR-24 — cộng thêm thời lượng cuộc gọi thoại đã kết thúc (audio-call-design.md mục 6)
   private async computeChatHours(userId: number): Promise<number> {
     const conversations = await this.prisma.conversation.findMany({
       where: { match: { OR: [{ memberId: userId }, { candidateId: userId }] } },
@@ -221,6 +222,16 @@ export class ChatService {
       }
       totalMs += prev - sessionStart;
     }
+
+    const callTime = await this.prisma.callSession.aggregate({
+      where: {
+        status: 'ended',
+        conversation: { match: { OR: [{ memberId: userId }, { candidateId: userId }] } },
+      },
+      _sum: { durationSec: true },
+    });
+    totalMs += (callTime._sum.durationSec ?? 0) * 1000;
+
     return totalMs / 3_600_000;
   }
 
@@ -266,6 +277,10 @@ export class ChatService {
       if (content.length > MAX_IMAGE_DATA_URL_LENGTH) {
         throw new BadRequestException(this.i18n.t('translation.chat.imageTooLarge', { lang }));
       }
+    } else if (type === MessageType.call) {
+      // BR-25 — chỉ CallsService được sinh tin nhắn tổng kết cuộc gọi; nếu không
+      // client tự bịa được "cuộc gọi 30 phút" và làm sai giờ chat (BR-24).
+      throw new BadRequestException(this.i18n.t('translation.chat.callMessageNotAllowed', { lang }));
     } else if (type === MessageType.schedule) {
       // FS-28: bản mới cần requestId + timeUtc; bản cũ cần slotId + labels
       const isNewShape = Boolean(payload?.requestId && payload?.timeUtc);

@@ -49,6 +49,10 @@ export class AuthService {
   }
 
   async googleLogin(profile: GoogleProfile): Promise<{ user: PublicUser; tokens: AuthTokens }> {
+    if (!profile || !profile.googleId || !profile.email) {
+      throw new UnauthorizedException('Không thể lấy đủ thông tin (email/Google ID) từ tài khoản Google.');
+    }
+
     // Check if user already exists with this Google ID
     let user = await this.prisma.user.findUnique({
       where: { googleId: profile.googleId },
@@ -84,6 +88,23 @@ export class AuthService {
     });
 
     return { user: this.toPublic(user), tokens: await this.issueTokens(user) };
+  }
+
+  async googleLoginToken(idToken: string): Promise<{ user: PublicUser; tokens: AuthTokens }> {
+    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`).catch(() => null);
+    if (!res || !res.ok) {
+      throw new UnauthorizedException('Google ID Token không hợp lệ hoặc đã hết hạn.');
+    }
+    const payload = (await res.json()) as { sub?: string; email?: string; name?: string; picture?: string };
+    if (!payload.email || !payload.sub) {
+      throw new UnauthorizedException('Không thể lấy email từ Google Token.');
+    }
+    return this.googleLogin({
+      googleId: payload.sub,
+      email: payload.email,
+      displayName: payload.name || payload.email.split('@')[0],
+      avatarUrl: payload.picture,
+    });
   }
 
   // US-02 — đăng nhập (không tiết lộ email có tồn tại hay không)

@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ReportStatus, UserRole } from '@prisma/client';
+import { ReportStatus, UserRole, UserStatus } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -30,6 +30,26 @@ import { ModerateDto } from './dto/moderate.dto';
 @Roles(UserRole.admin)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  @Get('stats')
+  getDashboardStats() {
+    return this.adminService.getDashboardStats();
+  }
+
+  @Get('users')
+  getUsers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: UserStatus,
+  ) {
+    return this.adminService.getUsers(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 10,
+      search,
+      status,
+    );
+  }
 
   @Get('reports')
   getReports(@Query('status') status?: ReportStatus) {

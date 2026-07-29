@@ -52,7 +52,8 @@
     "missingScheduleInfo": "약속 초대 정보가 누락되었습니다",
     "notInConversation": "이 대화의 참여자가 아닙니다",
     "conversationNotFound": "대화를 찾을 수 없습니다",
-    "blockedUser": "이 사용자에게 메시지를 보낼 수 없습니다"
+    "blockedUser": "이 사용자에게 메시지를 보낼 수 없습니다",
+    "callMessageNotAllowed": "통화 메시지는 시스템이 생성하므로 직접 보낼 수 없습니다"
   },
   "vocab": {
     "wordNotFound": "단어장에 단어가 없습니다",
@@ -63,5 +64,12 @@
   },
   "common": {
     "accessDenied": "권한이 부족합니다"
+  },
+  "calls": {
+    "notFound": "통화를 찾을 수 없습니다",
+    "notInConversation": "같은 대화의 상대에게만 전화할 수 있습니다",
+    "suspendedNoCall": "계정이 정지되어 통화할 수 없습니다",
+    "notYourCall": "이 통화의 참가자가 아닙니다",
+    "notRinging": "이 통화는 더 이상 울리지 않습니다"
   }
 }
