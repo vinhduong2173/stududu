@@ -47,9 +47,7 @@ export class DictionaryService {
       if (!res.ok) {
         // 404 = từ không tồn tại trong từ điển — bình thường, không log warning
         if (res.status !== 404) {
-          this.logger.warn(
-            `Dictionary API trả về status ${res.status} cho "${trimmed}" (${lang})`,
-          );
+          this.logger.warn(`Dictionary API trả về status ${res.status} cho "${trimmed}" (${lang})`);
         }
         return null;
       }
@@ -59,28 +57,15 @@ export class DictionaryService {
 
       const entry = data[0];
 
-      // Lấy phonetic — ưu tiên trường `phonetic`, fallback sang phonetics[] ở bất kỳ entry nào trong data
-      let phonetic = entry.phonetic || null;
-      if (!phonetic) {
-        for (const e of data) {
-          if (e.phonetic && e.phonetic.trim()) {
-            phonetic = e.phonetic.trim();
-            break;
-          }
-          if (e.phonetics && Array.isArray(e.phonetics)) {
-            const found = e.phonetics.find((p) => p.text && p.text.trim());
-            if (found?.text) {
-              phonetic = found.text.trim();
-              break;
-            }
-          }
-        }
-      }
+      // Lấy phonetic — ưu tiên trường `phonetic`, fallback sang phonetics[]
+      const phonetic =
+        entry.phonetic ||
+        entry.phonetics?.find((p) => p.text)?.text ||
+        null;
 
       // Lấy audioUrl từ phonetics array
       const audioUrl =
-        entry.phonetics?.find((p) => p.audio && p.audio.trim() !== '')?.audio ||
-        null;
+        entry.phonetics?.find((p) => p.audio && p.audio.trim() !== '')?.audio || null;
 
       // Lấy meaning đầu tiên có definition
       const meaning = entry.meanings?.find(
@@ -88,36 +73,15 @@ export class DictionaryService {
       );
       const firstDef = meaning?.definitions?.[0];
 
-      // Lấy example — ưu tiên định nghĩa đầu tiên, nếu không có thì tìm trong toàn bộ meanings/definitions
-      let example = firstDef?.example || null;
-      if (!example) {
-        for (const e of data) {
-          if (!e.meanings) continue;
-          for (const m of e.meanings) {
-            if (!m.definitions) continue;
-            const found = m.definitions.find(
-              (d) => d.example && d.example.trim(),
-            );
-            if (found?.example) {
-              example = found.example.trim();
-              break;
-            }
-          }
-          if (example) break;
-        }
-      }
-
       return {
         phonetic,
         partOfSpeech: meaning?.partOfSpeech || null,
         definition: firstDef?.definition || null,
-        example: example || firstDef?.example || null,
+        example: firstDef?.example || null,
         audioUrl,
       };
     } catch (err) {
-      this.logger.warn(
-        `Dictionary API lỗi cho "${trimmed}": ${(err as Error).message}`,
-      );
+      this.logger.warn(`Dictionary API lỗi cho "${trimmed}": ${(err as Error).message}`);
       return null;
     }
   }

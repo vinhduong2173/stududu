@@ -58,10 +58,7 @@ export class VocabularyService {
     const languageId = language?.id ?? 1;
 
     // 3. Tra từ điển (Free Dictionary API)
-    const dictResult = await this.dictionaryService.lookup(
-      trimmed,
-      detectedLang || 'en',
-    );
+    const dictResult = await this.dictionaryService.lookup(trimmed, detectedLang || 'en');
 
     // 4. Tra thư viện từ chung (WordLibrary)
     const wordLib = await this.prisma.wordLibrary.findFirst({
@@ -72,23 +69,11 @@ export class VocabularyService {
       include: { language: true },
     });
 
-    // Cập nhật phonetic vào wordLib nếu trong DB đang trống mà từ điển có
-    if (wordLib && !wordLib.phonetic && dictResult?.phonetic) {
-      await this.prisma.wordLibrary.update({
-        where: { id: wordLib.id },
-        data: { phonetic: dictResult.phonetic },
-      });
-      wordLib.phonetic = dictResult.phonetic;
-    }
-
-    const phonetic = dictResult?.phonetic ?? wordLib?.phonetic ?? null;
-
     return {
       term: trimmed,
       translation,
       detectedLang,
       languageId,
-      phonetic,
       dictionary: dictResult
         ? {
             phonetic: dictResult.phonetic,
@@ -117,21 +102,10 @@ export class VocabularyService {
   // FS-23 — tìm/tạo WORD_LIBRARY theo (term, language) rồi gắn USER_SAVED_WORD
   async saveWord(userId: number, dto: SaveWordDto) {
     const term = dto.term.trim();
-    let phonetic = dto.phonetic?.trim();
-
-    // Auto lookup phonetic if missing
-    if (!phonetic) {
-      const dictRes = await this.dictionaryService.lookup(term, 'en');
-      if (dictRes?.phonetic) {
-        phonetic = dictRes.phonetic;
-      }
-    }
 
     let languageId = dto.languageId;
     if (languageId) {
-      const exists = await this.prisma.language.findUnique({
-        where: { id: languageId },
-      });
+      const exists = await this.prisma.language.findUnique({ where: { id: languageId } });
       if (!exists) languageId = undefined;
     }
 
@@ -147,30 +121,41 @@ export class VocabularyService {
     });
 
     if (!word) {
-      word = await this.prisma.wordLibrary.create({
-        data: {
-          term,
-          languageId,
-          phonetic: phonetic || undefined,
-          partOfSpeech: dto.partOfSpeech,
-          definition: dto.definition,
-          example: dto.example,
-          audioUrl: dto.audioUrl,
-        },
-      });
-    } else if (
-      (!word.definition && dto.definition) ||
-      (!word.example && dto.example) ||
-      (!word.phonetic && phonetic)
-    ) {
-      word = await this.prisma.wordLibrary.update({
-        where: { id: word.id },
-        data: {
-          phonetic: word.phonetic || phonetic,
-          definition: word.definition || dto.definition,
-          example: word.example || dto.example,
-        },
-      });
+      try {
+        word = await this.prisma.wordLibrary.create({
+          data: {
+            term,
+            languageId,
+            phonetic: dto.phonetic,
+            partOfSpeech: dto.partOfSpeech,
+            definition: dto.definition,
+            example: dto.example,
+            audioUrl: dto.audioUrl,
+          },
+        });
+      } catch {
+        word = await this.prisma.wordLibrary.findFirst({
+          where: { term: { equals: term, mode: 'insensitive' }, languageId },
+        });
+        if (!word) {
+          throw new NotFoundException('Không thể lưu từ vựng vào thư viện');
+        }
+      }
+    } else {
+      // Cập nhật thông tin bổ sung nếu trước đó còn thiếu
+      const updateData: Prisma.WordLibraryUpdateInput = {};
+      if (!word.phonetic && dto.phonetic) updateData.phonetic = dto.phonetic;
+      if (!word.partOfSpeech && dto.partOfSpeech) updateData.partOfSpeech = dto.partOfSpeech;
+      if (!word.definition && dto.definition) updateData.definition = dto.definition;
+      if (!word.example && dto.example) updateData.example = dto.example;
+      if (!word.audioUrl && dto.audioUrl) updateData.audioUrl = dto.audioUrl;
+
+      if (Object.keys(updateData).length > 0) {
+        word = await this.prisma.wordLibrary.update({
+          where: { id: word.id },
+          data: updateData,
+        });
+      }
     }
 
     const existing = await this.prisma.userSavedWord.findUnique({
@@ -183,9 +168,7 @@ export class VocabularyService {
         where: { id: existing.id },
         data: {
           createdAt: new Date(),
-          ...(dto.personalNote !== undefined
-            ? { personalNote: dto.personalNote }
-            : {}),
+          ...(dto.personalNote !== undefined ? { personalNote: dto.personalNote } : {}),
           ...(dto.status ? { status: dto.status } : {}),
         },
         include: { word: { include: { language: true } } },
@@ -210,10 +193,7 @@ export class VocabularyService {
       }),
     ]);
 
-    if (
-      !updatedWord.isPublic &&
-      updatedWord.saveCount >= WORD_LIBRARY_PUBLIC_THRESHOLD
-    ) {
+    if (!updatedWord.isPublic && updatedWord.saveCount >= WORD_LIBRARY_PUBLIC_THRESHOLD) {
       await this.prisma.wordLibrary.update({
         where: { id: word.id },
         data: { isPublic: true },
@@ -237,67 +217,32 @@ export class VocabularyService {
   }
 
   // FS-23 — sổ từ của tôi, lọc theo status & search query nếu có
-  async myWords(userId: number, status?: string, search?: string) {
-    const list = await this.prisma.userSavedWord.findMany({
-      where: {
-        userId,
-        ...(status ? { status } : {}),
-        ...(search
-          ? {
-              OR: [
-                {
-                  word: {
-                    term: { contains: search.trim(), mode: 'insensitive' },
-                  },
-                },
-                {
-                  personalNote: {
-                    contains: search.trim(),
-                    mode: 'insensitive',
-                  },
-                },
-              ],
-            }
-          : {}),
-      },
+  myWords(userId: number, status?: string, search?: string) {
+    const where: Prisma.UserSavedWordWhereInput = {
+      userId,
+      ...(status ? { status } : {}),
+      ...(search
+        ? {
+            OR: [
+              { word: { term: { contains: search.trim(), mode: 'insensitive' } } },
+              { personalNote: { contains: search.trim(), mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    return this.prisma.userSavedWord.findMany({
+      where,
       include: { word: { include: { language: true } } },
       orderBy: { createdAt: 'desc' },
     });
-
-    // Auto-backfill phonetics for words saved previously without phonetic
-    const unphoneticWords = list.filter((item) => !item.word.phonetic);
-    if (unphoneticWords.length > 0) {
-      await Promise.all(
-        unphoneticWords.map(async (item) => {
-          try {
-            const dictResult = await this.dictionaryService.lookup(
-              item.word.term,
-              item.word.language?.code || 'en',
-            );
-            if (dictResult?.phonetic) {
-              await this.prisma.wordLibrary.update({
-                where: { id: item.word.id },
-                data: { phonetic: dictResult.phonetic },
-              });
-              item.word.phonetic = dictResult.phonetic;
-            }
-          } catch {
-            // Ignore error
-          }
-        }),
-      );
-    }
-
-    return list;
   }
 
   // Cập nhật trạng thái từ vựng (learning ↔ mastered)
   async updateWordStatus(userId: number, id: number, status: string) {
     const item = await this.prisma.userSavedWord.findUnique({ where: { id } });
     if (!item || item.userId !== userId) {
-      throw new NotFoundException(
-        'Không tìm thấy từ vựng trong sổ tay của bạn.',
-      );
+      throw new NotFoundException('Không tìm thấy từ vựng trong sổ tay của bạn.');
     }
 
     const updated = await this.prisma.userSavedWord.update({
@@ -336,11 +281,7 @@ export class VocabularyService {
   }
 
   // FS-24 — member bổ sung định nghĩa/ví dụ; lưu updated_by để Admin revert nếu spam
-  async updateLibraryWord(
-    userId: number,
-    id: number,
-    dto: UpdateLibraryWordDto,
-  ) {
+  async updateLibraryWord(userId: number, id: number, dto: UpdateLibraryWordDto) {
     const word = await this.prisma.wordLibrary.findUnique({ where: { id } });
     if (!word) throw new NotFoundException('Không tìm thấy từ trong thư viện');
 

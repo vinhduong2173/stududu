@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { LanguageRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -45,12 +41,7 @@ export class UserService {
         matchPreference: true,
       },
     });
-    if (!user)
-      throw new NotFoundException(
-        this.i18n.t('translation.user.notFound', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+    if (!user) throw new NotFoundException(this.i18n.t('translation.user.notFound', { lang: I18nContext.current()?.lang }));
     return user;
   }
 
@@ -73,36 +64,15 @@ export class UserService {
         interests: { include: { topic: true } },
       },
     });
-    if (!user)
-      throw new NotFoundException(
-        this.i18n.t('translation.user.lockedOrNotExist', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+    if (!user) throw new NotFoundException(this.i18n.t('translation.user.lockedOrNotExist', { lang: I18nContext.current()?.lang }));
     return user;
   }
 
   updateProfile(userId: number, dto: UpdateProfileDto) {
-    const { dob, gender, ...rest } = dto;
-    let normGender = gender;
-    if (gender) {
-      const g = gender.toLowerCase().trim();
-      normGender =
-        g === 'nam'
-          ? 'male'
-          : g === 'nữ'
-            ? 'female'
-            : g === 'khác'
-              ? 'other'
-              : gender;
-    }
+    const { dob, ...rest } = dto;
     return this.prisma.user.update({
       where: { id: userId },
-      data: {
-        ...rest,
-        ...(gender !== undefined ? { gender: normGender } : {}),
-        ...(dob !== undefined ? { dob: dob ? new Date(dob) : null } : {}),
-      },
+      data: { ...rest, ...(dob !== undefined ? { dob: dob ? new Date(dob) : null } : {}) },
       select: {
         id: true,
         displayName: true,
@@ -120,18 +90,10 @@ export class UserService {
   async setLanguages(userId: number, dto: SetLanguagesDto) {
     for (const item of dto.languages) {
       if (item.role === LanguageRole.learning && !item.level) {
-        throw new BadRequestException(
-          this.i18n.t('translation.user.learningNeedsLevel', {
-            lang: I18nContext.current()?.lang,
-          }),
-        );
+        throw new BadRequestException(this.i18n.t('translation.user.learningNeedsLevel', { lang: I18nContext.current()?.lang }));
       }
       if (item.role === LanguageRole.native && item.level) {
-        throw new BadRequestException(
-          this.i18n.t('translation.user.nativeNoLevel', {
-            lang: I18nContext.current()?.lang,
-          }),
-        );
+        throw new BadRequestException(this.i18n.t('translation.user.nativeNoLevel', { lang: I18nContext.current()?.lang }));
       }
     }
 
@@ -192,9 +154,7 @@ export class UserService {
     const countedConversationIds: number[] = [];
     for (const conv of conversations) {
       const partnerId =
-        conv.match.memberId === userId
-          ? conv.match.candidateId
-          : conv.match.memberId;
+        conv.match.memberId === userId ? conv.match.candidateId : conv.match.memberId;
       if (blockedWith.has(partnerId)) continue;
       conversationCount += 1;
       countedConversationIds.push(conv.id);
@@ -215,10 +175,7 @@ export class UserService {
 
     // BR-24 — chỉ cuộc gọi đã kết thúc bình thường mới tính (nhỡ/từ chối = 0 giây)
     const callTime = await this.prisma.callSession.aggregate({
-      where: {
-        conversationId: { in: countedConversationIds },
-        status: 'ended',
-      },
+      where: { conversationId: { in: countedConversationIds }, status: 'ended' },
       _sum: { durationSec: true },
     });
     totalMs += (callTime._sum.durationSec ?? 0) * 1000;
@@ -232,34 +189,17 @@ export class UserService {
   // Đổi mật khẩu trong Cài đặt — yêu cầu xác nhận mật khẩu hiện tại
   async changePassword(userId: number, dto: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user)
-      throw new NotFoundException(
-        this.i18n.t('translation.user.notFound', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+    if (!user) throw new NotFoundException(this.i18n.t('translation.user.notFound', { lang: I18nContext.current()?.lang }));
 
     if (!user.passwordHash) {
-      throw new BadRequestException(
-        this.i18n.t('translation.user.wrongCurrentPassword', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+      throw new BadRequestException(this.i18n.t('translation.user.wrongCurrentPassword', { lang: I18nContext.current()?.lang }));
     }
 
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
-    if (!valid)
-      throw new BadRequestException(
-        this.i18n.t('translation.user.wrongCurrentPassword', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+    if (!valid) throw new BadRequestException(this.i18n.t('translation.user.wrongCurrentPassword', { lang: I18nContext.current()?.lang }));
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash },
-    });
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
     return { success: true };
   }
 

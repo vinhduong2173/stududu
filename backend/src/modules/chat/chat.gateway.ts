@@ -50,9 +50,7 @@ function corsOrigins(): string[] {
   cors: { origin: corsOrigins(), credentials: true },
   maxHttpBufferSize: 2e6, // cho phép tin nhắn ảnh (data URL ~500KB sau nén)
 })
-export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
@@ -92,10 +90,7 @@ export class ChatGateway
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() body: { conversationId: number },
   ) {
-    await this.chatService.assertParticipant(
-      client.data.user.sub,
-      body.conversationId,
-    );
+    await this.chatService.assertParticipant(client.data.user.sub, body.conversationId);
     await client.join(this.room(body.conversationId));
     return { joined: body.conversationId };
   }
@@ -134,9 +129,7 @@ export class ChatGateway
       body.messageId,
       body.emoji,
     );
-    this.server
-      .to(this.room(message.conversationId))
-      .emit('message:update', message);
+    this.server.to(this.room(message.conversationId)).emit('message:update', message);
     return message;
   }
 
@@ -144,17 +137,14 @@ export class ChatGateway
   @SubscribeMessage('schedule:respond')
   async respondSchedule(
     @ConnectedSocket() client: AuthedSocket,
-    @MessageBody()
-    body: { messageId: number; response: 'accepted' | 'declined' },
+    @MessageBody() body: { messageId: number; response: 'accepted' | 'declined' },
   ) {
     const message = await this.chatService.respondSchedule(
       client.data.user.sub,
       body.messageId,
       body.response,
     );
-    this.server
-      .to(this.room(message.conversationId))
-      .emit('message:update', message);
+    this.server.to(this.room(message.conversationId)).emit('message:update', message);
     return message;
   }
 
@@ -177,14 +167,11 @@ export class ChatGateway
    * nên gói lại thành ack `{ ok: false, error }` để client hiện đúng thông báo
    * thay vì im lặng treo màn "đang gọi".
    */
-  private async ack<T extends object>(
-    fn: () => Promise<T>,
-  ): Promise<CallAck<T>> {
+  private async ack<T extends object>(fn: () => Promise<T>): Promise<CallAck<T>> {
     try {
       return { ok: true, ...(await fn()) };
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Không thực hiện được';
+      const message = err instanceof Error ? err.message : 'Không thực hiện được';
       this.logger.warn(`call event lỗi: ${message}`);
       return { ok: false, error: message };
     }
@@ -210,10 +197,7 @@ export class ChatGateway
   }
 
   @SubscribeMessage('call:reject')
-  async callReject(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: CallIdPayload,
-  ) {
+  async callReject(@ConnectedSocket() client: AuthedSocket, @MessageBody() body: CallIdPayload) {
     return this.ack(async () => {
       await this.callsService.reject(client.data.user.sub, body.callId);
       return {};
@@ -221,10 +205,7 @@ export class ChatGateway
   }
 
   @SubscribeMessage('call:cancel')
-  async callCancel(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: CallIdPayload,
-  ) {
+  async callCancel(@ConnectedSocket() client: AuthedSocket, @MessageBody() body: CallIdPayload) {
     return this.ack(async () => {
       await this.callsService.cancel(client.data.user.sub, body.callId);
       return {};
@@ -232,10 +213,7 @@ export class ChatGateway
   }
 
   @SubscribeMessage('call:end')
-  async callEnd(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: CallIdPayload,
-  ) {
+  async callEnd(@ConnectedSocket() client: AuthedSocket, @MessageBody() body: CallIdPayload) {
     return this.ack(async () => {
       await this.callsService.end(client.data.user.sub, body.callId);
       return {};
@@ -243,10 +221,7 @@ export class ChatGateway
   }
 
   @SubscribeMessage('call:ice-candidate')
-  async callIce(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: CallIcePayload,
-  ) {
+  async callIce(@ConnectedSocket() client: AuthedSocket, @MessageBody() body: CallIcePayload) {
     return this.ack(async () => {
       await this.callsService.relayIce(client.data.user.sub, body);
       return {};
@@ -275,9 +250,7 @@ export class ChatGateway
     setImmediate(() => {
       void this.callsService
         .handleUserDisconnect(userId)
-        .catch((err) =>
-          this.logger.error(`Dọn cuộc gọi khi disconnect: ${String(err)}`),
-        );
+        .catch((err) => this.logger.error(`Dọn cuộc gọi khi disconnect: ${String(err)}`));
     });
   }
 

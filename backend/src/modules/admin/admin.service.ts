@@ -33,9 +33,7 @@ export class AdminService {
       where: status ? { status } : undefined,
       include: {
         reporter: { select: { id: true, displayName: true, email: true } },
-        reported: {
-          select: { id: true, displayName: true, email: true, status: true },
-        },
+        reported: { select: { id: true, displayName: true, email: true, status: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -44,17 +42,9 @@ export class AdminService {
   // Dashboard Stats cho Admin
   async getDashboardStats() {
     const now = new Date();
-    const startOfWeek = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() - now.getDay(),
-    );
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     const [
       totalUsers,
@@ -80,15 +70,7 @@ export class AdminService {
         orderBy: { createdAt: 'desc' },
         include: {
           reporter: { select: { id: true, displayName: true, email: true } },
-          reported: {
-            select: {
-              id: true,
-              displayName: true,
-              email: true,
-              avatarUrl: true,
-              status: true,
-            },
-          },
+          reported: { select: { id: true, displayName: true, email: true, avatarUrl: true, status: true } },
         },
       }),
       this.prisma.user.findMany({
@@ -105,8 +87,7 @@ export class AdminService {
     ]);
 
     const previousUsers = totalUsers - usersThisWeek;
-    const userGrowthWeeklyPercent =
-      previousUsers > 0 ? (usersThisWeek / previousUsers) * 100 : 0;
+    const userGrowthWeeklyPercent = previousUsers > 0 ? (usersThisWeek / previousUsers) * 100 : 0;
 
     return {
       totalUsers,
@@ -163,23 +144,13 @@ export class AdminService {
   }
 
   updateReportStatus(reportId: number, status: ReportStatus) {
-    return this.prisma.report.update({
-      where: { id: reportId },
-      data: { status },
-    });
+    return this.prisma.report.update({ where: { id: reportId }, data: { status } });
   }
 
   // US-20 — vô hiệu hóa theo mức độ / xóa cứng khi tái phạm + ghi log kiểm duyệt
   async moderate(adminId: number, targetUserId: number, dto: ModerateDto) {
-    const target = await this.prisma.user.findUnique({
-      where: { id: targetUserId },
-    });
-    if (!target)
-      throw new NotFoundException(
-        this.i18n.t('translation.admin.userNotFound', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!target) throw new NotFoundException(this.i18n.t('translation.admin.userNotFound', { lang: I18nContext.current()?.lang }));
 
     const userUpdate = this.buildUserUpdate(dto.action);
 
@@ -193,12 +164,7 @@ export class AdminService {
         data: { status: ReportStatus.reviewed },
       }),
       ...(userUpdate
-        ? [
-            this.prisma.user.update({
-              where: { id: targetUserId },
-              data: userUpdate,
-            }),
-          ]
+        ? [this.prisma.user.update({ where: { id: targetUserId }, data: userUpdate })]
         : []),
     ]);
 
@@ -232,12 +198,7 @@ export class AdminService {
         _count: { select: { reportsReceived: true, reportsSent: true } },
       },
     });
-    if (!user)
-      throw new NotFoundException(
-        this.i18n.t('translation.admin.userNotFound', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+    if (!user) throw new NotFoundException(this.i18n.t('translation.admin.userNotFound', { lang: I18nContext.current()?.lang }));
     return user;
   }
 
@@ -266,9 +227,7 @@ export class AdminService {
     return this.prisma.topic.update({ where: { id }, data: dto });
   }
 
-  private buildUserUpdate(
-    action: ModerationActionType,
-  ): Prisma.UserUpdateInput | null {
+  private buildUserUpdate(action: ModerationActionType): Prisma.UserUpdateInput | null {
     const suspendMs = SUSPEND_DURATIONS[action];
     if (suspendMs) {
       return {

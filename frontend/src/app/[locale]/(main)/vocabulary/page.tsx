@@ -23,7 +23,6 @@ import { api } from "@/lib/api";
 import { type SavedWord } from "@/components/features/WordSaveModal";
 import { useToast } from "@/components/features/TrustDialogs";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
 
 // Web Speech API helper for TTS audio pronunciation
 const speakWord = (text: string, langCode: string = "en-US") => {
@@ -121,7 +120,6 @@ type ReviewMode = "learning_only" | "all";
 type ListFilterType = "all" | "new" | "learning" | "mastered";
 
 export default function VocabularyPage() {
-  const t = useTranslations();
   const { show: showToast, toast } = useToast();
   const [words, setWords] = React.useState<SavedWord[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -716,20 +714,16 @@ export default function VocabularyPage() {
                   </button>
                 </div>
 
-                {activeQuizWord.word.phonetic ? (
-                  <p className="text-base font-extrabold text-primary pt-1">
-                    {activeQuizWord.word.phonetic}
-                    {activeQuizWord.word.partOfSpeech && (
-                      <span className="text-xs font-medium text-muted italic ml-2">
-                        • {activeQuizWord.word.partOfSpeech}
-                      </span>
-                    )}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted font-medium pt-1">
-                    {t("quiz_hint_prompt")}
-                  </p>
-                )}
+                <p className="text-sm font-semibold text-rose-500">
+                  {activeQuizWord.word.phonetic || "/ˌser.ənˈdɪp.ə.ti/"}
+                  {activeQuizWord.word.partOfSpeech && (
+                    <span className="text-muted"> · {activeQuizWord.word.partOfSpeech}</span>
+                  )}
+                </p>
+
+                <p className="text-xs text-muted font-medium pt-1">
+                  👉 Chọn 1 đáp án nghĩa tiếng Việt đúng nhất ở bên dưới:
+                </p>
               </div>
 
               {/* 4 MULTIPLE CHOICE OPTIONS GRID */}
@@ -891,11 +885,6 @@ export default function VocabularyPage() {
                         <span className="font-extrabold text-foreground text-base">
                           {item.word.term}
                         </span>
-                        {item.word.phonetic && (
-                          <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
-                            {item.word.phonetic}
-                          </span>
-                        )}
                         {item.word.partOfSpeech && (
                           <span className="text-xs italic text-muted">
                             {item.word.partOfSpeech}

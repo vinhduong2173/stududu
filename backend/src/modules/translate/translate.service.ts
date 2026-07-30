@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TranslateDto } from './dto/translate.dto';
 
@@ -61,9 +57,7 @@ export class TranslateService {
     if (apiKey) {
       try {
         // Use official Google Translate API v2
-        const url = new URL(
-          'https://translation.googleapis.com/language/translate/v2',
-        );
+        const url = new URL('https://translation.googleapis.com/language/translate/v2');
         url.searchParams.append('key', apiKey);
         url.searchParams.append('q', dto.text);
         url.searchParams.append('target', target);
@@ -71,25 +65,19 @@ export class TranslateService {
           url.searchParams.append('source', source);
         }
 
-        const res = await fetch(url.toString(), {
-          signal: AbortSignal.timeout(5000),
-        });
+        const res = await fetch(url.toString(), { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
-          const data = await res.json();
+          const data = (await res.json()) as any;
           const translations = data?.data?.translations;
           if (translations && translations[0]) {
             translation = translations[0].translatedText;
             detectedSource = translations[0].detectedSourceLanguage || source;
           }
         } else {
-          this.logger.warn(
-            `Google Translate API error: status ${res.status}, falling back to MyMemory`,
-          );
+          this.logger.warn(`Google Translate API error: status ${res.status}, falling back to MyMemory`);
         }
       } catch (err) {
-        this.logger.warn(
-          `Google Translate API error: ${(err as Error).message}, falling back to MyMemory`,
-        );
+        this.logger.warn(`Google Translate API error: ${(err as Error).message}, falling back to MyMemory`);
       }
     }
 
@@ -99,26 +87,21 @@ export class TranslateService {
         const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(source)}&tl=${encodeURIComponent(target)}&dt=t&q=${encodeURIComponent(dto.text)}`;
         const res = await fetch(gtxUrl, { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
-          const data = await res.json();
+          const data = (await res.json()) as any;
           const translatedText = data?.[0]?.map((x: any) => x[0]).join('');
           if (translatedText) {
             translation = translatedText;
-            detectedSource =
-              data?.[2] ||
-              (source === 'auto' ? this.detectLang(dto.text) : source);
+            detectedSource = data?.[2] || (source === 'auto' ? this.detectLang(dto.text) : source);
           }
         }
       } catch (err) {
-        this.logger.warn(
-          `Google GTX translate error: ${(err as Error).message}`,
-        );
+        this.logger.warn(`Google GTX translate error: ${(err as Error).message}`);
       }
     }
 
     // Fallback 2: MyMemory
     if (!translation) {
-      const fallbackSource =
-        source === 'auto' ? this.detectLang(dto.text) : source;
+      const fallbackSource = source === 'auto' ? this.detectLang(dto.text) : source;
       if (fallbackSource === target) {
         return { translation: dto.text, source: fallbackSource, target };
       }
@@ -135,9 +118,7 @@ export class TranslateService {
         detectedSource = fallbackSource;
       } catch (err) {
         this.logger.warn(`MyMemory fallback failed: ${(err as Error).message}`);
-        throw new ServiceUnavailableException(
-          'Dịch vụ dịch tạm thời không khả dụng, thử lại sau',
-        );
+        throw new ServiceUnavailableException('Dịch vụ dịch tạm thời không khả dụng, thử lại sau');
       }
     }
 
@@ -152,20 +133,12 @@ export class TranslateService {
       this.cache.set(cacheKey, { result: translation, ts: Date.now() });
     }
 
-    return {
-      translation,
-      source: source === 'auto' ? detectedSource : source,
-      target,
-    };
+    return { translation, source: source === 'auto' ? detectedSource : source, target };
   }
 
   // Nhận diện thô khi source = auto: dấu tiếng Việt / chữ CJK / mặc định English
   private detectLang(text: string): string {
-    if (
-      /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(
-        text,
-      )
-    ) {
+    if (/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(text)) {
       return 'vi';
     }
     if (/[぀-ヿ]/.test(text)) return 'ja';
@@ -174,3 +147,4 @@ export class TranslateService {
     return 'en';
   }
 }
+

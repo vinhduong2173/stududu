@@ -87,8 +87,7 @@ export class ChatService {
 
     return conversations
       .map((c) => {
-        const partner =
-          c.match.memberId === userId ? c.match.candidate : c.match.member;
+        const partner = c.match.memberId === userId ? c.match.candidate : c.match.member;
         return {
           id: c.id,
           partner,
@@ -126,11 +125,7 @@ export class ChatService {
       select: { status: true },
     });
     if (sender?.status !== 'active') {
-      throw new ForbiddenException(
-        this.i18n.t('translation.auth.suspendedNoChat', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+      throw new ForbiddenException(this.i18n.t('translation.auth.suspendedNoChat', { lang: I18nContext.current()?.lang }));
     }
 
     await this.assertParticipant(userId, conversationId);
@@ -143,15 +138,10 @@ export class ChatService {
           senderId: userId,
           content,
           type,
-          payload: payload
-            ? (payload as unknown as Prisma.InputJsonValue)
-            : undefined,
+          payload: payload ? (payload as unknown as Prisma.InputJsonValue) : undefined,
         },
       }),
-      this.prisma.user.update({
-        where: { id: userId },
-        data: { lastActive: new Date() },
-      }),
+      this.prisma.user.update({ where: { id: userId }, data: { lastActive: new Date() } }),
     ]);
 
     // FS-25 — kiểm tra mốc giờ chat (fire-and-forget, chỉ ~1/10 tin để nhẹ DB)
@@ -165,25 +155,13 @@ export class ChatService {
   // FS-14 — toggle reaction emoji trên tin nhắn (tập cố định REACTION_EMOJIS)
   async toggleReaction(userId: number, messageId: number, emoji: string) {
     if (!REACTION_EMOJIS.includes(emoji as (typeof REACTION_EMOJIS)[number])) {
-      throw new BadRequestException(
-        this.i18n.t('translation.chat.invalidEmoji', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+      throw new BadRequestException(this.i18n.t('translation.chat.invalidEmoji', { lang: I18nContext.current()?.lang }));
     }
-    const message = await this.prisma.message.findUnique({
-      where: { id: messageId },
-    });
-    if (!message)
-      throw new NotFoundException(
-        this.i18n.t('translation.chat.messageNotFound', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    if (!message) throw new NotFoundException(this.i18n.t('translation.chat.messageNotFound', { lang: I18nContext.current()?.lang }));
     await this.assertParticipant(userId, message.conversationId);
 
-    const reactions =
-      (message.reactions as Record<string, number[]> | null) ?? {};
+    const reactions = (message.reactions as Record<string, number[]> | null) ?? {};
     const users = new Set(reactions[emoji] ?? []);
     if (users.has(userId)) users.delete(userId);
     else users.add(userId);
@@ -193,7 +171,7 @@ export class ChatService {
 
     return this.prisma.message.update({
       where: { id: messageId },
-      data: { reactions: reactions },
+      data: { reactions: reactions as unknown as Prisma.InputJsonValue },
     });
   }
 
@@ -206,8 +184,7 @@ export class ChatService {
     if (!user?.shareActivity) return;
 
     const hours = await this.computeChatHours(userId);
-    const milestone =
-      Math.floor(hours / CHAT_HOURS_MILESTONE_STEP) * CHAT_HOURS_MILESTONE_STEP;
+    const milestone = Math.floor(hours / CHAT_HOURS_MILESTONE_STEP) * CHAT_HOURS_MILESTONE_STEP;
     if (milestone < CHAT_HOURS_MILESTONE_STEP) return;
 
     const lastPost = await this.prisma.activityPost.findFirst({
@@ -218,11 +195,7 @@ export class ChatService {
     if (milestone <= lastMilestone) return;
 
     await this.prisma.activityPost.create({
-      data: {
-        userId,
-        type: 'chat_hours_milestone',
-        contentRef: String(milestone),
-      },
+      data: { userId, type: 'chat_hours_milestone', contentRef: String(milestone) },
     });
   }
 
@@ -231,9 +204,7 @@ export class ChatService {
   private async computeChatHours(userId: number): Promise<number> {
     const conversations = await this.prisma.conversation.findMany({
       where: { match: { OR: [{ memberId: userId }, { candidateId: userId }] } },
-      include: {
-        messages: { orderBy: { sentAt: 'asc' }, select: { sentAt: true } },
-      },
+      include: { messages: { orderBy: { sentAt: 'asc' }, select: { sentAt: true } } },
     });
 
     let totalMs = 0;
@@ -255,9 +226,7 @@ export class ChatService {
     const callTime = await this.prisma.callSession.aggregate({
       where: {
         status: 'ended',
-        conversation: {
-          match: { OR: [{ memberId: userId }, { candidateId: userId }] },
-        },
+        conversation: { match: { OR: [{ memberId: userId }, { candidateId: userId }] } },
       },
       _sum: { durationSec: true },
     });
@@ -267,43 +236,25 @@ export class ChatService {
   }
 
   // Đối tác phản hồi lời mời hẹn giờ (accepted/declined)
-  async respondSchedule(
-    userId: number,
-    messageId: number,
-    response: 'accepted' | 'declined',
-  ) {
-    const message = await this.prisma.message.findUnique({
-      where: { id: messageId },
-    });
+  async respondSchedule(userId: number, messageId: number, response: 'accepted' | 'declined') {
+    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
     if (!message || message.type !== MessageType.schedule) {
-      throw new NotFoundException(
-        this.i18n.t('translation.chat.scheduleNotFound', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+      throw new NotFoundException(this.i18n.t('translation.chat.scheduleNotFound', { lang: I18nContext.current()?.lang }));
     }
     await this.assertParticipant(userId, message.conversationId);
     if (message.senderId === userId) {
-      throw new BadRequestException(
-        this.i18n.t('translation.chat.noSelfScheduleRespond', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+      throw new BadRequestException(this.i18n.t('translation.chat.noSelfScheduleRespond', { lang: I18nContext.current()?.lang }));
     }
 
     const payload = message.payload as unknown as ScheduleMessagePayload;
     if (payload.status !== 'pending') {
-      throw new BadRequestException(
-        this.i18n.t('translation.chat.alreadyResponded', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
+      throw new BadRequestException(this.i18n.t('translation.chat.alreadyResponded', { lang: I18nContext.current()?.lang }));
     }
 
     return this.prisma.message.update({
       where: { id: messageId },
       data: {
-        payload: { ...payload, status: response },
+        payload: { ...payload, status: response } as unknown as Prisma.InputJsonValue,
       },
     });
   }
@@ -315,43 +266,27 @@ export class ChatService {
   ): void {
     const lang = I18nContext.current()?.lang;
     if (type === MessageType.text) {
-      if (!content.trim())
-        throw new BadRequestException(
-          this.i18n.t('translation.chat.emptyMessage', { lang }),
-        );
+      if (!content.trim()) throw new BadRequestException(this.i18n.t('translation.chat.emptyMessage', { lang }));
       if (content.length > MAX_TEXT_LENGTH) {
-        throw new BadRequestException(
-          this.i18n.t('translation.chat.messageTooLong', {
-            lang,
-            args: { max: MAX_TEXT_LENGTH },
-          }),
-        );
+        throw new BadRequestException(this.i18n.t('translation.chat.messageTooLong', { lang, args: { max: MAX_TEXT_LENGTH } }));
       }
     } else if (type === MessageType.image) {
       if (!content.startsWith('data:image/')) {
-        throw new BadRequestException(
-          this.i18n.t('translation.chat.invalidImage', { lang }),
-        );
+        throw new BadRequestException(this.i18n.t('translation.chat.invalidImage', { lang }));
       }
       if (content.length > MAX_IMAGE_DATA_URL_LENGTH) {
-        throw new BadRequestException(
-          this.i18n.t('translation.chat.imageTooLarge', { lang }),
-        );
+        throw new BadRequestException(this.i18n.t('translation.chat.imageTooLarge', { lang }));
       }
     } else if (type === MessageType.call) {
       // BR-25 — chỉ CallsService được sinh tin nhắn tổng kết cuộc gọi; nếu không
       // client tự bịa được "cuộc gọi 30 phút" và làm sai giờ chat (BR-24).
-      throw new BadRequestException(
-        this.i18n.t('translation.chat.callMessageNotAllowed', { lang }),
-      );
+      throw new BadRequestException(this.i18n.t('translation.chat.callMessageNotAllowed', { lang }));
     } else if (type === MessageType.schedule) {
       // FS-28: bản mới cần requestId + timeUtc; bản cũ cần slotId + labels
       const isNewShape = Boolean(payload?.requestId && payload?.timeUtc);
       const isLegacyShape = Boolean(payload?.slotId && payload?.myTimeLabel);
       if (!isNewShape && !isLegacyShape) {
-        throw new BadRequestException(
-          this.i18n.t('translation.chat.missingScheduleInfo', { lang }),
-        );
+        throw new BadRequestException(this.i18n.t('translation.chat.missingScheduleInfo', { lang }));
       }
     }
   }
@@ -366,25 +301,17 @@ export class ChatService {
   }
 
   // Chỉ 2 thành viên của match được vào hội thoại; chặn nếu đã block nhau (US-18 AC2)
-  async assertParticipant(
-    userId: number,
-    conversationId: number,
-  ): Promise<void> {
+  async assertParticipant(userId: number, conversationId: number): Promise<void> {
     const lang = I18nContext.current()?.lang;
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: { match: true },
     });
-    if (!conversation)
-      throw new NotFoundException(
-        this.i18n.t('translation.chat.conversationNotFound', { lang }),
-      );
+    if (!conversation) throw new NotFoundException(this.i18n.t('translation.chat.conversationNotFound', { lang }));
 
     const { memberId, candidateId } = conversation.match;
     if (userId !== memberId && userId !== candidateId) {
-      throw new ForbiddenException(
-        this.i18n.t('translation.chat.notInConversation', { lang }),
-      );
+      throw new ForbiddenException(this.i18n.t('translation.chat.notInConversation', { lang }));
     }
 
     const partnerId = userId === memberId ? candidateId : memberId;
@@ -396,9 +323,6 @@ export class ChatService {
         ],
       },
     });
-    if (blocked)
-      throw new ForbiddenException(
-        this.i18n.t('translation.chat.blockedUser', { lang }),
-      );
+    if (blocked) throw new ForbiddenException(this.i18n.t('translation.chat.blockedUser', { lang }));
   }
 }
