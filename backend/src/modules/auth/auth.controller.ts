@@ -1,4 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Request, Res, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Request,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { LocalAuthGuard } from '../../common/guards/local-auth.guard';
 import { GoogleAuthGuard } from '../../common/guards/google-auth.guard';
 import { AuthService } from './auth.service';
@@ -33,6 +44,15 @@ export class AuthController {
     return this.authService.refresh(dto.refreshToken);
   }
 
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  async googlePostLogin(@Body('idToken') idToken?: string) {
+    if (!idToken) {
+      throw new BadRequestException('Trường idToken không được để trống.');
+    }
+    return this.authService.googleLoginToken(idToken);
+  }
+
   @Get('google')
   @UseGuards(GoogleAuthGuard)
   googleLogin() {
@@ -43,7 +63,8 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Request() req: any, @Res() res: any) {
     const loginResult = await this.authService.googleLogin(req.user);
-    const frontendUrl = this.config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3000';
+    const frontendUrl =
+      this.config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3000';
     const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${loginResult.tokens.accessToken}&refreshToken=${loginResult.tokens.refreshToken}`;
     return res.redirect(redirectUrl);
   }

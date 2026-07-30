@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { UserStatus } from '@prisma/client';
@@ -25,7 +29,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const lang = I18nContext.current()?.lang;
 
     if (!payload.sub) {
-      throw new UnauthorizedException(this.i18n.t('translation.auth.invalidToken', { lang }));
+      throw new UnauthorizedException(
+        this.i18n.t('translation.auth.invalidToken', { lang }),
+      );
     }
 
     // US-20 AC1 — tài khoản bị khóa/xóa không dùng được API dù token còn hạn
@@ -34,7 +40,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       select: { status: true, suspendedUntil: true },
     });
     if (!user || user.status === UserStatus.deleted) {
-      throw new UnauthorizedException(this.i18n.t('translation.auth.accountDeleted', { lang }));
+      throw new UnauthorizedException(
+        this.i18n.t('translation.auth.accountDeleted', { lang }),
+      );
     }
     if (user.status === UserStatus.suspended) {
       // hết hạn khóa → tự kích hoạt lại
@@ -53,7 +61,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
               hour: '2-digit',
               minute: '2-digit',
             })
-          : (lang === 'en' ? 'further notice' : 'khi có thông báo mới');
+          : lang === 'en'
+            ? 'further notice'
+            : 'khi có thông báo mới';
         throw new ForbiddenException(
           this.i18n.t('translation.auth.accountSuspended', {
             lang,

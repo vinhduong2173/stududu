@@ -1,4 +1,11 @@
-import { Controller, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { JwtPayload } from '../../common/types/jwt-payload';
@@ -16,12 +23,18 @@ export class ChatController {
   }
 
   @Get(':id/messages')
-  getMessages(@CurrentUser() user: JwtPayload, @Param('id', ParseIntPipe) id: number) {
+  getMessages(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     return this.chatService.getMessages(user.sub, id);
   }
 
   @Post(':id/read')
-  markRead(@CurrentUser() user: JwtPayload, @Param('id', ParseIntPipe) id: number) {
+  markRead(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     return this.chatService.markRead(user.sub, id);
   }
 }

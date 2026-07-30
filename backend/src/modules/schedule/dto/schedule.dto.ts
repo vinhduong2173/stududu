@@ -10,6 +10,8 @@ export class CreateScheduleDto {
 }
 
 export class RespondScheduleDto {
-  @IsIn(['accept', 'decline'], { message: 'action phải là accept hoặc decline' })
+  @IsIn(['accept', 'decline'], {
+    message: 'action phải là accept hoặc decline',
+  })
   action!: 'accept' | 'decline';
 }

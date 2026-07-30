@@ -15,16 +15,16 @@ const LANGUAGES = [
 ];
 
 const TOPICS = [
-  'Du lịch',
-  'Âm nhạc',
-  'Phim ảnh',
-  'Ẩm thực',
-  'Thể thao',
-  'Công nghệ',
-  'Sách',
-  'Game',
-  'Văn hóa',
-  'Thi cử (IELTS/TOEIC…)',
+  'Travel',
+  'Music',
+  'Movies',
+  'Food & Culinary',
+  'Sports',
+  'Technology',
+  'Books',
+  'Gaming',
+  'Culture',
+  'Exams (IELTS/TOEIC…)',
 ];
 
 async function main() {

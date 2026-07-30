@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { BookOpen, Volume2, X } from "lucide-react";
+import { BookOpen, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { WordSaveModal, type SavedWord } from "@/components/features/WordSaveModal";
@@ -19,6 +19,7 @@ type LookupResult = {
   translation: string | null;
   detectedLang: string | null;
   languageId: number;
+  phonetic?: string | null;
   dictionary: {
     phonetic: string | null;
     partOfSpeech: string | null;
@@ -27,6 +28,7 @@ type LookupResult = {
   } | null;
   library: {
     id: number;
+    phonetic: string | null;
     definition: string | null;
     example: string | null;
     languageId: number;
@@ -55,7 +57,12 @@ export function TextSelectionPopup({
   const popupRef = React.useRef<HTMLDivElement>(null);
   const abortRef = React.useRef<AbortController | null>(null);
 
-  // Lấy definition + example — ưu tiên Dictionary, fallback Library
+  // Lấy definition + example + phonetic — ưu tiên top-level / Dictionary, fallback Library
+  const phonetic =
+    result?.phonetic ??
+    result?.dictionary?.phonetic ??
+    result?.library?.phonetic ??
+    null;
   const definition =
     result?.dictionary?.definition ?? result?.library?.definition ?? null;
   const example =
@@ -70,6 +77,7 @@ export function TextSelectionPopup({
         body: {
           term: selectedText.trim(),
           languageId: result.languageId,
+          phonetic: phonetic?.trim() || undefined,
           definition: definition?.trim() || undefined,
           example: example?.trim() || undefined,
           source: "manual",
@@ -213,7 +221,6 @@ export function TextSelectionPopup({
     />
   ) : null;
 
-  const phonetic = result?.dictionary?.phonetic ?? null;
   const partOfSpeech = result?.dictionary?.partOfSpeech ?? null;
 
   return (
@@ -246,18 +253,17 @@ export function TextSelectionPopup({
               <h3 className="text-base font-bold text-foreground break-all leading-tight">
                 {selectedText}
               </h3>
+              {phonetic && (
+                <span className="text-xs font-extrabold rounded-lg px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 shrink-0">
+                  {phonetic}
+                </span>
+              )}
               {partOfSpeech && (
-                <span className="text-[10px] font-bold rounded-full px-2 py-0.5 bg-primary/10 text-primary shrink-0">
+                <span className="text-[10px] font-bold rounded-full px-2 py-0.5 bg-muted/20 text-muted shrink-0">
                   {partOfSpeech}
                 </span>
               )}
             </div>
-            {phonetic && (
-              <p className="text-xs text-muted mt-0.5 flex items-center gap-1">
-                <Volume2 className="w-3 h-3" />
-                {phonetic}
-              </p>
-            )}
           </div>
           <button
             onClick={close}

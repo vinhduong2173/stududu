@@ -8,6 +8,9 @@ export class EndorseDto {
 
   @IsArray()
   @ArrayNotEmpty({ message: 'Cần chọn ít nhất 1 nhãn ghi nhận' })
-  @IsEnum(EndorsementLabel, { each: true, message: 'Nhãn ghi nhận không hợp lệ' })
+  @IsEnum(EndorsementLabel, {
+    each: true,
+    message: 'Nhãn ghi nhận không hợp lệ',
+  })
   labels!: EndorsementLabel[];
 }

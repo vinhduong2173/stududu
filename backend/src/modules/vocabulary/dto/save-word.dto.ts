@@ -1,5 +1,12 @@
 import { SavedWordSource } from '@prisma/client';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class SaveWordDto {
   @IsString()
@@ -20,6 +27,11 @@ export class SaveWordDto {
 }
 
 export class UpdateLibraryWordDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  phonetic?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(1000)

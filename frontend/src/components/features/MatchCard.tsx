@@ -30,7 +30,10 @@ export function MatchCard({ user, whyMatched, liked, onLike, onUnlike }: MatchCa
   const t = useTranslations("discover");
   const tRoot = useTranslations();
   const [isHovered, setIsHovered] = React.useState(false);
-  const isOnline = user.lastActive ? new Date(user.lastActive).getTime() > Date.now() - 5 * 60 * 1000 : false;
+  const isOnline = React.useMemo(
+    () => (user.lastActive ? new Date(user.lastActive).getTime() > Date.now() - 5 * 60 * 1000 : false),
+    [user.lastActive]
+  );
 
   const teachLangs = user.languages.filter(l => l.role === "native" || l.role === "fluent");
   const learnLangs = user.languages.filter(l => l.role === "learning");
