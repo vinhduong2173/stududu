@@ -2,16 +2,35 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Flag, Heart, Users, Image as ImageIcon, X, MessageSquare, MoreVertical, Edit, Trash2 } from "lucide-react";
+import {
+  Flag,
+  Heart,
+  Users,
+  Image as ImageIcon,
+  X,
+  MessageSquare,
+  MoreVertical,
+  Edit,
+  Trash2,
+  BookOpen,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Bookmark,
+  Check,
+  Sparkles,
+  Trophy,
+  HelpCircle,
+  UserPlus,
+  ArrowRight,
+  Languages,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
 import { ReportDialog, useToast } from "@/components/features/TrustDialogs";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
-
-/** FS-25 — Community feed: CHỈ bài auto-generated (từ vào thư viện chung / mốc giờ chat).
- *  Chưa có đăng bài tự do ở đợt này. */
+import { useTranslations, useLocale } from "next-intl";
 
 type FeedPost = {
   id: number;
@@ -39,6 +58,74 @@ type CommentType = {
   likedByMe: boolean;
 };
 
+type DailyWord = {
+  index: number;
+  term: string;
+  partOfSpeech: string;
+  phonetic: string;
+  definition: string;
+  example: string;
+  isSaved: boolean;
+  languageId?: number;
+};
+
+type DailyWordsResponse = {
+  language: { code: string; name: string };
+  total: number;
+  words: DailyWord[];
+};
+
+type LanguageGroupItem = {
+  id: string;
+  name: string;
+  langCode: string;
+  members: number;
+  description: string;
+  bgColor: string;
+  textColor: string;
+};
+
+function getSuggestedGroups(t: any): LanguageGroupItem[] {
+  return [
+    {
+      id: "en-learners",
+      name: "English Learners",
+      langCode: "EN",
+      members: 4210,
+      description: t("community.group_en_desc"),
+      bgColor: "bg-blue-100 dark:bg-blue-950/40",
+      textColor: "text-blue-600 dark:text-blue-400",
+    },
+    {
+      id: "ja-group",
+      name: "日本語 Group",
+      langCode: "日",
+      members: 1670,
+      description: t("community.group_ja_desc"),
+      bgColor: "bg-pink-100 dark:bg-pink-950/40",
+      textColor: "text-pink-600 dark:text-pink-400",
+    },
+    {
+      id: "ko-study",
+      name: "한국어 스터디",
+      langCode: "韓",
+      members: 980,
+      description: t("community.group_ko_desc"),
+      bgColor: "bg-purple-100 dark:bg-purple-950/40",
+      textColor: "text-purple-600 dark:text-purple-400",
+    },
+    {
+      id: "fr-practice",
+      name: "French Practice",
+      langCode: "FR",
+      members: 750,
+      description: t("community.group_fr_desc"),
+      bgColor: "bg-amber-100 dark:bg-amber-950/40",
+      textColor: "text-amber-600 dark:text-amber-400",
+    },
+  ];
+}
+
 function postText(p: FeedPost, t: any): string {
   if (p.type === "user_post") return t("community.post_share");
   if (p.type === "word_public") {
@@ -60,13 +147,67 @@ function timeAgo(iso: string, t: any): string {
 
 export default function CommunityPage() {
   const t = useTranslations();
+  const locale = useLocale();
+  const { show: showToast, toast } = useToast();
+
+  // Navigation tab state
+  const [activeTab, setActiveTab] = React.useState<"feed" | "groups" | "events">("feed");
+
+  // Feed posts state
   const [posts, setPosts] = React.useState<FeedPost[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [reportTarget, setReportTarget] = React.useState<FeedPost | null>(null);
   const [draft, setDraft] = React.useState("");
   const [image, setImage] = React.useState<string | null>(null);
   const [posting, setPosting] = React.useState(false);
-  const { show: showToast, toast } = useToast();
+
+  // Post Translation state
+  const [translatedPosts, setTranslatedPosts] = React.useState<Record<number, string>>({});
+  const [translatingPostId, setTranslatingPostId] = React.useState<number | null>(null);
+  const [showTranslation, setShowTranslation] = React.useState<Record<number, boolean>>({});
+
+  const handleTranslatePost = async (p: FeedPost) => {
+    if (showTranslation[p.id]) {
+      setShowTranslation((prev) => ({ ...prev, [p.id]: false }));
+      return;
+    }
+    if (translatedPosts[p.id]) {
+      setShowTranslation((prev) => ({ ...prev, [p.id]: true }));
+      return;
+    }
+
+    const textToTranslate =
+      p.type === "user_post" && p.content
+        ? p.content
+        : p.word
+        ? `${p.word.term} (${p.word.language.name})`
+        : p.contentRef || "";
+
+    if (!textToTranslate.trim()) return;
+
+    setTranslatingPostId(p.id);
+    try {
+      const res = await api<{ translation: string }>("/translate", {
+        method: "POST",
+        body: { text: textToTranslate, target: locale === "en" ? "en" : "vi", source: "auto" },
+      });
+      setTranslatedPosts((prev) => ({ ...prev, [p.id]: res.translation }));
+      setShowTranslation((prev) => ({ ...prev, [p.id]: true }));
+    } catch (err) {
+      console.error(err);
+      showToast("Dịch thất bại, thử lại sau");
+    } finally {
+      setTranslatingPostId(null);
+    }
+  };
+
+  // Daily New Vocabulary state
+  const [dailyWordsData, setDailyWordsData] = React.useState<DailyWordsResponse | null>(null);
+  const [vocabIndex, setVocabIndex] = React.useState(0);
+  const [savingVocab, setSavingVocab] = React.useState(false);
+
+  // Group join toggle state
+  const [joinedGroups, setJoinedGroups] = React.useState<Record<string, boolean>>({});
 
   // Comments state
   const [expandedPostId, setExpandedPostId] = React.useState<number | null>(null);
@@ -87,14 +228,21 @@ export default function CommunityPage() {
   const [deleting, setDeleting] = React.useState(false);
 
   React.useEffect(() => {
+    // Load community feed
     api<FeedPost[]>("/community/feed")
       .then(setPosts)
       .catch(console.error)
       .finally(() => setLoading(false));
 
+    // Load current user info
     api<{ id: number; displayName: string }>("/users/me")
       .then(setCurrentUser)
       .catch(console.error);
+
+    // Load Daily Vocabulary words
+    api<DailyWordsResponse>("/vocabulary/daily-words")
+      .then(setDailyWordsData)
+      .catch((err) => console.error("Error loading daily words:", err));
   }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,7 +250,7 @@ export default function CommunityPage() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      showToast("⚠️ Dung lượng ảnh không được vượt quá 2MB");
+      showToast(t("community.image_size_error"));
       return;
     }
 
@@ -113,7 +261,6 @@ export default function CommunityPage() {
     reader.readAsDataURL(file);
   };
 
-  // Đăng bài chia sẻ tự do
   const handlePost = async () => {
     const content = draft.trim();
     if (!content && !image) return;
@@ -135,6 +282,12 @@ export default function CommunityPage() {
     } finally {
       setPosting(false);
     }
+  };
+
+  const handleAddTopicChip = (chipLabel: string) => {
+    const prefix = `[${chipLabel}] `;
+    if (draft.startsWith(prefix)) return;
+    setDraft((prev) => (prev ? `${prefix}${prev}` : prefix));
   };
 
   const handleDeletePost = async (postId: number) => {
@@ -231,7 +384,7 @@ export default function CommunityPage() {
         prev.map((p) => (p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p))
       );
     } catch (err: any) {
-      showToast(err.message || "Không gửi được bình luận");
+      showToast(err.message || t("community.comment_error"));
     } finally {
       setPostingComment(false);
     }
@@ -257,8 +410,6 @@ export default function CommunityPage() {
   const handleDeleteComment = async (postId: number, commentId: number) => {
     try {
       await api(`/community/comments/${commentId}`, { method: "DELETE" });
-      
-      // Calculate deleted count (comment + replies)
       const deletedComments = comments.filter((c) => c.id === commentId || c.parentId === commentId);
       const deletedCount = deletedComments.length;
 
@@ -274,6 +425,80 @@ export default function CommunityPage() {
     } catch (err: any) {
       showToast(err.message || "Không thể xóa bình luận");
     }
+  };
+
+  const toggleLike = async (post: FeedPost) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === post.id
+          ? { ...p, likedByMe: !p.likedByMe, likeCount: p.likeCount + (p.likedByMe ? -1 : 1) }
+          : p
+      )
+    );
+    try {
+      await api(`/community/posts/${post.id}/like`, {
+        method: post.likedByMe ? "DELETE" : "POST",
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Daily Vocabulary Navigation & Save Handlers
+  const currentWord = dailyWordsData && dailyWordsData.words.length > 0
+    ? dailyWordsData.words[vocabIndex % dailyWordsData.words.length]
+    : null;
+
+  const handleNextVocab = () => {
+    if (!dailyWordsData || dailyWordsData.words.length === 0) return;
+    setVocabIndex((prev) => (prev + 1) % dailyWordsData.words.length);
+  };
+
+  const handlePrevVocab = () => {
+    if (!dailyWordsData || dailyWordsData.words.length === 0) return;
+    setVocabIndex((prev) => (prev - 1 + dailyWordsData.words.length) % dailyWordsData.words.length);
+  };
+
+  const handleSaveCurrentVocab = async () => {
+    if (!currentWord) return;
+    setSavingVocab(true);
+    try {
+      await api("/vocabulary/save-word", {
+        method: "POST",
+        body: {
+          term: currentWord.term,
+          languageId: currentWord.languageId,
+          phonetic: currentWord.phonetic,
+          partOfSpeech: currentWord.partOfSpeech,
+          definition: currentWord.definition,
+          example: currentWord.example,
+          source: "manual",
+        },
+      });
+      showToast(`✅ ${t("vocabulary.save_success", { term: currentWord.term })}`);
+      setDailyWordsData((prev) => {
+        if (!prev) return prev;
+        const updatedWords = [...prev.words];
+        updatedWords[vocabIndex] = { ...updatedWords[vocabIndex], isSaved: true };
+        return { ...prev, words: updatedWords };
+      });
+    } catch (err: any) {
+      showToast(err.message || "Không thể lưu từ vựng");
+    } finally {
+      setSavingVocab(false);
+    }
+  };
+
+  const toggleGroupJoin = (groupId: string, groupName: string) => {
+    setJoinedGroups((prev) => {
+      const nextState = !prev[groupId];
+      if (nextState) {
+        showToast(`✅ Đã tham gia ${groupName}`);
+      } else {
+        showToast(`Đã rời ${groupName}`);
+      }
+      return { ...prev, [groupId]: nextState };
+    });
   };
 
   const renderCommentItem = (c: CommentType, isReply = false, postOwnerId?: number) => (
@@ -329,275 +554,629 @@ export default function CommunityPage() {
     </div>
   );
 
-  const toggleLike = async (post: FeedPost) => {
-    // optimistic
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === post.id
-          ? { ...p, likedByMe: !p.likedByMe, likeCount: p.likeCount + (p.likedByMe ? -1 : 1) }
-          : p,
-      ),
-    );
-    try {
-      await api(`/community/posts/${post.id}/like`, {
-        method: post.likedByMe ? "DELETE" : "POST",
-      });
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 md:py-8 pb-24">
+    <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-24">
+      {/* Header Section */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Users className="w-6 h-6 text-primary" /> {t("community.title")}
+        <div className="sd-eyebrow mb-1">
+          <Trophy className="w-3.5 h-3.5 text-primary" />
+          <span>{t("community.eyebrow") || "CỘNG ĐỒNG STUDUDU"}</span>
+        </div>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground font-display flex items-center gap-2.5">
+          {t("community.title")}
         </h1>
         <p className="text-muted text-sm mt-1">
-          {t("community.subtitle")}
+          {t("community.page_subtitle") || "Chia sẻ hành trình, tìm bạn luyện tập và tham gia sự kiện."}
         </p>
       </div>
 
-      {/* Composer — bài chia sẻ tự do */}
-      <div className="bg-surface rounded-2xl border border-border shadow-sm p-4 mb-6">
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          maxLength={500}
-          placeholder={t("community.post_placeholder")}
-          className="w-full rounded-xl border-2 border-border bg-transparent p-3 text-sm focus:outline-none focus:border-primary transition-colors resize-none h-20"
-        />
-
-        {image && (
-          <div className="relative mt-2 w-32 h-32 rounded-xl overflow-hidden border border-border bg-muted/5 group">
-            <img src={image} alt="Preview" className="w-full h-full object-cover" />
+      {/* 3 Column Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_360px] gap-6 xl:gap-8 items-start">
+        
+        {/* LEFT COLUMN: Sidebar Navigation */}
+        <aside className="bg-surface rounded-2xl border border-border shadow-sm p-2 sticky top-20">
+          <nav className="space-y-1">
             <button
-              onClick={() => setImage(null)}
-              className="absolute top-1 right-1 p-1 bg-foreground/80 hover:bg-foreground text-surface rounded-full transition-colors shadow-sm"
-              type="button"
+              onClick={() => setActiveTab("feed")}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left",
+                activeTab === "feed"
+                  ? "bg-primary/10 text-primary shadow-xs font-bold"
+                  : "text-muted hover:text-foreground hover:bg-muted/10"
+              )}
             >
-              <X className="w-3.5 h-3.5" />
+              <MessageSquare className="w-4 h-4" />
+              <span>{t("community.tab_feed") || "Bảng tin"}</span>
             </button>
-          </div>
-        )}
 
-        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/50">
-          <div className="flex items-center gap-2">
-            <label className="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted text-muted hover:text-primary transition-colors" title={t("community.add_image")}>
-              <ImageIcon className="w-5 h-5" />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-                disabled={posting}
-              />
-            </label>
-            <span className="text-xs text-muted">{draft.length}/500</span>
-          </div>
-          <Button size="sm" onClick={handlePost} disabled={(!draft.trim() && !image) || posting}>
-            {posting ? t("common.loading") : t("community.post_button")}
-          </Button>
-        </div>
-      </div>
+            <button
+              onClick={() => setActiveTab("groups")}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left",
+                activeTab === "groups"
+                  ? "bg-primary/10 text-primary shadow-xs font-bold"
+                  : "text-muted hover:text-foreground hover:bg-muted/10"
+              )}
+            >
+              <Users className="w-4 h-4" />
+              <span>{t("community.tab_groups") || "Nhóm ngôn ngữ"}</span>
+            </button>
 
-      {loading ? (
-        <div className="space-y-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 rounded-2xl bg-muted/10 animate-pulse" />
-          ))}
-        </div>
-      ) : posts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="text-6xl mb-4">🌱</div>
-          <h3 className="text-xl font-bold text-foreground mb-2">{t("community.empty_feed")}</h3>
-          <p className="text-muted text-sm max-w-xs">
-            {t("community.empty_feed_hint")}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {posts.map((p) => (
-            <div key={p.id} className="bg-surface rounded-2xl border border-border shadow-sm p-4">
-              <div className="flex items-start gap-3">
-                <Link href={`/profile/${p.user.id}`}>
-                  <Avatar
-                    src={p.user.avatarUrl ?? undefined}
-                    fallback={p.user.displayName.charAt(0)}
-                    size="md"
-                  />
-                </Link>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm text-foreground leading-relaxed flex-1 min-w-0">
-                      <Link href={`/profile/${p.user.id}`} className="font-bold hover:underline">
-                        {p.user.displayName}
-                      </Link>{" "}
-                      {postText(p, t)}
-                    </p>
+            <button
+              onClick={() => setActiveTab("events")}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left",
+                activeTab === "events"
+                  ? "bg-primary/10 text-primary shadow-xs font-bold"
+                  : "text-muted hover:text-foreground hover:bg-muted/10"
+              )}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>{t("community.tab_events") || "Sự kiện"}</span>
+            </button>
+          </nav>
+        </aside>
 
-                    {currentUser && p.user.id === currentUser.id && (
-                      <div className="relative flex-shrink-0">
-                        <button
-                          onClick={() => toggleMenu(p.id)}
-                          className="p-1 rounded-full text-muted hover:bg-muted/10 transition-colors"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        
-                        {activeMenuPostId === p.id && (
-                          <div className="absolute right-0 mt-1 w-32 bg-surface border border-border rounded-xl shadow-lg py-1 z-20">
+        {/* MIDDLE COLUMN: Main Content Area */}
+        <main className="space-y-6">
+          {activeTab === "feed" && (
+            <>
+              {/* Post Composer Card */}
+              <div className="bg-surface rounded-2xl border border-border shadow-sm p-4">
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  maxLength={500}
+                  placeholder={t("community.post_placeholder")}
+                  className="w-full rounded-xl border border-border bg-muted/5 p-3 text-sm focus:outline-none focus:border-primary transition-all resize-none h-22"
+                />
+
+                {image && (
+                  <div className="relative mt-2 w-32 h-32 rounded-xl overflow-hidden border border-border bg-muted/5 group">
+                    <img src={image} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => setImage(null)}
+                      className="absolute top-1 right-1 p-1 bg-foreground/80 hover:bg-foreground text-surface rounded-full transition-colors shadow-sm"
+                      type="button"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Topic Quick Chips */}
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleAddTopicChip(t("community.tag_partner") || "Tìm đối tác")}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    <span>🔤</span>
+                    <span>{t("community.tag_partner") || "Tìm đối tác"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddTopicChip(t("community.tag_milestone") || "Khoe thành tích")}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-secondary/20 bg-secondary/5 text-secondary hover:bg-secondary/10 transition-colors"
+                  >
+                    <span>🎉</span>
+                    <span>{t("community.tag_milestone") || "Khoe thành tích"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddTopicChip(t("community.tag_question") || "Hỏi luyện tập")}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-warning/30 bg-warning/5 text-warning hover:bg-warning/10 transition-colors"
+                  >
+                    <span>❓</span>
+                    <span>{t("community.tag_question") || "Hỏi luyện tập"}</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                  <div className="flex items-center gap-2">
+                    <label
+                      className="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted text-muted hover:text-primary transition-colors"
+                      title={t("community.add_image")}
+                    >
+                      <ImageIcon className="w-5 h-5" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                        disabled={posting}
+                      />
+                    </label>
+                    <span className="text-xs text-muted">{draft.length}/500</span>
+                  </div>
+                  <Button size="sm" onClick={handlePost} disabled={(!draft.trim() && !image) || posting} className="rounded-full px-5">
+                    {posting ? t("common.loading") : t("community.post_button")}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Feed Posts List */}
+              {loading ? (
+                <div className="space-y-3">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-28 rounded-2xl bg-muted/10 animate-pulse" />
+                  ))}
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center bg-surface rounded-2xl border border-border p-6">
+                  <div className="text-5xl mb-3">🌱</div>
+                  <h3 className="text-lg font-bold text-foreground mb-1">{t("community.empty_feed")}</h3>
+                  <p className="text-muted text-xs max-w-xs">{t("community.empty_feed_hint")}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {posts.map((p) => (
+                    <div key={p.id} className="bg-surface rounded-2xl border border-border shadow-sm p-4 transition-all">
+                      <div className="flex items-start gap-3">
+                        <Link href={`/profile/${p.user.id}`}>
+                          <Avatar
+                            src={p.user.avatarUrl ?? undefined}
+                            fallback={p.user.displayName.charAt(0)}
+                            size="md"
+                          />
+                        </Link>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm text-foreground leading-relaxed flex-1 min-w-0">
+                              <Link href={`/profile/${p.user.id}`} className="font-bold hover:underline">
+                                {p.user.displayName}
+                              </Link>{" "}
+                              {postText(p, t)}
+                            </p>
+
+                            {currentUser && p.user.id === currentUser.id && (
+                              <div className="relative flex-shrink-0">
+                                <button
+                                  onClick={() => toggleMenu(p.id)}
+                                  className="p-1 rounded-full text-muted hover:bg-muted/10 transition-colors"
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+
+                                {activeMenuPostId === p.id && (
+                                  <div className="absolute right-0 mt-1 w-32 bg-surface border border-border rounded-xl shadow-lg py-1 z-20">
+                                    <button
+                                      onClick={() => {
+                                        setEditingPost(p);
+                                        setEditDraft(p.content || "");
+                                        setEditImage(p.imageUrl || null);
+                                        setActiveMenuPostId(null);
+                                      }}
+                                      className="w-full text-left px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted/10 flex items-center gap-1.5 transition-colors"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                      {t("community.edit")}
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setDeletingPostId(p.id);
+                                        setActiveMenuPostId(null);
+                                      }}
+                                      className="w-full text-left px-3 py-2 text-xs font-semibold text-error hover:bg-error/5 flex items-center gap-1.5 transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      {t("community.delete_post")}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {p.type === "user_post" && p.content && (
+                            <p className="text-sm text-foreground leading-relaxed mt-1.5 whitespace-pre-wrap break-words">
+                              {p.content}
+                            </p>
+                          )}
+
+                          {/* FB/X Style: See Translation Link right below post content */}
+                          <button
+                            onClick={() => handleTranslatePost(p)}
+                            disabled={translatingPostId === p.id}
+                            className="mt-1 text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 transition-colors"
+                          >
+                            <Languages className="w-3.5 h-3.5" />
+                            <span>
+                              {translatingPostId === p.id
+                                ? "..."
+                                : showTranslation[p.id]
+                                ? t("community.hide_translation") || "Ẩn bản dịch"
+                                : t("community.see_translation") || "Xem bản dịch"}
+                            </span>
+                          </button>
+
+                          {/* Inline Post Translation Box */}
+                          {showTranslation[p.id] && translatedPosts[p.id] && (
+                            <div className="mt-2 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs leading-relaxed text-foreground animate-fade-in">
+                              <div className="flex items-center justify-between text-[11px] font-bold text-primary mb-1">
+                                <span className="flex items-center gap-1.5">
+                                  <Languages className="w-3.5 h-3.5" />
+                                  {t("community.translation_title") || "Bản dịch tự động"}
+                                </span>
+                                <button
+                                  onClick={() => setShowTranslation((prev) => ({ ...prev, [p.id]: false }))}
+                                  className="text-muted hover:text-foreground text-[10px]"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <p className="whitespace-pre-wrap mt-0.5">{translatedPosts[p.id]}</p>
+                            </div>
+                          )}
+
+                          {p.imageUrl && (
+                            <div className="mt-3 rounded-xl overflow-hidden border border-border/50 w-full max-w-2xl bg-muted/5 inline-block">
+                              <img
+                                src={p.imageUrl}
+                                alt="Đính kèm"
+                                className="w-full h-auto object-contain max-h-[500px]"
+                              />
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-3 mt-3 flex-wrap">
+                            <span className="text-xs text-muted">{timeAgo(p.createdAt, t)}</span>
                             <button
-                              onClick={() => {
-                                setEditingPost(p);
-                                setEditDraft(p.content || "");
-                                setEditImage(p.imageUrl || null);
-                                setActiveMenuPostId(null);
-                              }}
-                              className="w-full text-left px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted/10 flex items-center gap-1.5 transition-colors"
+                              onClick={() => toggleLike(p)}
+                              className={cn(
+                                "flex items-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1 border transition-all",
+                                p.likedByMe
+                                  ? "border-error/40 bg-error/5 text-error"
+                                  : "border-border text-muted hover:border-error/40 hover:text-error"
+                              )}
                             >
-                              <Edit className="w-3.5 h-3.5" />
-                              {t("community.edit")}
+                              <Heart className={cn("w-3.5 h-3.5", p.likedByMe && "fill-error")} />
+                              {p.likeCount > 0 ? p.likeCount : t("community.like")}
                             </button>
                             <button
-                              onClick={() => {
-                                setDeletingPostId(p.id);
-                                setActiveMenuPostId(null);
-                              }}
-                              className="w-full text-left px-3 py-2 text-xs font-semibold text-error hover:bg-error/5 flex items-center gap-1.5 transition-colors"
+                              onClick={() => handleToggleComments(p.id)}
+                              className={cn(
+                                "flex items-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1 border transition-all",
+                                expandedPostId === p.id
+                                  ? "border-primary/40 bg-primary/5 text-primary"
+                                  : "border-border text-muted hover:border-primary/40 hover:text-primary"
+                              )}
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              {t("community.delete_post")}
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              {p.commentCount > 0 ? p.commentCount : t("community.comment_placeholder").replace("...", "")}
+                            </button>
+                            <button
+                              onClick={() => setReportTarget(p)}
+                              className="flex items-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1 border border-border text-muted hover:border-warning hover:text-warning transition-all"
+                              title={t("community.report")}
+                            >
+                              <Flag className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {p.type === "user_post" && p.content && (
-                    <p className="text-[15px] text-foreground leading-relaxed mt-1.5 whitespace-pre-wrap break-words">
-                      {p.content}
-                    </p>
-                  )}
-                  {p.imageUrl && (
-                    <div className="mt-3 rounded-xl overflow-hidden border border-border/50 max-w-md bg-muted/5 inline-block">
-                      <img
-                        src={p.imageUrl}
-                        alt="Đính kèm"
-                        className="w-full h-auto object-contain max-h-96"
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="text-xs text-muted">{timeAgo(p.createdAt, t)}</span>
-                    <button
-                      onClick={() => toggleLike(p)}
-                      className={cn(
-                        "flex items-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1 border transition-all",
-                        p.likedByMe
-                          ? "border-error/40 bg-error/5 text-error"
-                          : "border-border text-muted hover:border-error/40 hover:text-error",
-                      )}
-                    >
-                      <Heart className={cn("w-3.5 h-3.5", p.likedByMe && "fill-error")} />
-                      {p.likeCount > 0 ? p.likeCount : t("community.like")}
-                    </button>
-                    <button
-                      onClick={() => handleToggleComments(p.id)}
-                      className={cn(
-                        "flex items-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1 border transition-all",
-                        expandedPostId === p.id
-                          ? "border-primary/40 bg-primary/5 text-primary"
-                          : "border-border text-muted hover:border-primary/40 hover:text-primary",
-                      )}
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      {p.commentCount > 0 ? p.commentCount : t("community.comment_placeholder").replace("...", "")}
-                    </button>
-                    <button
-                      onClick={() => setReportTarget(p)}
-                      className="flex items-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1 border border-border text-muted hover:border-warning hover:text-warning transition-all"
-                      title={t("community.report")}
-                    >
-                      <Flag className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
 
-                  {/* Comments section */}
-                  {expandedPostId === p.id && (
-                    <div className="mt-4 pt-4 border-t border-border space-y-4">
-                      {/* Comments list */}
-                      {loadingComments ? (
-                        <div className="text-center py-4 text-xs text-muted">{t("common.loading")}</div>
-                      ) : comments.length === 0 ? (
-                        <div className="text-center py-4 text-xs text-muted">{t("community.empty_feed_hint")}</div>
-                      ) : (
-                        <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
-                          {comments
-                            .filter((c) => !c.parentId)
-                            .map((parentComment) => (
-                              <div key={parentComment.id} className="space-y-2">
-                                {/* Parent Comment */}
-                                {renderCommentItem(parentComment, false, p.user.id)}
+                          {/* Comments section */}
+                          {expandedPostId === p.id && (
+                            <div className="mt-4 pt-4 border-t border-border space-y-4">
+                              {loadingComments ? (
+                                <div className="text-center py-4 text-xs text-muted">{t("common.loading")}</div>
+                              ) : comments.length === 0 ? (
+                                <div className="text-center py-4 text-xs text-muted">{t("community.empty_feed_hint")}</div>
+                              ) : (
+                                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                                  {comments
+                                    .filter((c) => !c.parentId)
+                                    .map((parentComment) => (
+                                      <div key={parentComment.id} className="space-y-2">
+                                        {renderCommentItem(parentComment, false, p.user.id)}
+                                        {comments
+                                          .filter((reply) => reply.parentId === parentComment.id)
+                                          .map((replyComment) => renderCommentItem(replyComment, true, p.user.id))}
+                                      </div>
+                                    ))}
+                                </div>
+                              )}
 
-                                {/* Replies under this parent comment */}
-                                {comments
-                                  .filter((reply) => reply.parentId === parentComment.id)
-                                  .map((replyComment) => renderCommentItem(replyComment, true, p.user.id))}
+                              {replyToComment && (
+                                <div className="flex items-center justify-between bg-muted/30 rounded-xl px-3 py-1.5 text-xs text-muted mb-2 animate-fade-in">
+                                  <span>
+                                    {t("community.reply_placeholder", { name: replyToComment.user.displayName })}
+                                  </span>
+                                  <button
+                                    onClick={() => setReplyToComment(null)}
+                                    className="text-muted hover:text-foreground p-0.5 rounded-full hover:bg-muted transition-colors"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-2 pt-1">
+                                <input
+                                  type="text"
+                                  value={commentDraft}
+                                  onChange={(e) => setCommentDraft(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !postingComment) {
+                                      handleAddComment(p.id);
+                                    }
+                                  }}
+                                  placeholder={
+                                    replyToComment
+                                      ? t("community.reply_placeholder", { name: replyToComment.user.displayName })
+                                      : t("community.comment_placeholder")
+                                  }
+                                  disabled={postingComment}
+                                  className="flex-1 rounded-full border border-border bg-muted/5 px-4 py-2 text-xs focus:outline-none focus:border-primary transition-colors"
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleAddComment(p.id)}
+                                  disabled={!commentDraft.trim() || postingComment}
+                                  className="rounded-full text-xs px-4"
+                                >
+                                  {postingComment ? "..." : t("community.post_button")}
+                                </Button>
                               </div>
-                            ))}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
-                      {/* Reply Target Info */}
-                      {replyToComment && (
-                        <div className="flex items-center justify-between bg-muted/30 rounded-xl px-3 py-1.5 text-xs text-muted mb-2 animate-fade-in">
-                          <span>
-                            {t("community.reply_placeholder", { name: replyToComment.user.displayName })}
-                          </span>
-                          <button
-                            onClick={() => setReplyToComment(null)}
-                            className="text-muted hover:text-foreground p-0.5 rounded-full hover:bg-muted transition-colors"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+          {/* GROUPS TAB VIEW (PREVIEW) */}
+          {activeTab === "groups" && (
+            <div className="space-y-4">
+              <div className="bg-surface rounded-2xl border border-border shadow-sm p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground font-display">{t("community.groups_title") || "Nhóm ngôn ngữ"}</h2>
+                    <p className="text-xs text-muted">
+                      {t("community.groups_coming_soon")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                  {getSuggestedGroups(t).map((g) => {
+                    const isJoined = !!joinedGroups[g.id];
+                    return (
+                      <div key={g.id} className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={cn("text-xs font-bold px-2.5 py-1 rounded-lg", g.bgColor, g.textColor)}>
+                              [{g.langCode}] {g.name}
+                            </span>
+                            <span className="text-[11px] text-muted font-medium">
+                              {t("community.members_count", { count: g.members })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-foreground/80 leading-relaxed mb-4">{g.description}</p>
                         </div>
-                      )}
-
-                      {/* Comment Composer */}
-                      <div className="flex items-center gap-2 pt-2">
-                        <input
-                          type="text"
-                          value={commentDraft}
-                          onChange={(e) => setCommentDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && !postingComment) {
-                              handleAddComment(p.id);
-                            }
-                          }}
-                          placeholder={replyToComment ? t("community.reply_placeholder", { name: replyToComment.user.displayName }) : t("community.comment_placeholder")}
-                          disabled={postingComment}
-                          className="flex-1 rounded-full border border-border bg-muted/5 px-4 py-2 text-xs focus:outline-none focus:border-primary transition-colors"
-                        />
                         <Button
                           size="sm"
-                          onClick={() => handleAddComment(p.id)}
-                          disabled={!commentDraft.trim() || postingComment}
-                          className="rounded-full text-xs px-4"
+                          variant={isJoined ? "outline" : "default"}
+                          onClick={() => toggleGroupJoin(g.id, g.name)}
+                          className={cn("w-full rounded-xl text-xs font-semibold gap-1.5", isJoined && "bg-success/10 text-success border-success/30 hover:bg-success/20")}
                         >
-                          {postingComment ? "..." : t("community.post_button")}
+                          {isJoined ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              {t("community.joined_group")}
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-3.5 h-3.5" />
+                              {t("community.join_group")}
+                            </>
+                          )}
                         </Button>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* Report post — tái dùng cơ chế Report với targetType='post' */}
+          {/* EVENTS TAB VIEW (PREVIEW) */}
+          {activeTab === "events" && (
+            <div className="space-y-4">
+              <div className="bg-surface rounded-2xl border border-border shadow-sm p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground font-display">{t("community.events_title") || "Sự kiện & Bài thi thử sức"}</h2>
+                    <p className="text-xs text-muted">
+                      {t("community.events_coming_soon")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3 mt-6">
+                  <div className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary">{t("community.status_upcoming")}</span>
+                        <span className="text-xs text-muted">{t("community.event1_time")}</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-foreground">{t("community.event1_title")}</h4>
+                      <p className="text-xs text-muted mt-0.5">{t("community.event1_desc")}</p>
+                    </div>
+                    <Button size="sm" className="rounded-xl text-xs flex-shrink-0" onClick={() => showToast(t("community.event_toast_notice"))}>
+                      {t("community.event1_btn")}
+                    </Button>
+                  </div>
+
+                  <div className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-pink-100 text-pink-600">JLPT N3</span>
+                        <span className="text-xs text-muted">{t("community.event2_time")}</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-foreground">{t("community.event2_title")}</h4>
+                      <p className="text-xs text-muted mt-0.5">{t("community.event2_desc")}</p>
+                    </div>
+                    <Button size="sm" variant="outline" className="rounded-xl text-xs flex-shrink-0" onClick={() => showToast(t("community.event_toast_notice"))}>
+                      {t("community.event2_btn")}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* RIGHT COLUMN: Right Rail Widgets */}
+        <aside className="space-y-6 sticky top-20">
+          
+          {/* WIDGET 1: TỪ VỰNG MỚI HÔM NAY (Daily New Vocabulary) */}
+          <div className="bg-surface rounded-2xl border border-border shadow-sm p-4 overflow-hidden relative">
+            <div className="flex items-center justify-between mb-3 border-b border-border/50 pb-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                <BookOpen className="w-4 h-4 text-primary" />
+                <span className="tracking-wide uppercase text-[11px]">
+                  {t("community.daily_vocab_title")}
+                </span>
+              </div>
+              {dailyWordsData && dailyWordsData.words.length > 0 && (
+                <span className="text-xs font-semibold text-muted bg-muted/20 px-2 py-0.5 rounded-full">
+                  {vocabIndex + 1} / {dailyWordsData.words.length}
+                </span>
+              )}
+            </div>
+
+            {currentWord ? (
+              <div className="bg-gradient-to-br from-primary/5 via-pink-500/5 to-warning/5 rounded-xl p-4 border border-primary/10">
+                {/* Word Term */}
+                <h3 className="text-2xl font-bold font-display text-foreground tracking-tight">
+                  {currentWord.term}
+                </h3>
+
+                {/* Part of speech & IPA Phonetic */}
+                <div className="flex items-center gap-2 mt-1 text-xs text-secondary font-semibold">
+                  <span>{currentWord.partOfSpeech}</span>
+                  {currentWord.phonetic && <span>· {currentWord.phonetic}</span>}
+                </div>
+
+                {/* Definition / Meaning */}
+                <p className="text-sm font-semibold text-foreground/90 mt-3 leading-snug">
+                  {currentWord.definition}
+                </p>
+
+                {/* Example sentence */}
+                {currentWord.example && (
+                  <p className="text-xs italic text-muted mt-2 leading-relaxed bg-surface/60 p-2.5 rounded-lg border border-border/50">
+                    {currentWord.example}
+                  </p>
+                )}
+
+                {/* Action controls */}
+                <div className="flex items-center justify-between gap-2 mt-4 pt-2">
+                  <button
+                    onClick={handlePrevVocab}
+                    className="p-2 rounded-xl border border-border bg-surface text-muted hover:text-foreground hover:bg-muted/10 transition-colors"
+                    title={t("community.prev_word") || "Từ trước"}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <Button
+                    size="sm"
+                    variant={currentWord.isSaved ? "outline" : "default"}
+                    onClick={handleSaveCurrentVocab}
+                    disabled={savingVocab || currentWord.isSaved}
+                    className={cn(
+                      "flex-1 rounded-xl text-xs font-semibold gap-1.5 shadow-xs",
+                      currentWord.isSaved && "bg-success/10 text-success border-success/30 hover:bg-success/20"
+                    )}
+                  >
+                    {currentWord.isSaved ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        {t("community.saved_word")}
+                      </>
+                    ) : (
+                      <>
+                        <Bookmark className="w-3.5 h-3.5" />
+                        {t("community.save_word")}
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    onClick={handleNextVocab}
+                    className="sd-btn-gradient rounded-xl text-xs font-semibold gap-1"
+                  >
+                    <span>{t("community.next_word")}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-xs text-muted">
+                {t("common.loading")}
+              </div>
+            )}
+          </div>
+
+          {/* WIDGET 2: NHÓM NGÔN NGỮ GỢI Ý (Suggested Language Groups) */}
+          <div className="bg-surface rounded-2xl border border-border shadow-sm p-4">
+            <h3 className="text-xs font-bold text-foreground uppercase tracking-wide mb-3 flex items-center justify-between">
+              <span>{t("community.suggested_groups")}</span>
+            </h3>
+
+            <div className="space-y-3">
+              {getSuggestedGroups(t).map((g) => {
+                const isJoined = !!joinedGroups[g.id];
+                return (
+                  <div key={g.id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0", g.bgColor, g.textColor)}>
+                        {g.langCode}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-bold text-foreground truncate">{g.name}</h4>
+                        <p className="text-[10px] text-muted truncate">
+                          {t("community.members_count", { count: g.members })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant={isJoined ? "outline" : "secondary"}
+                      onClick={() => toggleGroupJoin(g.id, g.name)}
+                      className={cn(
+                        "rounded-xl text-[11px] h-7 px-3 flex-shrink-0 font-semibold",
+                        isJoined && "bg-success/10 text-success border-success/30 hover:bg-success/20"
+                      )}
+                    >
+                      {isJoined ? t("community.joined_group") : t("community.join_group")}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+
+      {/* Report dialog */}
       {reportTarget && (
         <ReportDialog
           open
@@ -665,7 +1244,6 @@ export default function CommunityPage() {
               className="w-full rounded-2xl border border-border bg-muted/5 p-4 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none transition-all"
             />
 
-            {/* Edit image attachments */}
             <div className="mt-3">
               {editImage ? (
                 <div className="relative inline-block rounded-xl overflow-hidden border border-border max-w-[200px]">

@@ -21,6 +21,7 @@ import {
 import { api } from "@/lib/api";
 import { ageFromDob, cn } from "@/lib/utils";
 import { ReportDialog, BlockDialog, useToast } from "@/components/features/TrustDialogs";
+import { LanguagesCard } from "@/components/features/LanguagesCard";
 import { MatchModal } from "@/components/features/MatchModal";
 import {
   EndorseModal,
@@ -301,35 +302,7 @@ export default function ProfilePage() {
             </div>
           )}
           {(activeTab === "posts" || activeTab === "about") && (
-            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <span>🗣️</span> {t("languages")}
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">{t("can_teach")}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {teachLangs.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
-                    {teachLangs.map((l: any) => (
-                      <Chip key={l.id} variant="default" className="text-xs py-1 px-3 rounded-xl font-medium">
-                        {l.language.name} {l.role === "native" ? tDisc("card_native") : tDisc("card_fluent")}
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-                <div className="h-px bg-border w-full" />
-                <div>
-                  <p className="text-sm font-semibold text-muted mb-2 uppercase tracking-wider">{t("want_learn")}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {learnLangs.map((l: any) => (
-                      <Chip key={l.id} variant="secondary" className="text-sm py-1">
-                        {l.language.name} (Level {l.level})
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <LanguagesCard languages={user.languages || []} />
           )}
 
           {(activeTab === "posts" || activeTab === "about") && user.interests && user.interests.length > 0 && (

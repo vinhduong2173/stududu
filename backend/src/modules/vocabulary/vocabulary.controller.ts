@@ -76,4 +76,11 @@ export class VocabularyController {
   ) {
     return this.vocabularyService.updateLibraryWord(user.sub, id, dto);
   }
+
+  // Từ vựng mới hàng ngày theo ngôn ngữ đang chọn học
+  @Get('daily-words')
+  @UseGuards(JwtAuthGuard)
+  getDailyWords(@CurrentUser() user: JwtPayload, @Query('target') target?: string) {
+    return this.vocabularyService.getDailyWords(user.sub, target);
+  }
 }

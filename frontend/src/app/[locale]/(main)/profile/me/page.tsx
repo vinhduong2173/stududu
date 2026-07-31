@@ -19,6 +19,7 @@ import {
 import { TIME_SLOTS, getTimezone } from "@/lib/timezones";
 import { ageFromDob, cn } from "@/lib/utils";
 import { ChatStats, EndorsementBadges } from "@/components/features/Endorsements";
+import { LanguagesCard } from "@/components/features/LanguagesCard";
 import { useTranslations } from "next-intl";
 import { getTopicTranslation, getIntentTranslation, getGenderTranslation } from "@/lib/i18nHelper";
 import { PostCard, FeedPost } from "@/components/features/PostCard";
@@ -36,7 +37,7 @@ type Me = {
   city?: string | null;
   timezone?: string | null;
   availableSlots?: string[];
-  languages: { id: number; role: string; level?: string | null; language: { name: string } }[];
+  languages: { id: number; role: string; level?: string | null; language: { id?: number; code?: string; name: string } }[];
   interests: { id: number; topic: { name: string } }[];
   matchPreference?: { languageFocus?: string | null; levelDesired?: string | null } | null;
 };
@@ -233,41 +234,7 @@ export default function MyProfilePage() {
 
           {/* Languages Card */}
           {(activeTab === "posts" || activeTab === "about") && (
-            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <span>🗣️</span> {t("languages")}
-                </span>
-                <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
-                  {t("edit_btn")}
-                </Link>
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">{t("speaks_label")}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {teachLangs.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
-                    {teachLangs.map((l) => (
-                      <Chip key={l.id} variant="default" className="text-xs py-1 px-3 rounded-xl font-medium">
-                        {l.language.name} {l.role === "native" ? `(${t("native_label")})` : `(${t("fluent_label")})`}
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-                <div className="h-px bg-border w-full" />
-                <div>
-                  <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">{t("learns_label")}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {learnLangs.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
-                    {learnLangs.map((l) => (
-                      <Chip key={l.id} variant="secondary" className="text-xs py-1 px-3 rounded-xl font-medium">
-                        {l.language.name} ({t("level_label")} {l.level})
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <LanguagesCard languages={me.languages} editHref="/profile/me/edit" />
           )}
 
           {/* Availability Card */}
