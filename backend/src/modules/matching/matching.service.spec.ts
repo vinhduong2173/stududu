@@ -26,7 +26,10 @@ const me = {
 };
 
 /** Ứng viên bù trừ (dạy EN, học VI) — tùy chọn topic chung / level học VI */
-function candidate(id: number, opts: { sharedTopic?: boolean; learnLevel?: string } = {}) {
+function candidate(
+  id: number,
+  opts: { sharedTopic?: boolean; learnLevel?: string } = {},
+) {
   return {
     id,
     displayName: `User ${id}`,
@@ -54,7 +57,12 @@ function candidate(id: number, opts: { sharedTopic?: boolean; learnLevel?: strin
       },
     ],
     interests: opts.sharedTopic
-      ? [{ topicId: TOPIC_TRAVEL, topic: { id: TOPIC_TRAVEL, name: 'Du lịch' } }]
+      ? [
+          {
+            topicId: TOPIC_TRAVEL,
+            topic: { id: TOPIC_TRAVEL, name: 'Du lịch' },
+          },
+        ]
       : [],
   };
 }
@@ -70,7 +78,10 @@ async function buildService(candidates: unknown[]) {
   };
 
   const moduleRef = await Test.createTestingModule({
-    providers: [MatchingService, { provide: PrismaService, useValue: prismaMock }],
+    providers: [
+      MatchingService,
+      { provide: PrismaService, useValue: prismaMock },
+    ],
   }).compile();
 
   return moduleRef.get(MatchingService);

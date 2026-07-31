@@ -31,12 +31,18 @@ export class TrustController {
   }
 
   @Post('blocks/:userId')
-  block(@CurrentUser() user: JwtPayload, @Param('userId', ParseIntPipe) userId: number) {
+  block(
+    @CurrentUser() user: JwtPayload,
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
     return this.trustService.block(user.sub, userId);
   }
 
   @Delete('blocks/:userId')
-  unblock(@CurrentUser() user: JwtPayload, @Param('userId', ParseIntPipe) userId: number) {
+  unblock(
+    @CurrentUser() user: JwtPayload,
+    @Param('userId', ParseIntPipe) userId: number,
+  ) {
     return this.trustService.unblock(user.sub, userId);
   }
 
@@ -52,7 +58,10 @@ export class TrustController {
   }
 
   @Get('users/:id/endorsements/given')
-  getGivenEndorsements(@CurrentUser() user: JwtPayload, @Param('id', ParseIntPipe) id: number) {
+  getGivenEndorsements(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     return this.trustService.getGivenEndorsements(user.sub, id);
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Request, Res, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Post, Request, Res, UseGuards } from '@nestjs/common';
 import { LocalAuthGuard } from '../../common/guards/local-auth.guard';
 import { GoogleAuthGuard } from '../../common/guards/google-auth.guard';
 import { AuthService } from './auth.service';
@@ -31,6 +31,15 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   refresh(@Body() dto: RefreshDto) {
     return this.authService.refresh(dto.refreshToken);
+  }
+
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  async googlePostLogin(@Body('idToken') idToken?: string) {
+    if (!idToken) {
+      throw new BadRequestException('Trường idToken không được để trống.');
+    }
+    return this.authService.googleLoginToken(idToken);
   }
 
   @Get('google')

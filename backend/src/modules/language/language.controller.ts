@@ -9,11 +9,17 @@ export class LanguageController {
   // US-21 — mục đã ẩn không xuất hiện trong hồ sơ & bộ lọc của member
   @Get('languages')
   getLanguages() {
-    return this.prisma.language.findMany({ where: { hidden: false }, orderBy: { name: 'asc' } });
+    return this.prisma.language.findMany({
+      where: { hidden: false },
+      orderBy: { name: 'asc' },
+    });
   }
 
   @Get('topics')
   getTopics() {
-    return this.prisma.topic.findMany({ where: { hidden: false }, orderBy: { name: 'asc' } });
+    return this.prisma.topic.findMany({
+      where: { hidden: false },
+      orderBy: { name: 'asc' },
+    });
   }
 }

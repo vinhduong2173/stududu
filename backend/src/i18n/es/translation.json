@@ -52,7 +52,8 @@
     "missingScheduleInfo": "Falta información de la invitación de programación",
     "notInConversation": "No eres parte de esta conversación",
     "conversationNotFound": "Conversación no encontrada",
-    "blockedUser": "No se pueden enviar mensajes a este usuario"
+    "blockedUser": "No se pueden enviar mensajes a este usuario",
+    "callMessageNotAllowed": "Los mensajes de llamada los genera el sistema y no se pueden enviar manualmente"
   },
   "vocab": {
     "wordNotFound": "Palabra no encontrada en tu cuaderno",
@@ -63,5 +64,12 @@
   },
   "common": {
     "accessDenied": "Permisos insuficientes"
+  },
+  "calls": {
+    "notFound": "Llamada no encontrada",
+    "notInConversation": "Solo puedes llamar a alguien de la misma conversación",
+    "suspendedNoCall": "Tu cuenta está suspendida, no puedes llamar",
+    "notYourCall": "No formas parte de esta llamada",
+    "notRinging": "Esta llamada ya no está sonando"
   }
 }

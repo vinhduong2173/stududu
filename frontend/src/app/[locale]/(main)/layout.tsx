@@ -12,8 +12,19 @@ import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/features/LanguageSwitcher";
 import { TextSelectionPopup } from "@/components/features/TextSelectionPopup";
 import { Logo } from "@/components/ui/Logo";
+import { CallProvider } from "@/components/call/CallProvider";
 
+/** CallProvider bọc toàn bộ khu vực đã đăng nhập để chuông đổ được ở mọi trang,
+ *  không chỉ khi đang mở Inbox (audio-call-design.md mục 3). */
 export default function MainLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <CallProvider>
+      <MainLayoutContent>{children}</MainLayoutContent>
+    </CallProvider>
+  );
+}
+
+function MainLayoutContent({ children }: { children: React.ReactNode }) {
   const t = useTranslations();
   const pathname = usePathname();
   const router = useRouter();
