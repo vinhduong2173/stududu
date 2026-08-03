@@ -6,14 +6,24 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
-import { Pencil, Settings } from "lucide-react";
+import {
+  Pencil,
+  Settings,
+  Heart,
+  FileText,
+  User,
+  MapPin,
+  Clock,
+  Camera,
+} from "lucide-react";
 import { TIME_SLOTS, getTimezone } from "@/lib/timezones";
-import { ageFromDob } from "@/lib/utils";
+import { ageFromDob, cn } from "@/lib/utils";
 import { ChatStats, EndorsementBadges } from "@/components/features/Endorsements";
+import { LanguagesCard } from "@/components/features/LanguagesCard";
 import { useTranslations } from "next-intl";
-import { getTopicTranslation, getIntentTranslation } from "@/lib/i18nHelper";
-
-/** MÀN 12 — Hồ sơ của tôi (US-06): xem hồ sơ + thanh % hoàn thiện + lối vào chỉnh sửa/Cài đặt. */
+import { getTopicTranslation, getIntentTranslation, getGenderTranslation } from "@/lib/i18nHelper";
+import { PostCard, FeedPost } from "@/components/features/PostCard";
+import { ReportDialog, useToast } from "@/components/features/TrustDialogs";
 
 type Me = {
   id: number;
@@ -27,32 +37,10 @@ type Me = {
   city?: string | null;
   timezone?: string | null;
   availableSlots?: string[];
-  languages: { id: number; role: string; level?: string | null; language: { name: string } }[];
+  languages: { id: number; role: string; level?: string | null; language: { id?: number; code?: string; name: string } }[];
   interests: { id: number; topic: { name: string } }[];
   matchPreference?: { languageFocus?: string | null; levelDesired?: string | null } | null;
 };
-
-/** % hoàn thiện + danh sách mục còn thiếu (gợi ý cải thiện hồ sơ) */
-function computeCompletion(me: Me, t: any): { percent: number; missing: string[] } {
-  const checks: { ok: boolean; weight: number; hint: string }[] = [
-    { ok: !!me.avatarUrl, weight: 20, hint: t("hint_avatar") },
-    { ok: !!me.bio?.trim(), weight: 20, hint: t("hint_bio") },
-    {
-      ok: me.languages.some((l) => l.role === "native" || l.role === "fluent"),
-      weight: 20,
-      hint: t("hint_teach"),
-    },
-    {
-      ok: me.languages.some((l) => l.role === "learning"),
-      weight: 20,
-      hint: t("hint_learn"),
-    },
-    { ok: me.interests.length > 0, weight: 10, hint: t("hint_interests") },
-    { ok: !!me.intent, weight: 10, hint: t("hint_intent") },
-  ];
-  const percent = checks.reduce((sum, c) => sum + (c.ok ? c.weight : 0), 0);
-  return { percent, missing: checks.filter((c) => !c.ok).map((c) => c.hint) };
-}
 
 export default function MyProfilePage() {
   const t = useTranslations("profile");
@@ -60,10 +48,19 @@ export default function MyProfilePage() {
   const tRoot = useTranslations();
   const [me, setMe] = React.useState<Me | null>(null);
   const [error, setError] = React.useState("");
+  const [activeTab, setActiveTab] = React.useState<"posts" | "about">("posts");
+  const [myPosts, setMyPosts] = React.useState<FeedPost[]>([]);
+  const [reportTarget, setReportTarget] = React.useState<FeedPost | null>(null);
+  const { show: showToast, toast } = useToast();
 
   React.useEffect(() => {
     api<Me>("/users/me")
-      .then(setMe)
+      .then((data) => {
+        setMe(data);
+        api<FeedPost[]>(`/community/feed?userId=${data.id}&targetUserId=${data.id}`)
+          .then(setMyPosts)
+          .catch(() => {});
+      })
       .catch((err) => setError(err.message || t("loading_error")));
   }, [t]);
 
@@ -75,17 +72,17 @@ export default function MyProfilePage() {
       </div>
     );
 
-  const { percent, missing } = computeCompletion(me, t);
   const teachLangs = me.languages.filter((l) => l.role === "native" || l.role === "fluent");
   const learnLangs = me.languages.filter((l) => l.role === "learning");
 
   return (
-    <div className="max-w-3xl mx-auto p-4 md:p-8 pb-24">
+    <div className="max-w-6xl mx-auto p-4 md:p-8 pb-24">
       {/* Header — cover banner + avatar đè mép */}
       <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-6">
-        <div className="sd-cover relative h-32 md:h-44">
-          <div className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+        {/* Cover Photo Banner */}
+        <div className="sd-cover relative h-44 sm:h-60 md:h-72 lg:h-80 w-full group">
+          <div className="pointer-events-none absolute -top-16 -right-10 h-72 w-72 rounded-full bg-white/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-8 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
         </div>
         <div className="px-6 pb-6">
           <div className="flex items-end justify-between -mt-12 mb-4">
@@ -122,128 +119,237 @@ export default function MyProfilePage() {
               {[me.gender, me.city].filter(Boolean).join(" · ")}
             </p>
           )}
-        </div>
-      </div>
 
-      {/* Thanh hoàn thiện hồ sơ */}
-      <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <p className="font-semibold text-foreground">{t("completion")}</p>
-          <p className="font-bold text-primary">{percent}%</p>
-        </div>
-        <div className="h-2.5 rounded-full bg-muted/15 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-        {missing.length > 0 && (
-          <ul className="mt-4 space-y-1.5">
-            {missing.map((hint) => (
-              <li key={hint} className="text-sm text-muted flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-warning shrink-0" /> {hint}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+          {/* Navigation Tabs */}
+          <div className="border-t border-border pt-3 mt-4">
+            <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1">
+              <button
+                onClick={() => setActiveTab("posts")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
+                  activeTab === "posts"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted hover:text-foreground hover:bg-surface-2"
+                )}
+              >
+                <FileText className="w-4 h-4" />
+                <span>{t("tab_posts")}</span>
+              </button>
 
-      {/* Nội dung hồ sơ */}
-      <div className="space-y-8 bg-surface rounded-3xl p-6 shadow-sm border border-border">
-        {/* FS-26/27 — trust signals */}
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>🏅</span> {t("trust_activity")}
-          </h2>
-          <div className="space-y-3">
-            <EndorsementBadges userId={me.id} />
-            <ChatStats userId={me.id} />
+              <button
+                onClick={() => setActiveTab("about")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
+                  activeTab === "about"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted hover:text-foreground hover:bg-surface-2"
+                )}
+              >
+                <User className="w-4 h-4" />
+                <span>{t("tab_about")}</span>
+              </button>
+            </nav>
           </div>
         </div>
+      </div>
 
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>🗣️</span> {t("languages")}
-          </h2>
-          <div className="flex flex-col gap-4 bg-muted/5 p-4 rounded-2xl">
-            <div>
-              <p className="text-sm font-semibold text-muted mb-2 uppercase tracking-wider">{t("can_teach")}</p>
+      {/* Grid Layout — Sidebar (Left) & Feed (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column — Sidebar (Trust Badges, Intro, Languages, Availability, Interests) */}
+        <div className={cn(
+          "lg:col-span-5 space-y-6",
+          activeTab === "posts" && "block",
+          activeTab === "about" && "block lg:col-span-12"
+        )}>
+          {/* Trust Signals (Badge & Stats) */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <span>🏅</span> {t("trust_activity")}
+            </h2>
+            <div className="space-y-3">
+              <EndorsementBadges userId={me.id} />
+              <ChatStats userId={me.id} />
+            </div>
+          </div>
+
+          {/* Intro Box */}
+          {(activeTab === "posts" || activeTab === "about") && (
+            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span>📌</span> {t("intro")}
+                </span>
+                <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
+                  {t("edit_btn")}
+                </Link>
+              </h2>
+
+              <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm italic bg-surface-2/60 p-4 rounded-2xl border border-border/50 mb-4">
+                {me.bio ? `"${me.bio}"` : t("no_intro_me")}
+              </p>
+
+              <div className="space-y-3 text-sm text-foreground">
+                {me.intent && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-base">🎯</span>
+                    <div>
+                      <span className="font-semibold text-muted text-xs block uppercase">{t("intent")}</span>
+                      <span className="font-medium text-foreground">{getIntentTranslation(me.intent, tRoot)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {me.city && (
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-4 h-4 text-muted shrink-0" />
+                    <div>
+                      <span className="font-semibold text-muted text-xs block uppercase">{t("lives_in")}</span>
+                      <span className="font-medium text-foreground">{me.city}</span>
+                    </div>
+                  </div>
+                )}
+
+                {me.gender && (
+                  <div className="flex items-center gap-3">
+                    <User className="w-4 h-4 text-muted shrink-0" />
+                    <div>
+                      <span className="font-semibold text-muted text-xs block uppercase">{t("gender_label")}</span>
+                      <span className="font-medium text-foreground">{getGenderTranslation(me.gender, tRoot)}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <Clock className="w-4 h-4 text-muted shrink-0" />
+                  <div>
+                    <span className="font-semibold text-muted text-xs block uppercase">{t("timezone_label_short")}</span>
+                    <span className="font-medium text-foreground">
+                      {getTimezone(me.timezone).flag} {getTimezone(me.timezone).name}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Languages Card */}
+          {(activeTab === "posts" || activeTab === "about") && (
+            <LanguagesCard languages={me.languages} editHref="/profile/me/edit" />
+          )}
+
+          {/* Availability Card */}
+          {(activeTab === "posts" || activeTab === "about") && (
+            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span>⏰</span> {t("availability")}
+                </span>
+                <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
+                  {t("edit_btn")}
+                </Link>
+              </h2>
+              <div className="flex flex-wrap gap-2 items-center">
+                {(me.availableSlots ?? []).length === 0 ? (
+                  <p className="text-xs text-muted">{t("no_availability")}</p>
+                ) : (
+                  TIME_SLOTS.filter((s) => (me.availableSlots ?? []).includes(s.id)).map((s) => (
+                    <Chip key={s.id} variant="secondary" className="text-xs py-1 px-3 rounded-xl">
+                      ⏰ {s.label}
+                    </Chip>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Interests Card */}
+          {(activeTab === "posts" || activeTab === "about") && (
+            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span>⭐</span> {t("interests")}
+                </span>
+                <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
+                  {t("edit_btn")}
+                </Link>
+              </h2>
               <div className="flex flex-wrap gap-2">
-                {teachLangs.length === 0 && <p className="text-sm text-muted">{t("none")}</p>}
-                {teachLangs.map((l) => (
-                  <Chip key={l.id} variant="default" className="text-sm py-1">
-                    {l.language.name} {l.role === "native" ? tDisc("card_native") : tDisc("card_fluent")}
+                {me.interests.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
+                {me.interests.map((i) => (
+                  <Chip key={i.id} variant="outline" className="text-xs py-1 px-3 rounded-xl">
+                    {getTopicTranslation(i.topic.name, tRoot)}
                   </Chip>
                 ))}
               </div>
             </div>
-            <div className="h-px bg-border w-full" />
-            <div>
-              <p className="text-sm font-semibold text-muted mb-2 uppercase tracking-wider">{t("want_learn")}</p>
-              <div className="flex flex-wrap gap-2">
-                {learnLangs.length === 0 && <p className="text-sm text-muted">{t("none")}</p>}
-                {learnLangs.map((l) => (
-                  <Chip key={l.id} variant="secondary" className="text-sm py-1">
-                    {l.language.name} (Level {l.level})
-                  </Chip>
-                ))}
+          )}
+        </div>
+
+        {/* Right Column — Posts Feed */}
+        <div className={cn(
+          "lg:col-span-7 space-y-6",
+          activeTab === "posts" && "block",
+          activeTab === "about" && "hidden"
+        )}>
+          {/* Post Creation Prompt Card */}
+          {activeTab === "posts" && (
+            <div className="bg-surface rounded-3xl p-5 shadow-sm border border-border">
+              <div className="flex items-center gap-3">
+                <Avatar
+                  src={me.avatarUrl ?? undefined}
+                  fallback={me.displayName.charAt(0)}
+                  size="md"
+                  className="shrink-0"
+                />
+                <Link
+                  href="/community"
+                  className="flex-1 bg-surface-2 hover:bg-border/60 text-muted rounded-2xl px-4 py-3 text-sm font-medium transition-colors cursor-pointer"
+                >
+                  {t("post_placeholder", { name: me.displayName })}
+                </Link>
               </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>👋</span> {t("intro")}
-          </h2>
-          <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-            {me.bio || t("no_intro_me")}
-          </p>
-        </div>
+          {/* User Posts Card Feed */}
+          {activeTab === "posts" && (
+            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span>💬</span> {t("posts_title")}
+                </span>
+                <span className="text-xs text-muted font-normal">{t("posts_count", { count: myPosts.length })}</span>
+              </h2>
 
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>🎯</span> {t("intent")}
-          </h2>
-          <Chip variant="outline" className="text-sm font-medium py-1">
-            {getIntentTranslation(me.intent, tRoot)}
-          </Chip>
-        </div>
-
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>⏰</span> {t("availability")}
-          </h2>
-          <div className="flex flex-wrap gap-2 items-center">
-            <Chip variant="outline" className="text-sm py-1">
-              {getTimezone(me.timezone).flag} {getTimezone(me.timezone).name} (UTC
-              {getTimezone(me.timezone).offset >= 0 ? "+" : ""}
-              {getTimezone(me.timezone).offset})
-            </Chip>
-            {(me.availableSlots ?? []).length === 0 ? (
-              <p className="text-sm text-muted">{t("no_availability")}</p>
-            ) : (
-              TIME_SLOTS.filter((s) => (me.availableSlots ?? []).includes(s.id)).map((s) => (
-                <Chip key={s.id} variant="secondary" className="text-sm py-1">
-                  ⏰ {s.label}
-                </Chip>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <span>⭐</span> {t("interests")}
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {me.interests.length === 0 && <p className="text-sm text-muted">{t("no_interests")}</p>}
-            {me.interests.map((i) => (
-              <Chip key={i.id} variant="outline" className="text-sm py-1">
-                {getTopicTranslation(i.topic.name, tRoot)}
-              </Chip>
-            ))}
-          </div>
+              {myPosts.length === 0 ? (
+                <div className="text-center py-10 border border-dashed border-border rounded-2xl bg-surface-2/40">
+                  <FileText className="w-10 h-10 text-muted mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-semibold text-foreground">{t("no_posts_me")}</p>
+                  <p className="text-xs text-muted mt-1">{t("create_post_hint")}</p>
+                  <Button asChild size="sm" className="mt-4 rounded-xl">
+                    <Link href="/community">{t("create_post_btn")}</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {myPosts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      currentUser={{ id: me.id, displayName: me.displayName }}
+                      onPostUpdated={(updated) =>
+                        setMyPosts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+                      }
+                      onPostDeleted={(postId) =>
+                        setMyPosts((prev) => prev.filter((p) => p.id !== postId))
+                      }
+                      onReportPost={(p) => setReportTarget(p)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

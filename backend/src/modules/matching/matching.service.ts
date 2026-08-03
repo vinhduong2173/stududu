@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   InteractionAction,
   LanguageRole,
@@ -33,7 +37,12 @@ export class MatchingService {
       where: { id: userId },
       include: { languages: true, interests: true, matchPreference: true },
     });
-    if (!me) throw new NotFoundException(this.i18n.t('translation.user.notFound', { lang: I18nContext.current()?.lang }));
+    if (!me)
+      throw new NotFoundException(
+        this.i18n.t('translation.user.notFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
 
     const myLearning = me.languages
       .filter((l) => l.role === LanguageRole.learning)
@@ -45,7 +54,9 @@ export class MatchingService {
     // AC (US-04 AC3): cần ≥1 ngôn ngữ dạy được và ≥1 đang học
     if (myLearning.length === 0 || myTeach.length === 0) {
       throw new BadRequestException(
-        this.i18n.t('translation.matching.mustCompleteProfile', { lang: I18nContext.current()?.lang }),
+        this.i18n.t('translation.matching.mustCompleteProfile', {
+          lang: I18nContext.current()?.lang,
+        }),
       );
     }
 
@@ -61,11 +72,17 @@ export class MatchingService {
           languages: {
             some: {
               role: { in: TEACH_ROLES },
-              languageId: { in: filter?.languageId ? [filter.languageId] : myLearning },
+              languageId: {
+                in: filter?.languageId ? [filter.languageId] : myLearning,
+              },
             },
           },
         },
-        { languages: { some: { role: LanguageRole.learning, languageId: { in: myTeach } } } },
+        {
+          languages: {
+            some: { role: LanguageRole.learning, languageId: { in: myTeach } },
+          },
+        },
       ],
     };
 
@@ -91,13 +108,22 @@ export class MatchingService {
 
     // MATCH_SCORE = lang_complement (chính) + shared_topic_count (phụ) + intent_alignment (cộng)
     const scored = candidates.map((c) => {
-      const sharedTopicCount = c.interests.filter((i) => myTopicIds.has(i.topicId)).length;
-      const intentAlignment = Boolean(me.intent && c.intent && me.intent === c.intent);
+      const sharedTopicCount = c.interests.filter((i) =>
+        myTopicIds.has(i.topicId),
+      ).length;
+      const intentAlignment = Boolean(
+        me.intent && c.intent && me.intent === c.intent,
+      );
       const total = 10 + sharedTopicCount + (intentAlignment ? 1 : 0);
       const likedInfo = likedMap.get(c.id);
       return {
         user: c,
-        score: { langComplement: true, sharedTopicCount, intentAlignment, total },
+        score: {
+          langComplement: true,
+          sharedTopicCount,
+          intentAlignment,
+          total,
+        },
         liked: Boolean(likedInfo),
         conversationId: likedInfo?.conversationId ?? null,
         // why-matched (US-10 AC2)
@@ -140,7 +166,10 @@ export class MatchingService {
     picked.sort((a, b) => {
       const byScore = b.score.total - a.score.total;
       if (byScore !== 0 || dropLastActiveOrdering) return byScore;
-      return (b.user.lastActive?.getTime() ?? 0) - (a.user.lastActive?.getTime() ?? 0);
+      return (
+        (b.user.lastActive?.getTime() ?? 0) -
+        (a.user.lastActive?.getTime() ?? 0)
+      );
     });
 
     // Pool quá nhỏ → FE hiển thị "chưa đủ đối tác phù hợp, quay lại sau" thay vì empty state
@@ -201,12 +230,22 @@ export class MatchingService {
   // Logic mới (đã chốt lại): chỉ cần 1 người thích là mở CONVERSATION ngay,
   // không chờ mutual; nếu 2 bên cùng thích thì match chuyển mutual.
   async like(userId: number, targetId: number) {
-    if (userId === targetId) throw new BadRequestException(this.i18n.t('translation.matching.noSelfLike', { lang: I18nContext.current()?.lang }));
+    if (userId === targetId)
+      throw new BadRequestException(
+        this.i18n.t('translation.matching.noSelfLike', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
 
     const target = await this.prisma.user.findUnique({
       where: { id: targetId, status: UserStatus.active },
     });
-    if (!target) throw new NotFoundException(this.i18n.t('translation.matching.userNotFound', { lang: I18nContext.current()?.lang }));
+    if (!target)
+      throw new NotFoundException(
+        this.i18n.t('translation.matching.userNotFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
 
     // Đã có match theo chiều nào chưa (mình→họ hoặc họ→mình)?
     const existing = await this.prisma.match.findFirst({
@@ -222,7 +261,11 @@ export class MatchingService {
     // Chưa ai thích ai → tạo match + mở hội thoại ngay
     if (!existing) {
       const match = await this.prisma.match.create({
-        data: { memberId: userId, candidateId: targetId, status: MatchStatus.liked },
+        data: {
+          memberId: userId,
+          candidateId: targetId,
+          status: MatchStatus.liked,
+        },
       });
       const [conversation] = await this.prisma.$transaction([
         this.prisma.conversation.create({ data: { matchId: match.id } }),
@@ -235,7 +278,9 @@ export class MatchingService {
 
     const conversation =
       existing.conversation ??
-      (await this.prisma.conversation.create({ data: { matchId: existing.id } }));
+      (await this.prisma.conversation.create({
+        data: { matchId: existing.id },
+      }));
 
     // Mình đã thích trước đó → idempotent
     if (existing.memberId === userId) {
@@ -265,15 +310,22 @@ export class MatchingService {
     const blocks = await this.prisma.block.findMany({
       where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
     });
-    return blocks.map((b) => (b.blockerId === userId ? b.blockedId : b.blockerId));
+    return blocks.map((b) =>
+      b.blockerId === userId ? b.blockedId : b.blockerId,
+    );
   }
 
   /** Map targetUserId → { conversationId } cho những người mình ĐÃ thích */
-  private async getLikedMap(userId: number): Promise<Map<number, { conversationId: number | null }>> {
+  private async getLikedMap(
+    userId: number,
+  ): Promise<Map<number, { conversationId: number | null }>> {
     const matches = await this.prisma.match.findMany({
       where: {
         OR: [
-          { memberId: userId, status: { in: [MatchStatus.liked, MatchStatus.mutual] } },
+          {
+            memberId: userId,
+            status: { in: [MatchStatus.liked, MatchStatus.mutual] },
+          },
           { candidateId: userId, status: MatchStatus.mutual },
         ],
       },
@@ -292,6 +344,9 @@ export class MatchingService {
   async getRelation(viewerId: number, targetId: number) {
     const likedMap = await this.getLikedMap(viewerId);
     const info = likedMap.get(targetId);
-    return { liked: Boolean(info), conversationId: info?.conversationId ?? null };
+    return {
+      liked: Boolean(info),
+      conversationId: info?.conversationId ?? null,
+    };
   }
 }

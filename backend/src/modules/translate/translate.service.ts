@@ -81,7 +81,25 @@ export class TranslateService {
       }
     }
 
-    // Fallback: MyMemory
+    // Fallback 1: Google Translate GTX (miễn phí, chất lượng cao)
+    if (!translation) {
+      try {
+        const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(source)}&tl=${encodeURIComponent(target)}&dt=t&q=${encodeURIComponent(dto.text)}`;
+        const res = await fetch(gtxUrl, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          const translatedText = data?.[0]?.map((x: any) => x[0]).join('');
+          if (translatedText) {
+            translation = translatedText;
+            detectedSource = data?.[2] || (source === 'auto' ? this.detectLang(dto.text) : source);
+          }
+        }
+      } catch (err) {
+        this.logger.warn(`Google GTX translate error: ${(err as Error).message}`);
+      }
+    }
+
+    // Fallback 2: MyMemory
     if (!translation) {
       const fallbackSource = source === 'auto' ? this.detectLang(dto.text) : source;
       if (fallbackSource === target) {

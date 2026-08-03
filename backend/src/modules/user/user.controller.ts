@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { JwtPayload } from '../../common/types/jwt-payload';
@@ -31,12 +39,18 @@ export class UserController {
   }
 
   @Patch('me')
-  updateProfile(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
+  updateProfile(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateProfileDto,
+  ) {
     return this.userService.updateProfile(user.sub, dto);
   }
 
   @Patch('me/password')
-  changePassword(@CurrentUser() user: JwtPayload, @Body() dto: ChangePasswordDto) {
+  changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ChangePasswordDto,
+  ) {
     return this.userService.changePassword(user.sub, dto);
   }
 
@@ -51,7 +65,10 @@ export class UserController {
   }
 
   @Put('me/preference')
-  setPreference(@CurrentUser() user: JwtPayload, @Body() dto: SetPreferenceDto) {
+  setPreference(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: SetPreferenceDto,
+  ) {
     return this.userService.setPreference(user.sub, dto);
   }
 }

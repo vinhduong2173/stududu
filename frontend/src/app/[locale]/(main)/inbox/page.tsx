@@ -18,6 +18,9 @@ import {
   Image as ImageIcon,
   Languages,
   MoreHorizontal,
+  Phone,
+  PhoneMissed,
+  PhoneOff,
   Search,
   Send,
   ShieldBan,
@@ -33,6 +36,9 @@ import { TranslationModal } from "@/components/features/TranslationModal";
 import { ScheduleChatModal } from "@/components/features/ScheduleChatModal";
 import { CancelScheduleModal } from "@/components/features/CancelScheduleModal";
 import { VideoCallModal, type CallInfo } from "@/components/features/VideoCallModal";
+import { useCall } from "@/components/call/CallProvider";
+import { formatDuration } from "@/components/call/CallScreen";
+import type { CallMessagePayload } from "@/lib/webrtc/callContract";
 import { useTranslations } from "next-intl";
 import {
   TIME_SLOTS,
@@ -80,9 +86,10 @@ type Message = {
   id: number;
   conversationId: number;
   senderId: number;
-  type: "text" | "image" | "schedule";
+  // "call" = tin nhắn hệ thống tổng kết cuộc gọi (BR-25), payload là CallMessagePayload
+  type: "text" | "image" | "schedule" | "call";
   content: string;
-  payload?: SchedulePayload | null;
+  payload?: SchedulePayload | CallMessagePayload | null;
   reactions?: Record<string, number[]> | null; // FS-14: { emoji: [userId] }
   sentAt: string;
   readAt: string | null;
@@ -114,7 +121,54 @@ function previewText(m: Conversation["lastMessage"], mine: boolean, t: any): str
   const prefix = mine ? t("chat.you") : "";
   if (m.type === "image") return `${prefix}${t("chat.photo")}`;
   if (m.type === "schedule") return `${prefix}${t("chat.schedule_invite")}`;
+  if (m.type === "call") return `📞 ${m.content}`;
   return prefix + m.content;
+}
+
+/** BR-25 — tin nhắn hệ thống tổng kết cuộc gọi, hiển thị giữa dòng cho cả 2 phía. */
+function CallMessageBubble({
+  payload,
+  mine,
+  t,
+}: {
+  payload: CallMessagePayload;
+  mine: boolean;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const isVideo = payload.kind === "video";
+  const label =
+    payload.status === "ended"
+      ? t(isVideo ? "call.log_ended_video" : "call.log_ended", {
+          duration: formatDuration(payload.durationSec),
+        })
+      : payload.status === "rejected"
+        ? t("call.log_rejected")
+        : mine
+          ? t("call.log_missed_outgoing")
+          : t("call.log_missed_incoming");
+
+  const Icon =
+    payload.status === "ended"
+      ? isVideo
+        ? Video
+        : Phone
+      : payload.status === "rejected"
+        ? PhoneOff
+        : PhoneMissed;
+
+  return (
+    <div className="flex justify-center my-2">
+      <span
+        className={cn(
+          "inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-1.5 text-xs font-medium",
+          payload.status === "ended" ? "text-muted" : "text-error",
+        )}
+      >
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </span>
+    </div>
+  );
 }
 
 
@@ -153,6 +207,7 @@ function InboxContent() {
   const [reportOpen, setReportOpen] = React.useState(false);
   const [blockOpen, setBlockOpen] = React.useState(false);
   const { show: showToast, toast } = useToast();
+  const { startCall, busy: callBusy } = useCall();
 
   // Tính năng Figma Make
   const [showEmoji, setShowEmoji] = React.useState(false);
@@ -737,6 +792,43 @@ function InboxContent() {
           </div>
         </Link>
         <div className="flex items-center gap-1">
+          {/* Gọi thoại / gọi video — hai nút riêng (video-call-upgrade.md mục 5).
+              BR-33: chọn loại lúc bắt đầu, không đổi giữa cuộc.
+              Khoá nút khi đang có cuộc khác (audio-call-design.md mục 9, glare) */}
+          <button
+            onClick={() =>
+              startCall(selected.id, {
+                id: selected.partner.id,
+                displayName: selected.partner.displayName,
+                avatarUrl: selected.partner.avatarUrl,
+              })
+            }
+            disabled={callBusy}
+            className="p-2 text-muted hover:text-primary rounded-full hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+            title={t("call.start_tooltip")}
+            aria-label={t("call.start_tooltip")}
+          >
+            <Phone className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() =>
+              startCall(
+                selected.id,
+                {
+                  id: selected.partner.id,
+                  displayName: selected.partner.displayName,
+                  avatarUrl: selected.partner.avatarUrl,
+                },
+                "video",
+              )
+            }
+            disabled={callBusy}
+            className="p-2 text-muted hover:text-primary rounded-full hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+            title={t("call.start_video_tooltip")}
+            aria-label={t("call.start_video_tooltip")}
+          >
+            <Video className="w-5 h-5" />
+          </button>
           <button
             onClick={() => {
               if (selected) {
@@ -877,9 +969,21 @@ function InboxContent() {
             const mine = m.senderId === me?.id;
             const isLastMine = mine && i === messages.length - 1;
 
+            // BR-25 — tổng kết cuộc gọi, render theo payload để dịch được (content chỉ là dự phòng)
+            if (m.type === "call" && m.payload) {
+              return (
+                <CallMessageBubble
+                  key={m.id}
+                  payload={m.payload as CallMessagePayload}
+                  mine={mine}
+                  t={t}
+                />
+              );
+            }
+
             // Bubble lời mời hẹn giờ (FS-28: giờ cụ thể UTC → hiển thị theo timezone trình duyệt)
             if (m.type === "schedule" && m.payload) {
-              const sd = m.payload;
+              const sd = m.payload as SchedulePayload;
               const isNewShape = Boolean(sd.requestId && sd.timeUtc);
               const localTime = sd.timeUtc
                 ? new Date(sd.timeUtc).toLocaleString(undefined, {

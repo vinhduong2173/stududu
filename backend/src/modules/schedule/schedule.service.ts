@@ -46,7 +46,11 @@ export class ScheduleService implements OnModuleInit, OnModuleDestroy {
   async create(userId: number, dto: CreateScheduleDto) {
     const proposedTime = new Date(dto.proposedTimeUtc);
     if (proposedTime.getTime() <= Date.now()) {
-      throw new BadRequestException(this.i18n.t('translation.schedule.mustBeFuture', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.schedule.mustBeFuture', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
 
     await this.chatService.assertParticipant(userId, dto.conversationId);
@@ -80,18 +84,35 @@ export class ScheduleService implements OnModuleInit, OnModuleDestroy {
 
   // FS-28 — đối phương phản hồi accept/decline
   async respond(userId: number, requestId: number, dto: RespondScheduleDto) {
-    const request = await this.prisma.scheduleRequest.findUnique({ where: { id: requestId } });
-    if (!request) throw new NotFoundException(this.i18n.t('translation.schedule.notFound', { lang: I18nContext.current()?.lang }));
+    const request = await this.prisma.scheduleRequest.findUnique({
+      where: { id: requestId },
+    });
+    if (!request)
+      throw new NotFoundException(
+        this.i18n.t('translation.schedule.notFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     await this.chatService.assertParticipant(userId, request.conversationId);
     if (request.proposerId === userId) {
-      throw new BadRequestException(this.i18n.t('translation.schedule.noSelfRespond', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.schedule.noSelfRespond', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
     if (request.status !== ScheduleStatus.pending) {
-      throw new BadRequestException(this.i18n.t('translation.schedule.alreadyResponded', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.schedule.alreadyResponded', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
 
     const status =
-      dto.action === 'accept' ? ScheduleStatus.accepted : ScheduleStatus.declined;
+      dto.action === 'accept'
+        ? ScheduleStatus.accepted
+        : ScheduleStatus.declined;
     const updated = await this.prisma.scheduleRequest.update({
       where: { id: requestId },
       data: { status },
@@ -139,7 +160,10 @@ export class ScheduleService implements OnModuleInit, OnModuleDestroy {
       where: {
         status: ScheduleStatus.accepted,
         reminderSentAt: null,
-        proposedTimeUtc: { gt: new Date(now), lte: new Date(now + REMINDER_BEFORE_MS) },
+        proposedTimeUtc: {
+          gt: new Date(now),
+          lte: new Date(now + REMINDER_BEFORE_MS),
+        },
       },
       include: { conversation: { include: { match: true } } },
     });
@@ -151,8 +175,12 @@ export class ScheduleService implements OnModuleInit, OnModuleDestroy {
         timeUtc: req.proposedTimeUtc.toISOString(),
         message: 'Sắp đến giờ hẹn trò chuyện (30 phút nữa) — chuẩn bị nhé!',
       };
-      this.chatGateway.server.to(`user:${memberId}`).emit('notification', notification);
-      this.chatGateway.server.to(`user:${candidateId}`).emit('notification', notification);
+      this.chatGateway.server
+        .to(`user:${memberId}`)
+        .emit('notification', notification);
+      this.chatGateway.server
+        .to(`user:${candidateId}`)
+        .emit('notification', notification);
       await this.prisma.scheduleRequest.update({
         where: { id: req.id },
         data: { reminderSentAt: new Date() },
@@ -173,7 +201,9 @@ export class ScheduleService implements OnModuleInit, OnModuleDestroy {
     const payload = message.payload as unknown as ScheduleMessagePayload;
     const updated = await this.prisma.message.update({
       where: { id: message.id },
-      data: { payload: { ...payload, status } as unknown as Prisma.InputJsonValue },
+      data: {
+        payload: { ...payload, status },
+      },
     });
     this.chatGateway.server
       .to(`conversation:${message.conversationId}`)

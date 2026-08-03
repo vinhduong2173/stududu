@@ -59,6 +59,25 @@ enum MessageType {
   text
   image
   schedule
+  call // BR-25: tin nhắn hệ thống tổng kết một cuộc gọi (payload: CallMessagePayload)
+}
+
+// ===== Gọi thoại (audio-call-design.md) =====
+
+enum CallKind {
+  audio
+  video // chừa sẵn — signaling không phân biệt audio/video, xem mục 8 của design
+}
+
+enum CallStatus {
+  ringing
+  connected
+  ended
+  rejected
+  missed
+  failed
+  unavailable
+  busy
 }
 
 enum VocabLabel {
@@ -107,6 +126,7 @@ model User {
   gender         String? // nam | nữ | khác — tự khai, không bắt buộc
   dob            DateTime? // ngày sinh — hiển thị tuổi trên card/hồ sơ
   city           String? // thành phố đang sống
+  country        String? // quốc gia (VN, US, GB, AU...)
   role           UserRole   @default(member)
   status         UserStatus @default(active)
   suspendedUntil DateTime?  @map("suspended_until")
@@ -135,9 +155,13 @@ model User {
   endorsementsReceived Endorsement[]    @relation("EndorsementReceiver")
   activityPosts       ActivityPost[]
   postLikes           PostLike[]
+  postComments        PostComment[]
+  commentLikes        CommentLike[]
   scheduleRequests    ScheduleRequest[]
   notificationsReceived Notification[] @relation("NotificationUser")
   notificationsSent     Notification[] @relation("NotificationSender")
+  callsPlaced           CallSession[]  @relation("CallCaller")
+  callsReceived         CallSession[]  @relation("CallCallee")
 
   @@map("users")
 }
@@ -260,8 +284,33 @@ model Conversation {
   match     Match             @relation(fields: [matchId], references: [id])
   messages  Message[]
   schedules ScheduleRequest[]
+  calls     CallSession[]
 
   @@map("conversations")
+}
+
+// Một lượt gọi thoại. Thời lượng BẮT BUỘC lưu vì không suy ra được từ tin nhắn
+// — ngoại lệ có chủ đích của BR-14 (không cache), xem BR-24.
+model CallSession {
+  id             Int        @id @default(autoincrement())
+  conversationId Int        @map("conversation_id")
+  callerId       Int        @map("caller_id")
+  calleeId       Int        @map("callee_id")
+  kind           CallKind   @default(audio)
+  status         CallStatus @default(ringing)
+  invitedAt      DateTime   @default(now()) @map("invited_at")
+  startedAt      DateTime?  @map("started_at") // lúc connected — KHÔNG phải lúc bấm gọi
+  endedAt        DateTime?  @map("ended_at")
+  durationSec    Int        @default(0) @map("duration_sec")
+  endReason      String?    @map("end_reason") // hangup | timeout | failed | disconnect | ...
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  caller       User         @relation("CallCaller", fields: [callerId], references: [id])
+  callee       User         @relation("CallCallee", fields: [calleeId], references: [id])
+
+  @@index([conversationId, invitedAt])
+  @@index([callerId])
+  @@map("call_sessions")
 }
 
 model Message {
@@ -396,8 +445,9 @@ model ActivityPost {
   imageUrl   String?          @map("image_url")
   createdAt  DateTime         @default(now()) @map("created_at")
 
-  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  likes PostLike[]
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes    PostLike[]
+  comments PostComment[]
 
   @@map("activity_posts")
 }
@@ -413,6 +463,36 @@ model PostLike {
 
   @@unique([postId, userId])
   @@map("post_likes")
+}
+
+model PostComment {
+  id        Int           @id @default(autoincrement())
+  postId    Int           @map("post_id")
+  userId    Int           @map("user_id")
+  content   String
+  parentId  Int?          @map("parent_id")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  post    ActivityPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  PostComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies PostComment[] @relation("CommentReplies")
+  likes   CommentLike[]
+
+  @@map("post_comments")
+}
+
+model CommentLike {
+  id        Int         @id @default(autoincrement())
+  commentId Int         @map("comment_id")
+  userId    Int         @map("user_id")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  comment PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@map("comment_likes")
 }
 
 // ===== SRS v3.0 — FS-28: Đặt lịch hẹn (BR-15: lưu UTC, auto-expire 48h) =====

@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ReportStatus, UserRole } from '@prisma/client';
+import { ReportStatus, UserRole, UserStatus } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -31,13 +31,36 @@ import { ModerateDto } from './dto/moderate.dto';
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
+  @Get('stats')
+  getDashboardStats() {
+    return this.adminService.getDashboardStats();
+  }
+
+  @Get('users')
+  getUsers(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: UserStatus,
+  ) {
+    return this.adminService.getUsers(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 10,
+      search,
+      status,
+    );
+  }
+
   @Get('reports')
   getReports(@Query('status') status?: ReportStatus) {
     return this.adminService.getReports(status);
   }
 
   @Patch('reports/:id')
-  updateReport(@Param('id', ParseIntPipe) id: number, @Body('status') status: ReportStatus) {
+  updateReport(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('status') status: ReportStatus,
+  ) {
     return this.adminService.updateReportStatus(id, status);
   }
 
@@ -77,7 +100,10 @@ export class AdminController {
   }
 
   @Patch('languages/:id')
-  updateLanguage(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateLanguageDto) {
+  updateLanguage(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateLanguageDto,
+  ) {
     return this.adminService.updateLanguage(id, dto);
   }
 
@@ -87,7 +113,10 @@ export class AdminController {
   }
 
   @Patch('topics/:id')
-  updateTopic(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTopicDto) {
+  updateTopic(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTopicDto,
+  ) {
     return this.adminService.updateTopic(id, dto);
   }
 }

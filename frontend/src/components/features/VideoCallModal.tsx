@@ -61,6 +61,7 @@ export function VideoCallModal({
   const [callDuration, setCallDuration] = React.useState(0);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
+<<<<<<< HEAD
   const closeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const clearCloseTimeout = React.useCallback(() => {
@@ -79,7 +80,6 @@ export function VideoCallModal({
 
   const sendCallLog = React.useCallback(
     (durationSeconds: number, isMissed = false) => {
-      // Chỉ phía Người Gọi (Caller) gửi log tin nhắn lịch sử để tránh nhân đôi tin nhắn ở 2 phía
       if (callLogSentRef.current || !socket || !conversationId || isIncoming) return;
       callLogSentRef.current = true;
 
@@ -116,6 +116,7 @@ export function VideoCallModal({
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun2.l.google.com:19302" },
+<<<<<<< HEAD
       { urls: "stun:stun3.l.google.com:19302" },
       { urls: "stun:stun4.l.google.com:19302" },
     ],

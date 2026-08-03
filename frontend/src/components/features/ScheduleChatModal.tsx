@@ -32,14 +32,16 @@ export function ScheduleChatModal({
   const [timeStr, setTimeStr] = React.useState("20:00");
   const [error, setError] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  const [prevOpen, setPrevOpen] = React.useState(false);
 
-  React.useEffect(() => {
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
       setDateStr(tomorrow.toISOString().slice(0, 10));
       setError("");
     }
-  }, [open]);
+  }
 
   if (!open) return null;
 

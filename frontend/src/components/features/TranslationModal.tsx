@@ -24,13 +24,16 @@ export function TranslationModal({
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
 
-  React.useEffect(() => {
+  const [prevOpen, setPrevOpen] = React.useState(false);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setInputText(initialText);
       setOutputText("");
       setError("");
     }
-  }, [open, initialText]);
+  }
 
   if (!open) return null;
 

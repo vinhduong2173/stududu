@@ -29,7 +29,9 @@ export class NotificationService {
       },
     });
 
-    const followerIds = matches.map((m) => m.memberId === posterId ? m.candidateId : m.memberId);
+    const followerIds = matches.map((m) =>
+      m.memberId === posterId ? m.candidateId : m.memberId,
+    );
     const uniqueFollowerIds = Array.from(new Set(followerIds));
 
     await Promise.all(
@@ -73,7 +75,9 @@ export class NotificationService {
 
     // Real-time emission via Socket.IO
     try {
-      this.chatGateway.server?.to(`user:${userId}`).emit('notification', notification);
+      this.chatGateway.server
+        ?.to(`user:${userId}`)
+        .emit('notification', notification);
     } catch (err) {
       console.error('Socket emission failed:', err);
     }

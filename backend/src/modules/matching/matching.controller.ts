@@ -32,13 +32,22 @@ export class MatchingController {
 
   // Tab "Tất cả thành viên" (?offset=)
   @Get('members')
-  getAllMembers(@CurrentUser() user: JwtPayload, @Query('offset') offset?: string) {
-    return this.matchingService.getAllMembers(user.sub, offset ? Number(offset) : 0);
+  getAllMembers(
+    @CurrentUser() user: JwtPayload,
+    @Query('offset') offset?: string,
+  ) {
+    return this.matchingService.getAllMembers(
+      user.sub,
+      offset ? Number(offset) : 0,
+    );
   }
 
   // Like — logic mới: 1 chiều là mở hội thoại ngay (skip đã bỏ khỏi sản phẩm)
   @Post('like/:targetId')
-  like(@CurrentUser() user: JwtPayload, @Param('targetId', ParseIntPipe) targetId: number) {
+  like(
+    @CurrentUser() user: JwtPayload,
+    @Param('targetId', ParseIntPipe) targetId: number,
+  ) {
     return this.matchingService.like(user.sub, targetId);
   }
 

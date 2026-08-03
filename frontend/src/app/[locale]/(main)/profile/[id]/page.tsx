@@ -5,19 +5,32 @@ import { useParams, useRouter } from "next/navigation";
 import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
-import { Heart, ArrowLeft, MoreHorizontal, Flag, ShieldBan, MessageCircle, MapPin } from "lucide-react";
+import {
+  Heart,
+  ArrowLeft,
+  MoreHorizontal,
+  Flag,
+  ShieldBan,
+  MessageCircle,
+  MapPin,
+  FileText,
+  User,
+  Clock,
+  Award,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { ageFromDob, cn } from "@/lib/utils";
 import { ReportDialog, BlockDialog, useToast } from "@/components/features/TrustDialogs";
+import { LanguagesCard } from "@/components/features/LanguagesCard";
 import { MatchModal } from "@/components/features/MatchModal";
 import {
-  ChatStats,
   EndorseModal,
   EndorsementBadges,
+  ChatStats,
 } from "@/components/features/Endorsements";
-import { Award } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { getTopicTranslation, getIntentTranslation } from "@/lib/i18nHelper";
+import { PostCard, FeedPost } from "@/components/features/PostCard";
 
 export default function ProfilePage() {
   const params = useParams();
@@ -39,6 +52,10 @@ export default function ProfilePage() {
   const [liked, setLiked] = React.useState(false);
   const [conversationId, setConversationId] = React.useState<number | null>(null);
   const [isLikeHovered, setIsLikeHovered] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<"posts" | "about">("posts");
+  const [userPosts, setUserPosts] = React.useState<FeedPost[]>([]);
+  const [currentUser, setCurrentUser] = React.useState<{ id: number; displayName: string } | null>(null);
+  const [reportTarget, setReportTarget] = React.useState<FeedPost | null>(null);
   const { show: showToast, toast } = useToast();
 
   React.useEffect(() => {
@@ -48,13 +65,17 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const [data, relation] = await Promise.all([
+      const [data, relation, postsData, meData] = await Promise.all([
         api<any>(`/users/${id}`),
         api<{ liked: boolean; conversationId: number | null }>(`/matching/relation/${id}`),
+        api<FeedPost[]>(`/community/feed?userId=${id}&targetUserId=${id}`).catch(() => []),
+        api<any>(`/users/me`).catch(() => null),
       ]);
       setUser(data);
       setLiked(relation.liked);
       setConversationId(relation.conversationId);
+      setUserPosts(postsData);
+      if (meData) setCurrentUser({ id: meData.id, displayName: meData.displayName });
     } catch (err: any) {
       setError(err.message || t("loading_error_other"));
     } finally {
@@ -102,7 +123,7 @@ export default function ProfilePage() {
   const learnLangs = user.languages.filter((l: any) => l.role === "learning");
 
   return (
-    <div className="max-w-3xl mx-auto pb-24">
+    <div className="max-w-6xl mx-auto p-4 md:p-8 pb-24">
       <div className="sticky top-0 bg-background/80 backdrop-blur-md z-10 flex items-center justify-between p-4 border-b border-border">
         <button onClick={() => router.back()} className="p-2 hover:bg-muted/10 rounded-full transition-colors">
           <ArrowLeft className="w-6 h-6 text-foreground" />
@@ -225,55 +246,67 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div>
-            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <span>🗣️</span> {t("languages")}
-            </h2>
-            <div className="flex flex-col gap-4 bg-muted/5 p-4 rounded-2xl">
-              <div>
-                <p className="text-sm font-semibold text-muted mb-2 uppercase tracking-wider">{t("can_teach")}</p>
-                <div className="flex flex-wrap gap-2">
-                  {teachLangs.map((l: any) => (
-                    <Chip key={l.id} variant="default" className="text-sm py-1">
-                      {l.language.name} {l.role === "native" ? tDisc("card_native") : tDisc("card_fluent")}
-                    </Chip>
-                  ))}
+          <div className="border-t border-border pt-2">
+            <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1">
+              <button
+                onClick={() => setActiveTab("posts")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
+                  activeTab === "posts"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted hover:text-foreground hover:bg-surface-2"
+                )}
+              >
+                <FileText className="w-4 h-4" />
+                <span>{t("tab_posts")}</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("about")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
+                  activeTab === "about"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted hover:text-foreground hover:bg-surface-2"
+                )}
+              >
+                <User className="w-4 h-4" />
+                <span>{t("tab_about")}</span>
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className={cn(
+          "lg:col-span-5 space-y-6",
+          activeTab === "posts" && "block",
+          activeTab === "about" && "block lg:col-span-12"
+        )}>
+          {(activeTab === "posts" || activeTab === "about") && (
+            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+              <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+                <span>📌</span> {t("intro")}
+              </h2>
+              <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm italic bg-surface-2/60 p-4 rounded-2xl border border-border/50 mb-4">
+                {user.bio ? `"${user.bio}"` : t("no_intro_other")}
+              </p>
+              {user.intent && (
+                <div className="mb-3">
+                  <span className="font-semibold text-muted text-xs block uppercase mb-1">{t("intent")}</span>
+                  <Chip variant="outline" className="text-sm font-medium py-1">
+                    {getIntentTranslation(user.intent, tRoot)}
+                  </Chip>
                 </div>
-              </div>
-              <div className="h-px bg-border w-full" />
-              <div>
-                <p className="text-sm font-semibold text-muted mb-2 uppercase tracking-wider">{t("want_learn")}</p>
-                <div className="flex flex-wrap gap-2">
-                  {learnLangs.map((l: any) => (
-                    <Chip key={l.id} variant="secondary" className="text-sm py-1">
-                      {l.language.name} (Level {l.level})
-                    </Chip>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
-          </div>
+          )}
+          {(activeTab === "posts" || activeTab === "about") && (
+            <LanguagesCard languages={user.languages || []} />
+          )}
 
-          <div>
-            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <span>👋</span> {t("intro")}
-            </h2>
-            <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-              {user.bio || t("no_intro_other")}
-            </p>
-          </div>
-
-          <div>
-            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <span>🎯</span> {t("intent")}
-            </h2>
-            <Chip variant="outline" className="text-sm font-medium py-1">
-              {getIntentTranslation(user.intent, tRoot)}
-            </Chip>
-          </div>
-
-          {user.interests && user.interests.length > 0 && (
-            <div>
+          {(activeTab === "posts" || activeTab === "about") && user.interests && user.interests.length > 0 && (
+            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
                 <span>⭐</span> {t("interests")}
               </h2>
@@ -286,11 +319,62 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
+        </div>
 
+        {/* Right Column — User Posts Feed */}
+        <div className={cn(
+          "lg:col-span-7 space-y-6",
+          activeTab === "posts" && "block",
+          activeTab === "about" && "hidden"
+        )}>
+          {activeTab === "posts" && (
+            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <span>💬</span> {t("posts_title")}
+                </span>
+                <span className="text-xs text-muted font-normal">{t("posts_count", { count: userPosts.length })}</span>
+              </h2>
+
+              {userPosts.length === 0 ? (
+                <div className="text-center py-10 border border-dashed border-border rounded-2xl bg-surface-2/40">
+                  <FileText className="w-10 h-10 text-muted mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-semibold text-foreground">{t("no_posts_other", { name: user.displayName })}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {userPosts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      currentUser={currentUser}
+                      onPostUpdated={(updated) =>
+                        setUserPosts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+                      }
+                      onPostDeleted={(postId) =>
+                        setUserPosts((prev) => prev.filter((p) => p.id !== postId))
+                      }
+                      onReportPost={(p) => setReportTarget(p)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 md:left-[max(0px,calc(50%-24rem))] md:right-[max(0px,calc(50%-24rem))] p-4 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
+      {reportTarget && (
+        <ReportDialog
+          open={!!reportTarget}
+          onClose={() => setReportTarget(null)}
+          targetId={reportTarget.id}
+          targetName={reportTarget.user.displayName}
+          onDone={() => showToast(t("report_success_toast"))}
+        />
+      )}
+
+      <div className="fixed bottom-0 left-0 right-0 md:left-[max(0px,calc(50%-36rem))] md:right-[max(0px,calc(50%-36rem))] p-4 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
         <div className="flex gap-4 pointer-events-auto">
           {liked ? (
             <>

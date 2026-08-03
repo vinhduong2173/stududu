@@ -1,5 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsEnum, IsInt, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { LanguageRole } from '@prisma/client';
 
 export class UserLanguageItemDto {

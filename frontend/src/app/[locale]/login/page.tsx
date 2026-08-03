@@ -29,7 +29,8 @@ export default function LoginPage() {
   }, []);
 
   const handleGoogleClick = () => {
-    alert(t("login.google_notice"));
+    const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+    window.location.href = `${API_URL}/auth/google`;
   };
 
   const handleLogin = async (e: React.FormEvent) => {
