@@ -41,14 +41,19 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+    const displayName = dto.displayName?.trim() || dto.email.split('@')[0];
     const user = await this.prisma.user.create({
-      data: { email: dto.email, passwordHash, displayName: dto.displayName },
+      data: { email: dto.email, passwordHash, displayName },
     });
 
     return { user: this.toPublic(user), tokens: await this.issueTokens(user) };
   }
 
   async googleLogin(profile: GoogleProfile): Promise<{ user: PublicUser; tokens: AuthTokens }> {
+    if (!profile || !profile.googleId || !profile.email) {
+      throw new UnauthorizedException('Không thể lấy đủ thông tin (email/Google ID) từ tài khoản Google.');
+    }
+
     // Check if user already exists with this Google ID
     let user = await this.prisma.user.findUnique({
       where: { googleId: profile.googleId },

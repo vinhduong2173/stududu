@@ -2,7 +2,7 @@
 // Link render thành <a> thuần — component thật không đổi, chỉ môi trường đổi.
 import * as React from "react";
 
-type LinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+export type LinkProps = Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
   href: string | { pathname?: string };
   prefetch?: boolean;
   replace?: boolean;
@@ -12,8 +12,8 @@ type LinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
 };
 
 const Link = React.forwardRef<HTMLAnchorElement, LinkProps>(function Link(
-  { href, prefetch, replace, scroll, shallow, legacyBehavior, children, ...rest },
-  ref,
+  { href, prefetch, replace, scroll, shallow, legacyBehavior, children, ...rest }: LinkProps,
+  ref: React.ForwardedRef<HTMLAnchorElement>,
 ) {
   const url = typeof href === "string" ? href : (href?.pathname ?? "#");
   return (

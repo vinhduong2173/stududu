@@ -52,7 +52,8 @@
     "missingScheduleInfo": "Informations d'invitation de rendez-vous manquantes",
     "notInConversation": "Vous ne faites pas partie de cette conversation",
     "conversationNotFound": "Conversation non trouvée",
-    "blockedUser": "Impossible d'envoyer des messages à cet utilisateur"
+    "blockedUser": "Impossible d'envoyer des messages à cet utilisateur",
+    "callMessageNotAllowed": "Les messages d'appel sont générés par le système et ne peuvent pas être envoyés manuellement"
   },
   "vocab": {
     "wordNotFound": "Mot non trouvé dans votre carnet",
@@ -63,5 +64,12 @@
   },
   "common": {
     "accessDenied": "Autorisations insuffisantes"
+  },
+  "calls": {
+    "notFound": "Appel introuvable",
+    "notInConversation": "Vous ne pouvez appeler qu'une personne de la même conversation",
+    "suspendedNoCall": "Votre compte est suspendu, vous ne pouvez pas appeler",
+    "notYourCall": "Vous ne participez pas à cet appel",
+    "notRinging": "Cet appel ne sonne plus"
   }
 }

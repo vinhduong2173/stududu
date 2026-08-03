@@ -15,7 +15,11 @@ export class TrustService {
   // US-17 — report người dùng; FS-24/25 — report nội dung (post / word_library)
   report(reporterId: number, dto: CreateReportDto) {
     if (reporterId === dto.reportedId) {
-      throw new BadRequestException(this.i18n.t('translation.trust.noSelfReport', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.trust.noSelfReport', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
     return this.prisma.report.create({
       data: {
@@ -31,7 +35,11 @@ export class TrustService {
   // US-18 — block
   async block(blockerId: number, blockedId: number) {
     if (blockerId === blockedId) {
-      throw new BadRequestException(this.i18n.t('translation.trust.noSelfBlock', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.trust.noSelfBlock', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
     return this.prisma.block.upsert({
       where: { blockerId_blockedId: { blockerId, blockedId } },
@@ -58,7 +66,11 @@ export class TrustService {
   // FS-26 — ghi nhận định tính; chỉ khi đã từng trò chuyện với nhau (≥1 CONVERSATION)
   async endorse(giverId: number, dto: EndorseDto) {
     if (giverId === dto.receiverId) {
-      throw new BadRequestException(this.i18n.t('translation.trust.noSelfEndorse', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.trust.noSelfEndorse', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
 
     const sharedConversation = await this.prisma.conversation.findFirst({
@@ -72,7 +84,11 @@ export class TrustService {
       },
     });
     if (!sharedConversation) {
-      throw new BadRequestException(this.i18n.t('translation.trust.endorseOnlyConversed', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.trust.endorseOnlyConversed', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
 
     // UNIQUE(giver, receiver, label) — lặp lại thì bỏ qua, không cộng dồn (BR-13)

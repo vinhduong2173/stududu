@@ -57,7 +57,10 @@ export class AdminController {
   }
 
   @Patch('reports/:id')
-  updateReport(@Param('id', ParseIntPipe) id: number, @Body('status') status: ReportStatus) {
+  updateReport(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('status') status: ReportStatus,
+  ) {
     return this.adminService.updateReportStatus(id, status);
   }
 
@@ -97,7 +100,10 @@ export class AdminController {
   }
 
   @Patch('languages/:id')
-  updateLanguage(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateLanguageDto) {
+  updateLanguage(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateLanguageDto,
+  ) {
     return this.adminService.updateLanguage(id, dto);
   }
 
@@ -107,7 +113,10 @@ export class AdminController {
   }
 
   @Patch('topics/:id')
-  updateTopic(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTopicDto) {
+  updateTopic(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTopicDto,
+  ) {
     return this.adminService.updateTopic(id, dto);
   }
 }

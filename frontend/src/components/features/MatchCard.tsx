@@ -6,7 +6,8 @@ import { Heart, MapPin } from "lucide-react"
 import Link from "next/link"
 import { ageFromDob, cn } from "@/lib/utils"
 import { useTranslations } from "next-intl"
-import { getTopicTranslation } from "@/lib/i18nHelper"
+import { getTopicTranslation } from "@/lib/i18nHelper";
+import { LanguageFlag } from "@/lib/languages";
 
 export interface MatchCardProps {
   user: {
@@ -30,7 +31,10 @@ export function MatchCard({ user, whyMatched, liked, onLike, onUnlike }: MatchCa
   const t = useTranslations("discover");
   const tRoot = useTranslations();
   const [isHovered, setIsHovered] = React.useState(false);
-  const isOnline = user.lastActive ? new Date(user.lastActive).getTime() > Date.now() - 5 * 60 * 1000 : false;
+  const isOnline = React.useMemo(
+    () => (user.lastActive ? new Date(user.lastActive).getTime() > Date.now() - 5 * 60 * 1000 : false),
+    [user.lastActive]
+  );
 
   const teachLangs = user.languages.filter(l => l.role === "native" || l.role === "fluent");
   const learnLangs = user.languages.filter(l => l.role === "learning");
@@ -62,16 +66,18 @@ export function MatchCard({ user, whyMatched, liked, onLike, onUnlike }: MatchCa
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium w-12 text-muted">{t("card_speaks")}</span>
           {teachLangs.map(l => (
-            <Chip key={l.id} variant="default" className="text-xs py-0.5">
-              {l.language?.name} {l.role === "native" ? t("card_native") : t("card_fluent")}
+            <Chip key={l.id} variant="default" className="text-xs py-0.5 inline-flex items-center gap-1.5">
+              <LanguageFlag code={l.language?.code} name={l.language?.name} className="w-4 h-4" />
+              <span>{l.language?.name} {l.role === "native" ? t("card_native") : t("card_fluent")}</span>
             </Chip>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium w-12 text-muted">{t("card_learns")}</span>
           {learnLangs.map(l => (
-            <Chip key={l.id} variant="secondary" className="text-xs py-0.5">
-              {l.language?.name} (Lvl {l.level})
+            <Chip key={l.id} variant="secondary" className="text-xs py-0.5 inline-flex items-center gap-1.5">
+              <LanguageFlag code={l.language?.code} name={l.language?.name} className="w-4 h-4" />
+              <span>{l.language?.name} (Lvl {l.level})</span>
             </Chip>
           ))}
         </div>
