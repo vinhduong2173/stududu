@@ -8,6 +8,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { LanguageModule } from './modules/language/language.module';
 import { MatchingModule } from './modules/matching/matching.module';
 import { CommunityModule } from './modules/community/community.module';
+import { GroupsModule } from './modules/groups/groups.module';
 import { ScheduleModule } from './modules/schedule/schedule.module';
 import { TranslateModule } from './modules/translate/translate.module';
 import { TrustModule } from './modules/trust/trust.module';
@@ -85,6 +86,7 @@ import * as path from 'path';
     VocabularyModule, // FS-23/24 — thay module vocab cũ
     TranslateModule,
     CommunityModule, // FS-25
+    GroupsModule,
     ScheduleModule, // FS-28
     NotificationModule,
   ],

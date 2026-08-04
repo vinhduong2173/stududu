@@ -24,11 +24,20 @@ import {
   UserPlus,
   ArrowRight,
   Languages,
+  Plus,
+  Eye,
+  Globe,
+  Lock,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
 import { ReportDialog, useToast } from "@/components/features/TrustDialogs";
+import {
+  CreateGroupModal,
+  GroupDetailModal,
+  GroupItem,
+} from "@/components/features/GroupModals";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
 
@@ -152,6 +161,30 @@ export default function CommunityPage() {
 
   // Navigation tab state
   const [activeTab, setActiveTab] = React.useState<"feed" | "groups" | "events">("feed");
+
+  // Groups state
+  const [realGroups, setRealGroups] = React.useState<GroupItem[]>([]);
+  const [loadingGroups, setLoadingGroups] = React.useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = React.useState(false);
+  const [selectedGroupIdOrSlug, setSelectedGroupIdOrSlug] = React.useState<number | string | null>(null);
+
+  const fetchRealGroups = React.useCallback(async () => {
+    setLoadingGroups(true);
+    try {
+      const res = await api<{ data: GroupItem[] }>("/groups");
+      setRealGroups(res.data || []);
+    } catch (err) {
+      console.error("Error fetching groups:", err);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (activeTab === "groups") {
+      fetchRealGroups();
+    }
+  }, [activeTab, fetchRealGroups]);
 
   // Feed posts state
   const [posts, setPosts] = React.useState<FeedPost[]>([]);
@@ -930,60 +963,113 @@ export default function CommunityPage() {
             </>
           )}
 
-          {/* GROUPS TAB VIEW (PREVIEW) */}
+          {/* GROUPS TAB VIEW */}
           {activeTab === "groups" && (
             <div className="space-y-4">
               <div className="bg-surface rounded-2xl border border-border shadow-sm p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <Users className="w-5 h-5" />
+                <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-foreground font-display">
+                        {t("community.groups_title") || "Nhóm ngôn ngữ & Học tập"}
+                      </h2>
+                      <p className="text-xs text-muted">
+                        Tham gia các câu lạc bộ hoặc tạo nhóm riêng để luyện tập cùng bạn học
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-foreground font-display">{t("community.groups_title") || "Nhóm ngôn ngữ"}</h2>
-                    <p className="text-xs text-muted">
-                      {t("community.groups_coming_soon")}
-                    </p>
-                  </div>
+
+                  <Button
+                    onClick={() => setShowCreateGroupModal(true)}
+                    className="sd-btn-gradient rounded-xl text-xs font-bold gap-2 shadow-xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Tạo nhóm mới</span>
+                  </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                  {getSuggestedGroups(t).map((g) => {
-                    const isJoined = !!joinedGroups[g.id];
-                    return (
-                      <div key={g.id} className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className={cn("text-xs font-bold px-2.5 py-1 rounded-lg", g.bgColor, g.textColor)}>
-                              [{g.langCode}] {g.name}
-                            </span>
-                            <span className="text-[11px] text-muted font-medium">
-                              {t("community.members_count", { count: g.members })}
-                            </span>
-                          </div>
-                          <p className="text-xs text-foreground/80 leading-relaxed mb-4">{g.description}</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant={isJoined ? "outline" : "default"}
-                          onClick={() => toggleGroupJoin(g.id, g.name)}
-                          className={cn("w-full rounded-xl text-xs font-semibold gap-1.5", isJoined && "bg-success/10 text-success border-success/30 hover:bg-success/20")}
+                {loadingGroups ? (
+                  <div className="py-12 text-center text-xs text-muted">
+                    Đang tải danh sách nhóm...
+                  </div>
+                ) : realGroups.length === 0 ? (
+                  <div className="py-12 text-center space-y-3 bg-muted/5 rounded-2xl border border-dashed border-border/70 p-6">
+                    <Users className="w-10 h-10 text-muted mx-auto" />
+                    <p className="text-xs font-semibold text-muted">Chưa có nhóm nào được tạo</p>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowCreateGroupModal(true)}
+                      className="sd-btn-gradient rounded-xl text-xs font-bold gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tạo nhóm đầu tiên</span>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    {realGroups.map((g) => {
+                      return (
+                        <div
+                          key={g.id}
+                          className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex flex-col justify-between hover:border-primary/40 transition-all group/card shadow-2xs cursor-pointer"
+                          onClick={() => setSelectedGroupIdOrSlug(g.id)}
                         >
-                          {isJoined ? (
-                            <>
-                              <Check className="w-3.5 h-3.5" />
-                              {t("community.joined_group")}
-                            </>
-                          ) : (
-                            <>
-                              <UserPlus className="w-3.5 h-3.5" />
-                              {t("community.join_group")}
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary flex items-center gap-1.5">
+                                {g.privacy === "private" ? (
+                                  <Lock className="w-3 h-3 text-pink-500" />
+                                ) : (
+                                  <Globe className="w-3 h-3 text-primary" />
+                                )}
+                                {g.name}
+                              </span>
+                              <span className="text-[11px] text-muted font-medium">
+                                {g.memberCount} thành viên
+                              </span>
+                            </div>
+                            <p className="text-xs text-foreground/80 leading-relaxed mb-4 line-clamp-2">
+                              {g.description || "Chưa có mô tả nhóm."}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
+                            <span className="text-[11px] text-muted flex items-center gap-1">
+                              Tạo bởi: <strong className="text-foreground">{g.creator.displayName}</strong>
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedGroupIdOrSlug(g.id);
+                                }}
+                                className="rounded-xl text-xs font-semibold gap-1"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Thông tin</span>
+                              </Button>
+
+                              <Link
+                                href={`/groups/${g.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-primary bg-primary text-primary-foreground hover:opacity-90 text-xs font-bold transition-all shadow-2xs"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Xem nhóm</span>
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1314,6 +1400,23 @@ export default function CommunityPage() {
           </div>
         </div>
       )}
+
+      {/* Create Group Modal */}
+      <CreateGroupModal
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
+        onSuccess={(newGroup) => {
+          fetchRealGroups();
+          setSelectedGroupIdOrSlug(newGroup.id);
+        }}
+      />
+
+      {/* Group Detail Modal */}
+      <GroupDetailModal
+        groupIdOrSlug={selectedGroupIdOrSlug}
+        onClose={() => setSelectedGroupIdOrSlug(null)}
+        onGroupUpdated={fetchRealGroups}
+      />
 
       {toast}
     </div>

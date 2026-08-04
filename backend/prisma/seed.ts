@@ -49,7 +49,7 @@ async function main() {
   const adminPassword = 'AdminPassword123';
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-  await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {
       passwordHash: hashedPassword,
@@ -64,8 +64,50 @@ async function main() {
     },
   });
 
+  const frLang = await prisma.language.findUnique({ where: { code: 'fr' } });
+  const jaLang = await prisma.language.findUnique({ where: { code: 'ja' } });
+
+  const g1 = await prisma.group.upsert({
+    where: { slug: 'france-group' },
+    update: {},
+    create: {
+      name: 'French Study Group',
+      slug: 'france-group',
+      description: "Groupe d'étude de la langue française",
+      privacy: 'public',
+      creatorId: admin.id,
+      languageId: frLang?.id ?? null,
+      members: {
+        create: {
+          userId: admin.id,
+          role: 'owner',
+        },
+      },
+    },
+  });
+
+  const g2 = await prisma.group.upsert({
+    where: { slug: 'niji-tabi-2' },
+    update: {},
+    create: {
+      name: 'Niji Tabi 2',
+      slug: 'niji-tabi-2',
+      description: 'Japanese learning community group',
+      privacy: 'public',
+      creatorId: admin.id,
+      languageId: jaLang?.id ?? null,
+      members: {
+        create: {
+          userId: admin.id,
+          role: 'owner',
+        },
+      },
+    },
+  });
+
   console.log(`Seeded ${LANGUAGES.length} languages, ${TOPICS.length} topics.`);
   console.log(`Seeded admin account: ${adminEmail}`);
+  console.log(`Seeded groups: ${g1.name}, ${g2.name}`);
 }
 
 main()
@@ -74,4 +116,5 @@ main()
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
+
 

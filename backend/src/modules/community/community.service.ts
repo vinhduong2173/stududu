@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { I18nService, I18nContext } from 'nestjs-i18n';
+import { GroupMemberRole } from '@prisma/client';
 
 @Injectable()
 export class CommunityService {
@@ -14,9 +15,13 @@ export class CommunityService {
   ) {}
 
   async feed(viewerId?: number, targetUserId?: number) {
+    const whereCondition: any = { groupId: null };
+    if (targetUserId && !isNaN(targetUserId)) {
+      whereCondition.userId = targetUserId;
+    }
+
     const posts = await this.prisma.activityPost.findMany({
-      where:
-        targetUserId && !isNaN(targetUserId) ? { userId: targetUserId } : {},
+      where: whereCondition,
       include: {
         user: { select: { id: true, displayName: true, avatarUrl: true } },
         _count: { select: { likes: true, comments: true } },
@@ -111,8 +116,32 @@ export class CommunityService {
       where: { id: postId },
     });
     if (!post) throw new NotFoundException('Bài viết không tồn tại');
-    if (post.userId !== userId)
+
+    let canDelete = post.userId === userId;
+
+    if (!canDelete && post.groupId) {
+      const group = await this.prisma.group.findUnique({ where: { id: post.groupId } });
+      if (group) {
+        if (group.creatorId === userId) {
+          canDelete = true;
+        } else {
+          const member = await this.prisma.groupMember.findUnique({
+            where: { groupId_userId: { groupId: post.groupId, userId } },
+          });
+          if (
+            member &&
+            member.status === 'active' &&
+            (member.role === GroupMemberRole.owner || member.role === GroupMemberRole.admin)
+          ) {
+            canDelete = true;
+          }
+        }
+      }
+    }
+
+    if (!canDelete) {
       throw new ForbiddenException('Bạn không có quyền xóa bài viết này');
+    }
 
     await this.prisma.activityPost.delete({ where: { id: postId } });
     return { success: true };
