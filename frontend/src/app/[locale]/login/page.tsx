@@ -5,11 +5,12 @@ import { Link, useRouter } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { api, ApiError } from "@/lib/api";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { LanguageSwitcher } from "@/components/features/LanguageSwitcher";
 
 export default function LoginPage() {
   const t = useTranslations();
+  const locale = useLocale();
   const router = useRouter();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -45,6 +46,7 @@ export default function LoginPage() {
       });
       localStorage.setItem("accessToken", res.tokens.accessToken);
       localStorage.setItem("refreshToken", res.tokens.refreshToken);
+      document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000`;
       if (remember) {
         localStorage.setItem("rememberedEmail", email);
         localStorage.setItem("rememberedPassword", password);
@@ -52,12 +54,26 @@ export default function LoginPage() {
         localStorage.removeItem("rememberedEmail");
         localStorage.removeItem("rememberedPassword");
       }
-      // Chưa khai ngôn ngữ → vào onboarding; còn lại vào Khám phá
-      const me = await api<{ languages: unknown[], role: string }>("/users/me", { token: res.tokens.accessToken });
-      if (me.role === 'admin') {
-        router.push("/admin");
+      // Kiểm tra ngôn ngữ bản địa của người dùng để chuyển giao diện tương ứng
+      const me = await api<{ languages: any[]; role: string }>("/users/me", { token: res.tokens.accessToken });
+      const supportedLocales = ["en", "vi", "fr", "es", "zh"];
+      const nativeLangItem = me.languages?.find((l: any) => l.role === "native" || l.role === "fluent");
+      const userLangCode = nativeLangItem?.language?.code?.toLowerCase() || "";
+      const targetLocale = supportedLocales.includes(userLangCode) ? userLangCode : locale;
+
+      document.cookie = `NEXT_LOCALE=${targetLocale}; path=/; max-age=31536000`;
+      if (remember) {
+        localStorage.setItem("rememberedEmail", email);
+        localStorage.setItem("rememberedPassword", password);
       } else {
-        router.push(me.languages.length === 0 ? "/onboarding" : "/discover");
+        localStorage.removeItem("rememberedEmail");
+        localStorage.removeItem("rememberedPassword");
+      }
+
+      if (me.role === 'admin') {
+        router.push("/admin", { locale: targetLocale });
+      } else {
+        router.push(me.languages.length === 0 ? "/onboarding" : "/discover", { locale: targetLocale });
       }
     } catch (err) {
       if (err instanceof ApiError) {

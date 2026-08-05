@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Chip } from "@/components/ui/Chip";
@@ -9,6 +9,7 @@ import { Stepper } from "@/components/ui/Stepper";
 import { api, ApiError } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { getTopicTranslation } from "@/lib/i18nHelper";
+import { getLanguageInfo } from "@/lib/languages";
 
 type Language = { id: number; code: string; name: string };
 type Topic = { id: number; name: string };
@@ -45,7 +46,10 @@ export default function OnboardingPage() {
     api<Topic[]>("/topics").then(setAvailableTopics).catch(console.error);
   }, []);
 
-  const getLangName = (id: number) => availableLanguages.find((l) => l.id === id)?.name || "";
+  const getLangName = (id: number) => {
+    const lang = availableLanguages.find((l) => l.id === id);
+    return lang ? getLanguageInfo(lang.code, lang.name).displayName : "";
+  };
 
   const handleAddTeach = () => {
     if (!teachLangId) return;
@@ -135,7 +139,7 @@ export default function OnboardingPage() {
                   value={teachLangId} onChange={(e) => setTeachLangId(e.target.value)}
                 >
                   <option value="">{t("select_lang")}</option>
-                  {availableLanguages.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  {availableLanguages.map(l => <option key={l.id} value={l.id}>{getLanguageInfo(l.code, l.name).displayName}</option>)}
                 </select>
                 <select 
                   className="flex h-12 rounded-xl border border-border bg-transparent px-4 py-2 w-32 outline-none focus:border-primary font-medium"
@@ -164,7 +168,7 @@ export default function OnboardingPage() {
                   value={learnLangId} onChange={(e) => setLearnLangId(e.target.value)}
                 >
                   <option value="">{t("select_lang")}</option>
-                  {availableLanguages.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  {availableLanguages.map(l => <option key={l.id} value={l.id}>{getLanguageInfo(l.code, l.name).displayName}</option>)}
                 </select>
                 <select 
                   className="flex h-12 rounded-xl border border-border bg-transparent px-4 py-2 w-32 outline-none focus:border-primary font-medium"
@@ -181,7 +185,7 @@ export default function OnboardingPage() {
               <div className="flex flex-wrap gap-2">
                 {myLanguages.filter(l => l.role === 'learning').map(l => (
                   <Chip key={`${l.languageId}-learning`} className="pr-1">
-                    {getLangName(l.languageId)} (Level {l.level})
+                    {getLangName(l.languageId)} ({t(`level_${l.level}` as any)})
                     <button className="ml-2 hover:text-error" onClick={() => handleRemoveLang(l.languageId, 'learning')}>×</button>
                   </Chip>
                 ))}

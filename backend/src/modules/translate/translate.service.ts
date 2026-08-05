@@ -136,14 +136,34 @@ export class TranslateService {
     return { translation, source: source === 'auto' ? detectedSource : source, target };
   }
 
-  // Nhận diện thô khi source = auto: dấu tiếng Việt / chữ CJK / mặc định English
-  private detectLang(text: string): string {
-    if (/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(text)) {
+  // Nhận diện thô ngôn ngữ: CJK / Tiếng Việt / Tiếng Pháp / Tây Ban Nha / Đức / mặc định English
+  detectLang(text: string): string {
+    const trimmed = text.trim();
+    if (!trimmed) return 'en';
+
+    // 1. Japanese (Hiragana / Katakana)
+    if (/[぀-ヿ]/.test(trimmed)) return 'ja';
+    // 2. Korean (Hangul)
+    if (/[가-힯]/.test(trimmed)) return 'ko';
+    // 3. Chinese (CJK Unified Ideographs)
+    if (/[一-鿿]/.test(trimmed)) return 'zh';
+
+    // 4. Vietnamese specific characters (đ, ư, ơ, ă, â or Vietnamese tone marks: ả, ã, ạ, ẳ, ẵ, ặ, ẩ, ẫ, ậ, ẻ, ẽ, ẹ, ể, ễ, ệ, ỉ, ĩ, ị, ỏ, õ, ọ, ổ, ỗ, ộ, ở, ỡ, ợ, ủ, ũ, ụ, ử, ữ, ự, ỳ, ỷ, ỹ, ỵ)
+    if (/[đươăâĐƯƠĂÂ]/i.test(trimmed) || /[ảãạẳẵặẩẫậẻẽẹểễệỉĩịỏõọổỗộởỡợủũụửữựỳỷỹỵ]/i.test(trimmed)) {
       return 'vi';
     }
-    if (/[぀-ヿ]/.test(text)) return 'ja';
-    if (/[가-힯]/.test(text)) return 'ko';
-    if (/[一-鿿]/.test(text)) return 'zh';
+
+    // 5. French specific accented letters (é, è, à, ù, ç, œ, æ, ê, ë, î, ï, ô, û, ü, ÿ)
+    if (/[éèàùçœæêëîïôûüÿ]/i.test(trimmed)) {
+      return 'fr';
+    }
+
+    // 6. Spanish (ñ, ¿, ¡)
+    if (/[ñ¿¡]/i.test(trimmed)) return 'es';
+
+    // 7. German (ä, ö, ü, ß)
+    if (/[äöüß]/i.test(trimmed)) return 'de';
+
     return 'en';
   }
 }

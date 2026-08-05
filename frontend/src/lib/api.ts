@@ -42,10 +42,11 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     if (res.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      document.cookie = 'NEXT_LOCALE=en; path=/; max-age=31536000';
       const path = window.location.pathname;
-      const cleanPath = path.replace(/^\/(vi|en)/, '');
+      const cleanPath = path.replace(/^\/(vi|en|fr)/, '');
       if (cleanPath !== '/login' && cleanPath !== '/register' && cleanPath !== '/forgot-password') {
-        window.location.href = '/login';
+        window.location.href = '/en/login';
       }
     }
     

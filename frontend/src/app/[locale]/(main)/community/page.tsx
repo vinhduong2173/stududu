@@ -28,6 +28,7 @@ import {
   Eye,
   Globe,
   Lock,
+  Volume2,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -74,6 +75,7 @@ type DailyWord = {
   phonetic: string;
   definition: string;
   example: string;
+  audioUrl?: string | null;
   isSaved: boolean;
   languageId?: number;
 };
@@ -148,9 +150,9 @@ function postText(p: FeedPost, t: any): string {
 function timeAgo(iso: string, t: any): string {
   const diffMin = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (diffMin < 1) return t("community.time_just_now");
-  if (diffMin < 60) return t("community.time_minutes_ago", { count: diffMin });
+  if (diffMin < 60) return t("community.time_minutes_ago", { count: diffMin, m: diffMin });
   const h = Math.floor(diffMin / 60);
-  if (h < 24) return t("community.time_hours_ago", { count: h });
+  if (h < 24) return t("community.time_hours_ago", { count: h, h: h });
   return new Date(iso).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
 }
 
@@ -222,7 +224,7 @@ export default function CommunityPage() {
     try {
       const res = await api<{ translation: string }>("/translate", {
         method: "POST",
-        body: { text: textToTranslate, target: locale === "en" ? "en" : "vi", source: "auto" },
+        body: { text: textToTranslate, target: locale || "en", source: "auto" },
       });
       setTranslatedPosts((prev) => ({ ...prev, [p.id]: res.translation }));
       setShowTranslation((prev) => ({ ...prev, [p.id]: true }));
@@ -238,6 +240,25 @@ export default function CommunityPage() {
   const [dailyWordsData, setDailyWordsData] = React.useState<DailyWordsResponse | null>(null);
   const [vocabIndex, setVocabIndex] = React.useState(0);
   const [savingVocab, setSavingVocab] = React.useState(false);
+  const [dailyTargetLang, setDailyTargetLang] = React.useState<string | null>(null);
+
+  const fetchDailyWords = React.useCallback(
+    (target?: string) => {
+      const query = new URLSearchParams();
+      if (locale) query.set("native", locale);
+      if (target) query.set("target", target);
+
+      api<DailyWordsResponse>(`/vocabulary/daily-words?${query.toString()}`)
+        .then((data) => {
+          setDailyWordsData(data);
+          if (data?.language?.code && !target) {
+            setDailyTargetLang(data.language.code);
+          }
+        })
+        .catch((err) => console.error("Error loading daily words:", err));
+    },
+    [locale]
+  );
 
   // Group join toggle state
   const [joinedGroups, setJoinedGroups] = React.useState<Record<string, boolean>>({});
@@ -273,10 +294,8 @@ export default function CommunityPage() {
       .catch(console.error);
 
     // Load Daily Vocabulary words
-    api<DailyWordsResponse>("/vocabulary/daily-words")
-      .then(setDailyWordsData)
-      .catch((err) => console.error("Error loading daily words:", err));
-  }, []);
+    fetchDailyWords();
+  }, [fetchDailyWords]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -477,10 +496,27 @@ export default function CommunityPage() {
     }
   };
 
-  // Daily Vocabulary Navigation & Save Handlers
+  // Daily Vocabulary Navigation, Audio & Save Handlers
   const currentWord = dailyWordsData && dailyWordsData.words.length > 0
     ? dailyWordsData.words[vocabIndex % dailyWordsData.words.length]
     : null;
+
+  const handlePlayAudio = (word: DailyWord, langCode = "en") => {
+    if (word.audioUrl) {
+      const audio = new Audio(word.audioUrl);
+      audio.play().catch(() => speakFallback(word.term, langCode));
+    } else {
+      speakFallback(word.term, langCode);
+    }
+  };
+
+  const speakFallback = (text: string, langCode: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = langCode;
+    window.speechSynthesis.speak(utterance);
+  };
 
   const handleNextVocab = () => {
     if (!dailyWordsData || dailyWordsData.words.length === 0) return;
@@ -1135,6 +1171,11 @@ export default function CommunityPage() {
                 <span className="tracking-wide uppercase text-[11px]">
                   {t("community.daily_vocab_title")}
                 </span>
+                {dailyWordsData?.language && (
+                  <span className="text-[10px] font-extrabold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-md ml-1">
+                    {dailyWordsData.language.name || dailyWordsData.language.code}
+                  </span>
+                )}
               </div>
               {dailyWordsData && dailyWordsData.words.length > 0 && (
                 <span className="text-xs font-semibold text-muted bg-muted/20 px-2 py-0.5 rounded-full">
@@ -1145,16 +1186,26 @@ export default function CommunityPage() {
 
             {currentWord ? (
               <div className="bg-gradient-to-br from-primary/5 via-pink-500/5 to-warning/5 rounded-xl p-4 border border-primary/10">
-                {/* Word Term */}
-                <h3 className="text-2xl font-bold font-display text-foreground tracking-tight">
-                  {currentWord.term}
-                </h3>
-
-                {/* Part of speech & IPA Phonetic */}
-                <div className="flex items-center gap-2 mt-1 text-xs text-secondary font-semibold">
-                  <span>{currentWord.partOfSpeech}</span>
-                  {currentWord.phonetic && <span>· {currentWord.phonetic}</span>}
+                {/* Word Term & Audio Speaker Button */}
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-2xl font-bold font-display text-foreground tracking-tight">
+                    {currentWord.term}
+                  </h3>
+                  <button
+                    onClick={() => handlePlayAudio(currentWord, dailyWordsData?.language?.code || "en")}
+                    className="w-8 h-8 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                    title="Nghe phát âm chuẩn (Free Dictionary Audio)"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
                 </div>
+
+                {/* IPA Phonetic */}
+                {currentWord.phonetic && (
+                  <div className="flex items-center gap-2 mt-1 text-xs text-secondary font-semibold">
+                    <span>{currentWord.phonetic}</span>
+                  </div>
+                )}
 
                 {/* Definition / Meaning */}
                 <p className="text-sm font-semibold text-foreground/90 mt-3 leading-snug">
@@ -1169,14 +1220,16 @@ export default function CommunityPage() {
                 )}
 
                 {/* Action controls */}
-                <div className="flex items-center justify-between gap-2 mt-4 pt-2">
-                  <button
+                <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-primary/10">
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={handlePrevVocab}
-                    className="p-2 rounded-xl border border-border bg-surface text-muted hover:text-foreground hover:bg-muted/10 transition-colors"
-                    title={t("community.prev_word") || "Từ trước"}
+                    title={t("community.prev_word")}
+                    className="w-9 h-9 p-0 rounded-xl shrink-0 flex items-center justify-center bg-surface/80 hover:bg-surface border-border/80 text-foreground transition-all shadow-xs"
                   >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
+                    <ChevronLeft className="w-4 h-4 text-foreground/80" />
+                  </Button>
 
                   <Button
                     size="sm"
@@ -1184,19 +1237,21 @@ export default function CommunityPage() {
                     onClick={handleSaveCurrentVocab}
                     disabled={savingVocab || currentWord.isSaved}
                     className={cn(
-                      "flex-1 rounded-xl text-xs font-semibold gap-1.5 shadow-xs",
-                      currentWord.isSaved && "bg-success/10 text-success border-success/30 hover:bg-success/20"
+                      "flex-1 h-9 rounded-xl text-xs font-semibold gap-1.5 px-3 min-w-0 shadow-xs transition-all",
+                      currentWord.isSaved
+                        ? "bg-success/10 text-success border-success/30 hover:bg-success/20"
+                        : "bg-primary text-white hover:bg-primary/90"
                     )}
                   >
                     {currentWord.isSaved ? (
                       <>
-                        <Check className="w-3.5 h-3.5" />
-                        {t("community.saved_word")}
+                        <Check className="w-4 h-4 shrink-0 text-success" />
+                        <span className="truncate">{t("community.saved_word")}</span>
                       </>
                     ) : (
                       <>
-                        <Bookmark className="w-3.5 h-3.5" />
-                        {t("community.save_word")}
+                        <Bookmark className="w-4 h-4 shrink-0 fill-current" />
+                        <span className="truncate">{t("community.save_word")}</span>
                       </>
                     )}
                   </Button>
@@ -1204,10 +1259,10 @@ export default function CommunityPage() {
                   <Button
                     size="sm"
                     onClick={handleNextVocab}
-                    className="sd-btn-gradient rounded-xl text-xs font-semibold gap-1"
+                    title={t("community.next_word")}
+                    className="w-9 h-9 p-0 rounded-xl shrink-0 flex items-center justify-center sd-btn-gradient text-white shadow-xs transition-all"
                   >
-                    <span>{t("community.next_word")}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -1218,45 +1273,6 @@ export default function CommunityPage() {
             )}
           </div>
 
-          {/* WIDGET 2: NHÓM NGÔN NGỮ GỢI Ý (Suggested Language Groups) */}
-          <div className="bg-surface rounded-2xl border border-border shadow-sm p-4">
-            <h3 className="text-xs font-bold text-foreground uppercase tracking-wide mb-3 flex items-center justify-between">
-              <span>{t("community.suggested_groups")}</span>
-            </h3>
-
-            <div className="space-y-3">
-              {getSuggestedGroups(t).map((g) => {
-                const isJoined = !!joinedGroups[g.id];
-                return (
-                  <div key={g.id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0", g.bgColor, g.textColor)}>
-                        {g.langCode}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-foreground truncate">{g.name}</h4>
-                        <p className="text-[10px] text-muted truncate">
-                          {t("community.members_count", { count: g.members })}
-                        </p>
-                      </div>
-                    </div>
-
-                    <Button
-                      size="sm"
-                      variant={isJoined ? "outline" : "secondary"}
-                      onClick={() => toggleGroupJoin(g.id, g.name)}
-                      className={cn(
-                        "rounded-xl text-[11px] h-7 px-3 flex-shrink-0 font-semibold",
-                        isJoined && "bg-success/10 text-success border-success/30 hover:bg-success/20"
-                      )}
-                    >
-                      {isJoined ? t("community.joined_group") : t("community.join_group")}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
 
         </aside>
 

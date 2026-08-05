@@ -11,17 +11,21 @@ import { LanguageSwitcher } from "@/components/features/LanguageSwitcher";
 const ENGLISH_COUNTRIES = ["US", "GB", "AU", "CA", "NZ", "IE", "SG", "ZA"];
 
 const COUNTRIES = [
-  { code: "VN", flag: "🇻🇳", nameVi: "Việt Nam", nameEn: "Vietnam" },
-  { code: "US", flag: "🇺🇸", nameVi: "Mỹ (United States)", nameEn: "United States" },
-  { code: "GB", flag: "🇬🇧", nameVi: "Vương quốc Anh (UK)", nameEn: "United Kingdom" },
-  { code: "AU", flag: "🇦🇺", nameVi: "Úc (Australia)", nameEn: "Australia" },
-  { code: "CA", flag: "🇨🇦", nameVi: "Canada", nameEn: "Canada" },
-  { code: "NZ", flag: "🇳🇿", nameVi: "New Zealand", nameEn: "New Zealand" },
-  { code: "JP", flag: "🇯🇵", nameVi: "Nhật Bản", nameEn: "Japan" },
-  { code: "KR", flag: "🇰🇷", nameVi: "Hàn Quốc", nameEn: "South Korea" },
-  { code: "DE", flag: "🇩🇪", nameVi: "Đức", nameEn: "Germany" },
-  { code: "FR", flag: "🇫🇷", nameVi: "Pháp", nameEn: "France" },
-  { code: "CN", flag: "🇨🇳", nameVi: "Trung Quốc", nameEn: "China" },
+  { code: "VN", flag: "🇻🇳", label: "Việt Nam (Vietnam)" },
+  { code: "US", flag: "🇺🇸", label: "United States (English)" },
+  { code: "GB", flag: "🇬🇧", label: "United Kingdom (English)" },
+  { code: "AU", flag: "🇦🇺", label: "Australia (English)" },
+  { code: "CA", flag: "🇨🇦", label: "Canada (English)" },
+  { code: "NZ", flag: "🇳🇿", label: "New Zealand (English)" },
+  { code: "FR", flag: "🇫🇷", label: "France (Français)" },
+  { code: "JP", flag: "🇯🇵", label: "日本 (Japan)" },
+  { code: "KR", flag: "🇰🇷", label: "대한민국 (South Korea)" },
+  { code: "DE", flag: "🇩🇪", label: "Deutschland (Germany)" },
+  { code: "CN", flag: "🇨🇳", label: "中国 (China)" },
+  { code: "ES", flag: "🇪🇸", label: "España (Spain)" },
+  { code: "IT", flag: "🇮🇹", label: "Italia (Italy)" },
+  { code: "RU", flag: "🇷🇺", label: "Россия (Russia)" },
+  { code: "TH", flag: "🇹🇭", label: "ประเทศไทย (Thailand)" },
 ];
 
 export default function RegisterPage() {
@@ -83,19 +87,6 @@ export default function RegisterPage() {
   const handleCountryChange = (newCountry: string) => {
     setCountry(newCountry);
     saveDraft({ country: newCountry });
-
-    let targetLocale = locale;
-    if (ENGLISH_COUNTRIES.includes(newCountry)) {
-      targetLocale = "en";
-    } else if (newCountry === "VN") {
-      targetLocale = "vi";
-    }
-
-    if (targetLocale !== locale) {
-      startTransition(() => {
-        router.replace(pathname, { locale: targetLocale });
-      });
-    }
   };
 
   const handleGoogleClick = () => {
@@ -138,7 +129,22 @@ export default function RegisterPage() {
       sessionStorage.removeItem("register_form_draft");
       localStorage.setItem("accessToken", res.tokens.accessToken);
       localStorage.setItem("refreshToken", res.tokens.refreshToken);
-      router.push("/onboarding");
+
+      let targetLocale = locale;
+      if (ENGLISH_COUNTRIES.includes(country)) {
+        targetLocale = "en";
+      } else if (country === "VN") {
+        targetLocale = "vi";
+      } else if (country === "FR") {
+        targetLocale = "fr";
+      } else if (country === "ES") {
+        targetLocale = "es";
+      } else if (country === "CN") {
+        targetLocale = "zh";
+      }
+
+      document.cookie = `NEXT_LOCALE=${targetLocale}; path=/; max-age=31536000`;
+      router.push("/onboarding", { locale: targetLocale });
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -216,7 +222,7 @@ export default function RegisterPage() {
               >
                 {COUNTRIES.map((c) => (
                   <option key={c.code} value={c.code}>
-                    {c.flag} {locale === "en" ? c.nameEn : c.nameVi}
+                    {c.flag} {c.label}
                   </option>
                 ))}
               </select>

@@ -64,20 +64,46 @@ export class DictionaryService {
         null;
 
       // Lấy audioUrl từ phonetics array
-      const audioUrl =
+      let audioUrl =
         entry.phonetics?.find((p) => p.audio && p.audio.trim() !== '')?.audio || null;
+      if (audioUrl && audioUrl.startsWith('//')) {
+        audioUrl = `https:${audioUrl}`;
+      }
 
-      // Lấy meaning đầu tiên có definition
-      const meaning = entry.meanings?.find(
-        (m) => m.definitions && m.definitions.length > 0,
-      );
-      const firstDef = meaning?.definitions?.[0];
+      // Lấy definition và example — tìm definition có chứa ví dụ thực tế trong dữ liệu từ điển
+      let firstDefinition: string | null = null;
+      let firstPartOfSpeech: string | null = null;
+      let example: string | null = null;
+      let matchedDefinition: string | null = null;
+
+      for (const e of data) {
+        if (!e.meanings) continue;
+        for (const m of e.meanings) {
+          if (!m.definitions) continue;
+          for (const d of m.definitions) {
+            if (d.definition && !firstDefinition) {
+              firstDefinition = d.definition;
+              firstPartOfSpeech = m.partOfSpeech || null;
+            }
+            if (d.example && d.example.trim() !== '') {
+              example = d.example.trim();
+              matchedDefinition = d.definition || firstDefinition;
+              if (!firstPartOfSpeech) firstPartOfSpeech = m.partOfSpeech || null;
+              break;
+            }
+          }
+          if (example) break;
+        }
+        if (example) break;
+      }
+
+      const finalDefinition = matchedDefinition || firstDefinition || null;
 
       return {
         phonetic,
-        partOfSpeech: meaning?.partOfSpeech || null,
-        definition: firstDef?.definition || null,
-        example: firstDef?.example || null,
+        partOfSpeech: firstPartOfSpeech,
+        definition: finalDefinition,
+        example,
         audioUrl,
       };
     } catch (err) {

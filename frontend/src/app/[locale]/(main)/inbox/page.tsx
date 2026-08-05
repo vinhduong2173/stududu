@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Link, useRouter } from "@/i18n/routing";
+import { useSearchParams } from "next/navigation";
 import type { Socket } from "socket.io-client";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -38,7 +38,7 @@ import { CancelScheduleModal } from "@/components/features/CancelScheduleModal";
 import { useCall } from "@/components/call/CallProvider";
 import { formatDuration } from "@/components/call/CallScreen";
 import type { CallMessagePayload } from "@/lib/webrtc/callContract";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   TIME_SLOTS,
   convertSlot,
@@ -180,6 +180,7 @@ export default function InboxPage() {
 
 function InboxContent() {
   const t = useTranslations();
+  const locale = useLocale();
   const tDisc = useTranslations("discover");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -245,7 +246,8 @@ function InboxContent() {
   React.useEffect(() => {
     const token = localStorage.getItem("accessToken");
     if (!token) {
-      router.push("/login");
+      document.cookie = "NEXT_LOCALE=en; path=/; max-age=31536000";
+      router.push("/login", { locale: "en" });
       return;
     }
 
@@ -463,7 +465,7 @@ function InboxContent() {
     try {
       const res = await api<{ translation: string }>("/translate", {
         method: "POST",
-        body: { text: msg.content, source: "auto", target: "vi" },
+        body: { text: msg.content, source: "auto", target: locale || "en" },
       });
       setTranslations((prev) => ({ ...prev, [msg.id]: res.translation }));
       setShowTranslationFor((prev) => ({ ...prev, [msg.id]: true }));

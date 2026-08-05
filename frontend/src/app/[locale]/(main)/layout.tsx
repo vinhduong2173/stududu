@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { disconnectSocket, getSocket } from "@/lib/socket";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/features/TrustDialogs";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/features/LanguageSwitcher";
 import { TextSelectionPopup } from "@/components/features/TextSelectionPopup";
@@ -26,9 +26,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
   const t = useTranslations();
+  const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
-  const [me, setMe] = React.useState<{ displayName: string; avatarUrl?: string | null; role?: string; nativeLang?: string | null } | null>(null);
+  const [me, setMe] = React.useState<any>(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<any[]>([]);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
@@ -37,7 +38,10 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     api<{ displayName: string; avatarUrl?: string | null; role?: string; nativeLang?: string | null }>("/users/me")
       .then(setMe)
-      .catch(() => router.push("/login"));
+      .catch(() => {
+        document.cookie = "NEXT_LOCALE=en; path=/; max-age=31536000";
+        router.push("/login", { locale: "en" });
+      });
 
     api<any[]>("/notifications")
       .then(setNotifications)
@@ -112,7 +116,8 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     disconnectSocket();
-    router.push("/login");
+    document.cookie = "NEXT_LOCALE=en; path=/; max-age=31536000";
+    router.push("/login", { locale: "en" });
   };
 
   const navItems = [
@@ -284,7 +289,12 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
       <main className="flex-1 overflow-auto bg-background relative">
         {children}
         <TextSelectionPopup
-          targetLang={me?.nativeLang ?? "vi"}
+          targetLang={
+            me?.languages?.find((l: any) => l.role === "native")?.language?.code ||
+            me?.nativeLang ||
+            locale ||
+            "en"
+          }
           onWordSaved={(item, dup) => showToast(dup ? t("vocabulary.save_exists", { term: item.word.term }) : t("vocabulary.save_success", { term: item.word.term }))}
         />
       </main>

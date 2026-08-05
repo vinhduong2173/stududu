@@ -16,6 +16,8 @@ import type { JwtPayload } from '../../common/types/jwt-payload';
 import { SaveWordDto, UpdateLibraryWordDto, UpdateWordStatusDto } from './dto/save-word.dto';
 import { VocabularyService } from './vocabulary.service';
 
+import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
+
 @Controller('vocabulary')
 export class VocabularyController {
   constructor(private readonly vocabularyService: VocabularyService) {}
@@ -77,10 +79,24 @@ export class VocabularyController {
     return this.vocabularyService.updateLibraryWord(user.sub, id, dto);
   }
 
-  // Từ vựng mới hàng ngày theo ngôn ngữ đang chọn học
+  // Từ vựng mới hàng ngày theo ngôn ngữ đang chọn học & ngôn ngữ native của user
   @Get('daily-words')
-  @UseGuards(JwtAuthGuard)
-  getDailyWords(@CurrentUser() user: JwtPayload, @Query('target') target?: string) {
-    return this.vocabularyService.getDailyWords(user.sub, target);
+  @UseGuards(OptionalJwtAuthGuard)
+  getDailyWords(
+    @CurrentUser() user?: JwtPayload,
+    @Query('target') target?: string,
+    @Query('native') native?: string,
+  ) {
+    return this.vocabularyService.getDailyWords(user?.sub, target, native);
+  }
+
+  // Lấy danh sách đáp án nhiễu (distractors) từ Free Dictionary API cho Quiz
+  @Get('distractors')
+  @UseGuards(OptionalJwtAuthGuard)
+  getDistractors(
+    @Query('target') target?: string,
+    @Query('native') native?: string,
+  ) {
+    return this.vocabularyService.getDistractors(target, native);
   }
 }

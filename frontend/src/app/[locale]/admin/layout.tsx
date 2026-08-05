@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { Flag, LayoutDashboard, ListTree, LogOut, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -37,7 +36,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           setLoading(false);
         }
       })
-      .catch(() => router.replace("/login"));
+      .catch(() => {
+        document.cookie = "NEXT_LOCALE=en; path=/; max-age=31536000";
+        router.replace("/login", { locale: "en" });
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -53,7 +55,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (typeof window !== "undefined") {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
-      router.push("/login");
+      document.cookie = "NEXT_LOCALE=en; path=/; max-age=31536000";
+      router.push("/login", { locale: "en" });
     }
   };
 
