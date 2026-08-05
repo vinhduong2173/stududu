@@ -81,8 +81,7 @@ export type CallMediaStateEvent = CallMediaStatePayload;
 // ===== Ack trả về cho client =====
 
 export type CallAck<T = Record<string, never>> =
-  | ({ ok: true } & T)
-  | { ok: false; error: string; reason?: CallStatus };
+  ({ ok: true } & T) | { ok: false; error: string; reason?: CallStatus };
 
 // ===== Tin nhắn hệ thống tổng kết cuộc gọi (BR-25) =====
 

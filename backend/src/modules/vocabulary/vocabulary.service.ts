@@ -58,7 +58,10 @@ export class VocabularyService {
     const languageId = language?.id ?? 1;
 
     // 3. Tra từ điển (Free Dictionary API)
-    const dictResult = await this.dictionaryService.lookup(trimmed, detectedLang || 'en');
+    const dictResult = await this.dictionaryService.lookup(
+      trimmed,
+      detectedLang || 'en',
+    );
 
     // 4. Tra thư viện từ chung (WordLibrary)
     const wordLib = await this.prisma.wordLibrary.findFirst({
@@ -105,7 +108,9 @@ export class VocabularyService {
 
     let languageId = dto.languageId;
     if (languageId) {
-      const exists = await this.prisma.language.findUnique({ where: { id: languageId } });
+      const exists = await this.prisma.language.findUnique({
+        where: { id: languageId },
+      });
       if (!exists) languageId = undefined;
     }
 
@@ -145,8 +150,10 @@ export class VocabularyService {
       // Cập nhật thông tin bổ sung nếu trước đó còn thiếu
       const updateData: Prisma.WordLibraryUpdateInput = {};
       if (!word.phonetic && dto.phonetic) updateData.phonetic = dto.phonetic;
-      if (!word.partOfSpeech && dto.partOfSpeech) updateData.partOfSpeech = dto.partOfSpeech;
-      if (!word.definition && dto.definition) updateData.definition = dto.definition;
+      if (!word.partOfSpeech && dto.partOfSpeech)
+        updateData.partOfSpeech = dto.partOfSpeech;
+      if (!word.definition && dto.definition)
+        updateData.definition = dto.definition;
       if (!word.example && dto.example) updateData.example = dto.example;
       if (!word.audioUrl && dto.audioUrl) updateData.audioUrl = dto.audioUrl;
 
@@ -168,7 +175,9 @@ export class VocabularyService {
         where: { id: existing.id },
         data: {
           createdAt: new Date(),
-          ...(dto.personalNote !== undefined ? { personalNote: dto.personalNote } : {}),
+          ...(dto.personalNote !== undefined
+            ? { personalNote: dto.personalNote }
+            : {}),
           ...(dto.status ? { status: dto.status } : {}),
         },
         include: { word: { include: { language: true } } },
@@ -193,7 +202,10 @@ export class VocabularyService {
       }),
     ]);
 
-    if (!updatedWord.isPublic && updatedWord.saveCount >= WORD_LIBRARY_PUBLIC_THRESHOLD) {
+    if (
+      !updatedWord.isPublic &&
+      updatedWord.saveCount >= WORD_LIBRARY_PUBLIC_THRESHOLD
+    ) {
       await this.prisma.wordLibrary.update({
         where: { id: word.id },
         data: { isPublic: true },
@@ -224,8 +236,14 @@ export class VocabularyService {
       ...(search
         ? {
             OR: [
-              { word: { term: { contains: search.trim(), mode: 'insensitive' } } },
-              { personalNote: { contains: search.trim(), mode: 'insensitive' } },
+              {
+                word: {
+                  term: { contains: search.trim(), mode: 'insensitive' },
+                },
+              },
+              {
+                personalNote: { contains: search.trim(), mode: 'insensitive' },
+              },
             ],
           }
         : {}),
@@ -242,7 +260,9 @@ export class VocabularyService {
   async updateWordStatus(userId: number, id: number, status: string) {
     const item = await this.prisma.userSavedWord.findUnique({ where: { id } });
     if (!item || item.userId !== userId) {
-      throw new NotFoundException('Không tìm thấy từ vựng trong sổ tay của bạn.');
+      throw new NotFoundException(
+        'Không tìm thấy từ vựng trong sổ tay của bạn.',
+      );
     }
 
     const updated = await this.prisma.userSavedWord.update({
@@ -281,7 +301,11 @@ export class VocabularyService {
   }
 
   // FS-24 — member bổ sung định nghĩa/ví dụ; lưu updated_by để Admin revert nếu spam
-  async updateLibraryWord(userId: number, id: number, dto: UpdateLibraryWordDto) {
+  async updateLibraryWord(
+    userId: number,
+    id: number,
+    dto: UpdateLibraryWordDto,
+  ) {
     const word = await this.prisma.wordLibrary.findUnique({ where: { id } });
     if (!word) throw new NotFoundException('Không tìm thấy từ trong thư viện');
 
@@ -313,63 +337,266 @@ export class VocabularyService {
       where: { code: targetLang },
     });
 
-    const CURATED_WORDS: Record<string, Array<{
-      term: string;
-      partOfSpeech: string;
-      phonetic: string;
-      definition: string;
-      example: string;
-    }>> = {
+    const CURATED_WORDS: Record<
+      string,
+      Array<{
+        term: string;
+        partOfSpeech: string;
+        phonetic: string;
+        definition: string;
+        example: string;
+      }>
+    > = {
       fr: [
-        { term: 'résilience', partOfSpeech: 'FR danh từ', phonetic: '/re.zi.ljɑ̃s/', definition: 'Sự kiên cường, khả năng phục hồi', example: '« Sa résilience face aux difficultés est admirable. »' },
-        { term: 'flâner', partOfSpeech: 'FR động từ', phonetic: '/fla.ne/', definition: 'Đi dạo thong dong, thưởng ngoạn phố phường', example: '« J’aime flâner dans les rues de Paris. »' },
-        { term: 'bienveillance', partOfSpeech: 'FR danh từ', phonetic: '/bjɛ̃.vɛ.jɑ̃s/', definition: 'Lòng tốt, sự nhân từ ấm áp', example: '« Il traite chacun avec une grande bienveillance. »' },
-        { term: 'éphémère', partOfSpeech: 'FR tính từ', phonetic: '/e.fe.mɛʁ/', definition: 'Chóng tàn, phù du ngắn ngủi', example: '« La beauté de cette fleur est éphémère. »' },
-        { term: 'dépaysement', partOfSpeech: 'FR danh từ', phonetic: '/de.pe.iz.mɑ̃/', definition: 'Cảm giác lạ lẫm, tươi mới ở xứ xa', example: '« Voyager offre un réel dépaysement. »' },
-        { term: 'savoir-faire', partOfSpeech: 'FR danh từ', phonetic: '/sa.vwaʁ.fɛʁ/', definition: 'Bí quyết, kỹ năng khéo léo', example: '« Ce produit reflète un savoir-faire d’exception. »' },
+        {
+          term: 'résilience',
+          partOfSpeech: 'FR danh từ',
+          phonetic: '/re.zi.ljɑ̃s/',
+          definition: 'Sự kiên cường, khả năng phục hồi',
+          example: '« Sa résilience face aux difficultés est admirable. »',
+        },
+        {
+          term: 'flâner',
+          partOfSpeech: 'FR động từ',
+          phonetic: '/fla.ne/',
+          definition: 'Đi dạo thong dong, thưởng ngoạn phố phường',
+          example: '« J’aime flâner dans les rues de Paris. »',
+        },
+        {
+          term: 'bienveillance',
+          partOfSpeech: 'FR danh từ',
+          phonetic: '/bjɛ̃.vɛ.jɑ̃s/',
+          definition: 'Lòng tốt, sự nhân từ ấm áp',
+          example: '« Il traite chacun avec une grande bienveillance. »',
+        },
+        {
+          term: 'éphémère',
+          partOfSpeech: 'FR tính từ',
+          phonetic: '/e.fe.mɛʁ/',
+          definition: 'Chóng tàn, phù du ngắn ngủi',
+          example: '« La beauté de cette fleur est éphémère. »',
+        },
+        {
+          term: 'dépaysement',
+          partOfSpeech: 'FR danh từ',
+          phonetic: '/de.pe.iz.mɑ̃/',
+          definition: 'Cảm giác lạ lẫm, tươi mới ở xứ xa',
+          example: '« Voyager offre un réel dépaysement. »',
+        },
+        {
+          term: 'savoir-faire',
+          partOfSpeech: 'FR danh từ',
+          phonetic: '/sa.vwaʁ.fɛʁ/',
+          definition: 'Bí quyết, kỹ năng khéo léo',
+          example: '« Ce produit reflète un savoir-faire d’exception. »',
+        },
       ],
       en: [
-        { term: 'resilience', partOfSpeech: 'EN noun', phonetic: '/rɪˈzɪl.jəns/', definition: 'Sự kiên cường, khả năng đứng dậy sau thất bại', example: '« Her resilience in overcoming obstacles is truly inspiring. »' },
-        { term: 'serendipity', partOfSpeech: 'EN noun', phonetic: '/ˌser.ənˈdɪp.ə.ti/', definition: 'Sự tình cờ may mắn, nhân duyên bất ngờ', example: '« Finding this cozy cafe was pure serendipity. »' },
-        { term: 'ubiquitous', partOfSpeech: 'EN adjective', phonetic: '/juːˈbɪk.wə.təs/', definition: 'Có mặt ở khắp mọi nơi', example: '« Smartphones have become ubiquitous in modern life. »' },
-        { term: 'ephemeral', partOfSpeech: 'EN adjective', phonetic: '/ɪˈfem.ər.əl/', definition: 'Chóng vánh, tồn tại trong thời gian ngắn', example: '« Trends on social media are often ephemeral. »' },
-        { term: 'benevolent', partOfSpeech: 'EN adjective', phonetic: '/bəˈnev.əl.ənt/', definition: 'Nhân từ, giàu lòng bác ái', example: '« A benevolent donor funded the new learning space. »' },
-        { term: 'eloquent', partOfSpeech: 'EN adjective', phonetic: '/ˈel.ə.kwənt/', definition: 'Hùng hồn, giàu sức thuyết phục', example: '« She delivered an eloquent speech to the audience. »' },
-        { term: 'pragmatic', partOfSpeech: 'EN adjective', phonetic: '/præɡˈmæt.ɪk/', definition: 'Thực tế, chú trọng tính hiệu quả', example: '« We need a pragmatic solution to this problem. »' },
-        { term: 'perseverance', partOfSpeech: 'EN noun', phonetic: '/ˌpɜː.sɪˈvɪə.rəns/', definition: 'Sự kiên trì, nhẫn nại vượt khó', example: '« Perseverance is key to mastering any language. »' },
-        { term: 'meticulous', partOfSpeech: 'EN adjective', phonetic: '/məˈtɪk.jə.ləs/', definition: 'Tỉ mỉ, chỉn chu từng chi tiết', example: '« He took meticulous notes during the entire lecture. »' },
-        { term: 'enthusiasm', partOfSpeech: 'EN noun', phonetic: '/ɪnˈθjuː.zi.æz.əm/', definition: 'Sự hăng hái, nhiệt huyết bùng nổ', example: '« Her enthusiasm for learning languages is contagious. »' },
-        { term: 'solitude', partOfSpeech: 'EN noun', phonetic: '/ˈsɒl.ɪ.tʃuːd/', definition: 'Sự tĩnh lặng, thanh thản khi ở một mình', example: '« He enjoyed the peaceful solitude of the mountains. »' },
-        { term: 'nostalgia', partOfSpeech: 'EN noun', phonetic: '/nɒsˈtæl.dʒə/', definition: 'Nỗi hoài niệm, kí ức xưa cũ', example: '« The old songs filled him with nostalgia. »' },
+        {
+          term: 'resilience',
+          partOfSpeech: 'EN noun',
+          phonetic: '/rɪˈzɪl.jəns/',
+          definition: 'Sự kiên cường, khả năng đứng dậy sau thất bại',
+          example:
+            '« Her resilience in overcoming obstacles is truly inspiring. »',
+        },
+        {
+          term: 'serendipity',
+          partOfSpeech: 'EN noun',
+          phonetic: '/ˌser.ənˈdɪp.ə.ti/',
+          definition: 'Sự tình cờ may mắn, nhân duyên bất ngờ',
+          example: '« Finding this cozy cafe was pure serendipity. »',
+        },
+        {
+          term: 'ubiquitous',
+          partOfSpeech: 'EN adjective',
+          phonetic: '/juːˈbɪk.wə.təs/',
+          definition: 'Có mặt ở khắp mọi nơi',
+          example: '« Smartphones have become ubiquitous in modern life. »',
+        },
+        {
+          term: 'ephemeral',
+          partOfSpeech: 'EN adjective',
+          phonetic: '/ɪˈfem.ər.əl/',
+          definition: 'Chóng vánh, tồn tại trong thời gian ngắn',
+          example: '« Trends on social media are often ephemeral. »',
+        },
+        {
+          term: 'benevolent',
+          partOfSpeech: 'EN adjective',
+          phonetic: '/bəˈnev.əl.ənt/',
+          definition: 'Nhân từ, giàu lòng bác ái',
+          example: '« A benevolent donor funded the new learning space. »',
+        },
+        {
+          term: 'eloquent',
+          partOfSpeech: 'EN adjective',
+          phonetic: '/ˈel.ə.kwənt/',
+          definition: 'Hùng hồn, giàu sức thuyết phục',
+          example: '« She delivered an eloquent speech to the audience. »',
+        },
+        {
+          term: 'pragmatic',
+          partOfSpeech: 'EN adjective',
+          phonetic: '/præɡˈmæt.ɪk/',
+          definition: 'Thực tế, chú trọng tính hiệu quả',
+          example: '« We need a pragmatic solution to this problem. »',
+        },
+        {
+          term: 'perseverance',
+          partOfSpeech: 'EN noun',
+          phonetic: '/ˌpɜː.sɪˈvɪə.rəns/',
+          definition: 'Sự kiên trì, nhẫn nại vượt khó',
+          example: '« Perseverance is key to mastering any language. »',
+        },
+        {
+          term: 'meticulous',
+          partOfSpeech: 'EN adjective',
+          phonetic: '/məˈtɪk.jə.ləs/',
+          definition: 'Tỉ mỉ, chỉn chu từng chi tiết',
+          example: '« He took meticulous notes during the entire lecture. »',
+        },
+        {
+          term: 'enthusiasm',
+          partOfSpeech: 'EN noun',
+          phonetic: '/ɪnˈθjuː.zi.æz.əm/',
+          definition: 'Sự hăng hái, nhiệt huyết bùng nổ',
+          example: '« Her enthusiasm for learning languages is contagious. »',
+        },
+        {
+          term: 'solitude',
+          partOfSpeech: 'EN noun',
+          phonetic: '/ˈsɒl.ɪ.tʃuːd/',
+          definition: 'Sự tĩnh lặng, thanh thản khi ở một mình',
+          example: '« He enjoyed the peaceful solitude of the mountains. »',
+        },
+        {
+          term: 'nostalgia',
+          partOfSpeech: 'EN noun',
+          phonetic: '/nɒsˈtæl.dʒə/',
+          definition: 'Nỗi hoài niệm, kí ức xưa cũ',
+          example: '« The old songs filled him with nostalgia. »',
+        },
       ],
       ja: [
-        { term: '木漏れ日 (komorebi)', partOfSpeech: 'JA danh từ', phonetic: '/ko.mo.re.bi/', definition: 'Ánh nắng ấm áp chiếu rọi qua kẽ lá', example: '« 森の中で綺麗な木漏れ日を見た。 »' },
-        { term: '一期一会 (ichigo ichie)', partOfSpeech: 'JA danh từ', phonetic: '/i.tʃi.ɡo i.tʃi.e/', definition: 'Nhất kỳ nhất hội — cuộc gặp gỡ quý giá chỉ có một lần trong đời', example: '« 人との出会いを一期一会として大切にする。 »' },
-        { term: '生き甲斐 (ikigai)', partOfSpeech: 'JA danh từ', phonetic: '/i.ki.ga.i/', definition: 'Lý do thức dậy mỗi sáng, mục đích sống', example: '« 毎日の言語学習が私の生き甲斐です。 »' },
-        { term: '侘寂 (wabi-sabi)', partOfSpeech: 'JA danh từ', phonetic: '/wa.bi sa.bi/', definition: 'Vẻ đẹp mộc mạc, bình dị và sự vĩnh cửu của thời gian', example: '« 日本の伝統美には侘寂の心がある。 »' },
+        {
+          term: '木漏れ日 (komorebi)',
+          partOfSpeech: 'JA danh từ',
+          phonetic: '/ko.mo.re.bi/',
+          definition: 'Ánh nắng ấm áp chiếu rọi qua kẽ lá',
+          example: '« 森の中で綺麗な木漏れ日を見た。 »',
+        },
+        {
+          term: '一期一会 (ichigo ichie)',
+          partOfSpeech: 'JA danh từ',
+          phonetic: '/i.tʃi.ɡo i.tʃi.e/',
+          definition:
+            'Nhất kỳ nhất hội — cuộc gặp gỡ quý giá chỉ có một lần trong đời',
+          example: '« 人との出会いを一期一会として大切にする。 »',
+        },
+        {
+          term: '生き甲斐 (ikigai)',
+          partOfSpeech: 'JA danh từ',
+          phonetic: '/i.ki.ga.i/',
+          definition: 'Lý do thức dậy mỗi sáng, mục đích sống',
+          example: '« 毎日の言語学習が私の生き甲斐です。 »',
+        },
+        {
+          term: '侘寂 (wabi-sabi)',
+          partOfSpeech: 'JA danh từ',
+          phonetic: '/wa.bi sa.bi/',
+          definition: 'Vẻ đẹp mộc mạc, bình dị và sự vĩnh cửu của thời gian',
+          example: '« 日本の伝統美には侘寂の心がある。 »',
+        },
       ],
       ko: [
-        { term: '설레다 (seolleda)', partOfSpeech: 'KR động từ', phonetic: '/seol.re.da/', definition: 'Cảm giác rộn rã, xao xuyến trong lòng', example: '« 새로운 시작을 앞두고 마음이 설레다. »' },
-        { term: '소소하다 (sosohada)', partOfSpeech: 'KR tính từ', phonetic: '/so.so.ha.da/', definition: 'Nho nhỏ, bình dị mà ấm áp', example: '« 소소한 행복을 느끼며 살고 싶다. »' },
-        { term: '정 (jeong)', partOfSpeech: 'KR danh từ', phonetic: '/jeong/', definition: 'Tình cảm nồng hậu, sự gắn bó thân thương', example: '« 한국 사람들은 정이 많다. »' },
-        { term: '눈치 (nunchi)', partOfSpeech: 'KR danh từ', phonetic: '/nun.chi/', definition: 'Sự tin tế, nhạy bén đọc vị tình huống', example: '« 그 사람은 눈치가 빠르다. »' },
+        {
+          term: '설레다 (seolleda)',
+          partOfSpeech: 'KR động từ',
+          phonetic: '/seol.re.da/',
+          definition: 'Cảm giác rộn rã, xao xuyến trong lòng',
+          example: '« 새로운 시작을 앞두고 마음이 설레다. »',
+        },
+        {
+          term: '소소하다 (sosohada)',
+          partOfSpeech: 'KR tính từ',
+          phonetic: '/so.so.ha.da/',
+          definition: 'Nho nhỏ, bình dị mà ấm áp',
+          example: '« 소소한 행복을 느끼며 살고 싶다. »',
+        },
+        {
+          term: '정 (jeong)',
+          partOfSpeech: 'KR danh từ',
+          phonetic: '/jeong/',
+          definition: 'Tình cảm nồng hậu, sự gắn bó thân thương',
+          example: '« 한국 사람들은 정이 많다. »',
+        },
+        {
+          term: '눈치 (nunchi)',
+          partOfSpeech: 'KR danh từ',
+          phonetic: '/nun.chi/',
+          definition: 'Sự tin tế, nhạy bén đọc vị tình huống',
+          example: '« 그 사람은 눈치가 빠르다. »',
+        },
       ],
       zh: [
-        { term: '缘分 (yuánfèn)', partOfSpeech: 'ZH danh từ', phonetic: '/yuán fèn/', definition: 'Duyên phận, sự kết nối tình cờ diệu kỳ', example: '« 我们能在这里相遇真是很有缘分。 »' },
-        { term: '加油 (jiāyóu)', partOfSpeech: 'ZH động từ', phonetic: '/jiā yóu/', definition: 'Cố lên! Nỗ lực tiến về phía trước', example: '« 考试加油，你一定可以的！ »' },
-        { term: '沉淀 (chéndiàn)', partOfSpeech: 'ZH động từ', phonetic: '/chén diàn/', definition: 'Tích lũy, lắng đọng tri thức và trải nghiệm', example: '« 学习需要时间的沉淀。 »' },
+        {
+          term: '缘分 (yuánfèn)',
+          partOfSpeech: 'ZH danh từ',
+          phonetic: '/yuán fèn/',
+          definition: 'Duyên phận, sự kết nối tình cờ diệu kỳ',
+          example: '« 我们能在这里相遇真是很有缘分。 »',
+        },
+        {
+          term: '加油 (jiāyóu)',
+          partOfSpeech: 'ZH động từ',
+          phonetic: '/jiā yóu/',
+          definition: 'Cố lên! Nỗ lực tiến về phía trước',
+          example: '« 考试加油，你一定可以的！ »',
+        },
+        {
+          term: '沉淀 (chéndiàn)',
+          partOfSpeech: 'ZH động từ',
+          phonetic: '/chén diàn/',
+          definition: 'Tích lũy, lắng đọng tri thức và trải nghiệm',
+          example: '« 学习需要时间的沉淀。 »',
+        },
       ],
       es: [
-        { term: 'querencia', partOfSpeech: 'ES danh từ', phonetic: '/ke.ˈɾen.sja/', definition: 'Chốn bình yên mang lại cảm giác an toàn', example: '« Regresar a casa era su querencia. »' },
-        { term: 'sobremesa', partOfSpeech: 'ES danh từ', phonetic: '/so.βɾe.ˈme.sa/', definition: 'Khoảnh khắc trò chuyện ấm áp sau bữa ăn', example: '« Disfrutamos de una larga sobremesa. »' },
+        {
+          term: 'querencia',
+          partOfSpeech: 'ES danh từ',
+          phonetic: '/ke.ˈɾen.sja/',
+          definition: 'Chốn bình yên mang lại cảm giác an toàn',
+          example: '« Regresar a casa era su querencia. »',
+        },
+        {
+          term: 'sobremesa',
+          partOfSpeech: 'ES danh từ',
+          phonetic: '/so.βɾe.ˈme.sa/',
+          definition: 'Khoảnh khắc trò chuyện ấm áp sau bữa ăn',
+          example: '« Disfrutamos de una larga sobremesa. »',
+        },
       ],
       de: [
-        { term: 'Feierabend', partOfSpeech: 'DE danh từ', phonetic: '/ˈfaɪ̯ɐˌʔaːbn̩t/', definition: 'Thời gian thư thái sau một ngày làm việc', example: '« Schönen Feierabend allerseits! »' },
-        { term: 'Fernweh', partOfSpeech: 'DE danh từ', phonetic: '/ˈfɛʁnˌveː/', definition: 'Khao khát mãnh liệt được đi xa khám phá thế giới', example: '« Ich habe großes Fernweh nach dem Meer. »' },
+        {
+          term: 'Feierabend',
+          partOfSpeech: 'DE danh từ',
+          phonetic: '/ˈfaɪ̯ɐˌʔaːbn̩t/',
+          definition: 'Thời gian thư thái sau một ngày làm việc',
+          example: '« Schönen Feierabend allerseits! »',
+        },
+        {
+          term: 'Fernweh',
+          partOfSpeech: 'DE danh từ',
+          phonetic: '/ˈfɛʁnˌveː/',
+          definition: 'Khao khát mãnh liệt được đi xa khám phá thế giới',
+          example: '« Ich habe großes Fernweh nach dem Meer. »',
+        },
       ],
     };
 
-    let wordList = CURATED_WORDS[targetLang] || CURATED_WORDS['en'];
+    const wordList = CURATED_WORDS[targetLang] || CURATED_WORDS['en'];
 
     // Lấy thêm từ từ WordLibrary trong DB nếu có
     if (langRecord) {
@@ -389,7 +616,11 @@ export class VocabularyService {
         }));
         // Ghép thêm từ DB nếu chưa trùng term
         for (const dw of mappedDbWords) {
-          if (!wordList.some((w) => w.term.toLowerCase() === dw.term.toLowerCase())) {
+          if (
+            !wordList.some(
+              (w) => w.term.toLowerCase() === dw.term.toLowerCase(),
+            )
+          ) {
             wordList.push(dw);
           }
         }

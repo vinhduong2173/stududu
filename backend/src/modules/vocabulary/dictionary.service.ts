@@ -47,7 +47,9 @@ export class DictionaryService {
       if (!res.ok) {
         // 404 = từ không tồn tại trong từ điển — bình thường, không log warning
         if (res.status !== 404) {
-          this.logger.warn(`Dictionary API trả về status ${res.status} cho "${trimmed}" (${lang})`);
+          this.logger.warn(
+            `Dictionary API trả về status ${res.status} cho "${trimmed}" (${lang})`,
+          );
         }
         return null;
       }
@@ -59,13 +61,12 @@ export class DictionaryService {
 
       // Lấy phonetic — ưu tiên trường `phonetic`, fallback sang phonetics[]
       const phonetic =
-        entry.phonetic ||
-        entry.phonetics?.find((p) => p.text)?.text ||
-        null;
+        entry.phonetic || entry.phonetics?.find((p) => p.text)?.text || null;
 
       // Lấy audioUrl từ phonetics array
       const audioUrl =
-        entry.phonetics?.find((p) => p.audio && p.audio.trim() !== '')?.audio || null;
+        entry.phonetics?.find((p) => p.audio && p.audio.trim() !== '')?.audio ||
+        null;
 
       // Lấy meaning đầu tiên có definition
       const meaning = entry.meanings?.find(
@@ -81,7 +82,9 @@ export class DictionaryService {
         audioUrl,
       };
     } catch (err) {
-      this.logger.warn(`Dictionary API lỗi cho "${trimmed}": ${(err as Error).message}`);
+      this.logger.warn(
+        `Dictionary API lỗi cho "${trimmed}": ${(err as Error).message}`,
+      );
       return null;
     }
   }

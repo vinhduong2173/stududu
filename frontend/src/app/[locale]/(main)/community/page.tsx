@@ -29,6 +29,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
 import { ReportDialog, useToast } from "@/components/features/TrustDialogs";
+import { ChallengeBoard } from "@/components/features/ChallengeBoard";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
 
@@ -151,7 +152,9 @@ export default function CommunityPage() {
   const { show: showToast, toast } = useToast();
 
   // Navigation tab state
-  const [activeTab, setActiveTab] = React.useState<"feed" | "groups" | "events">("feed");
+  const [activeTab, setActiveTab] = React.useState<
+    "feed" | "challenges" | "groups" | "events"
+  >("feed");
 
   // Feed posts state
   const [posts, setPosts] = React.useState<FeedPost[]>([]);
@@ -590,6 +593,19 @@ export default function CommunityPage() {
             </button>
 
             <button
+              onClick={() => setActiveTab("challenges")}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left",
+                activeTab === "challenges"
+                  ? "bg-primary/10 text-primary shadow-xs font-bold"
+                  : "text-muted hover:text-foreground hover:bg-muted/10"
+              )}
+            >
+              <Trophy className="w-4 h-4" />
+              <span>{t("challenge.title")}</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab("groups")}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left",
@@ -928,6 +944,26 @@ export default function CommunityPage() {
                 </div>
               )}
             </>
+          )}
+
+          {/* CHALLENGES TAB — thi đấu trả lời bộ đề, BXH chỉ trong phạm vi thử thách */}
+          {activeTab === "challenges" && (
+            <div className="space-y-4">
+              <div className="bg-surface rounded-2xl border border-border shadow-sm p-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground font-display">
+                      {t("challenge.title")}
+                    </h2>
+                    <p className="text-xs text-muted">{t("challenge.subtitle")}</p>
+                  </div>
+                </div>
+              </div>
+              <ChallengeBoard />
+            </div>
           )}
 
           {/* GROUPS TAB VIEW (PREVIEW) */}

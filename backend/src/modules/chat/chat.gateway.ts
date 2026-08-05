@@ -50,7 +50,9 @@ function corsOrigins(): string[] {
   cors: { origin: corsOrigins(), credentials: true },
   maxHttpBufferSize: 2e6, // cho phép tin nhắn ảnh (data URL ~500KB sau nén)
 })
-export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server!: Server;
 
@@ -90,7 +92,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: AuthedSocket,
     @MessageBody() body: { conversationId: number },
   ) {
-    await this.chatService.assertParticipant(client.data.user.sub, body.conversationId);
+    await this.chatService.assertParticipant(
+      client.data.user.sub,
+      body.conversationId,
+    );
     await client.join(this.room(body.conversationId));
     return { joined: body.conversationId };
   }
@@ -129,7 +134,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       body.messageId,
       body.emoji,
     );
-    this.server.to(this.room(message.conversationId)).emit('message:update', message);
+    this.server
+      .to(this.room(message.conversationId))
+      .emit('message:update', message);
     return message;
   }
 
@@ -137,14 +144,17 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   @SubscribeMessage('schedule:respond')
   async respondSchedule(
     @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { messageId: number; response: 'accepted' | 'declined' },
+    @MessageBody()
+    body: { messageId: number; response: 'accepted' | 'declined' },
   ) {
     const message = await this.chatService.respondSchedule(
       client.data.user.sub,
       body.messageId,
       body.response,
     );
-    this.server.to(this.room(message.conversationId)).emit('message:update', message);
+    this.server
+      .to(this.room(message.conversationId))
+      .emit('message:update', message);
     return message;
   }
 
@@ -167,11 +177,14 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
    * nên gói lại thành ack `{ ok: false, error }` để client hiện đúng thông báo
    * thay vì im lặng treo màn "đang gọi".
    */
-  private async ack<T extends object>(fn: () => Promise<T>): Promise<CallAck<T>> {
+  private async ack<T extends object>(
+    fn: () => Promise<T>,
+  ): Promise<CallAck<T>> {
     try {
       return { ok: true, ...(await fn()) };
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Không thực hiện được';
+      const message =
+        err instanceof Error ? err.message : 'Không thực hiện được';
       this.logger.warn(`call event lỗi: ${message}`);
       return { ok: false, error: message };
     }
@@ -197,7 +210,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   }
 
   @SubscribeMessage('call:reject')
-  async callReject(@ConnectedSocket() client: AuthedSocket, @MessageBody() body: CallIdPayload) {
+  async callReject(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: CallIdPayload,
+  ) {
     return this.ack(async () => {
       await this.callsService.reject(client.data.user.sub, body.callId);
       return {};
@@ -205,7 +221,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   }
 
   @SubscribeMessage('call:cancel')
-  async callCancel(@ConnectedSocket() client: AuthedSocket, @MessageBody() body: CallIdPayload) {
+  async callCancel(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: CallIdPayload,
+  ) {
     return this.ack(async () => {
       await this.callsService.cancel(client.data.user.sub, body.callId);
       return {};
@@ -213,7 +232,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   }
 
   @SubscribeMessage('call:end')
-  async callEnd(@ConnectedSocket() client: AuthedSocket, @MessageBody() body: CallIdPayload) {
+  async callEnd(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: CallIdPayload,
+  ) {
     return this.ack(async () => {
       await this.callsService.end(client.data.user.sub, body.callId);
       return {};
@@ -221,7 +243,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   }
 
   @SubscribeMessage('call:ice-candidate')
-  async callIce(@ConnectedSocket() client: AuthedSocket, @MessageBody() body: CallIcePayload) {
+  async callIce(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: CallIcePayload,
+  ) {
     return this.ack(async () => {
       await this.callsService.relayIce(client.data.user.sub, body);
       return {};
@@ -250,7 +275,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     setImmediate(() => {
       void this.callsService
         .handleUserDisconnect(userId)
-        .catch((err) => this.logger.error(`Dọn cuộc gọi khi disconnect: ${String(err)}`));
+        .catch((err) =>
+          this.logger.error(`Dọn cuộc gọi khi disconnect: ${String(err)}`),
+        );
     });
   }
 
@@ -258,59 +285,6 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     return `conversation:${conversationId}`;
   }
   // ===== VIDEO CALL SIGNALING (WebRTC) =====
-
-  @SubscribeMessage('call:invite')
-  async handleCallInvite(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody()
-    body: {
-      conversationId: number;
-      targetUserId: number;
-      callerName: string;
-      callerAvatar?: string | null;
-    },
-  ) {
-    this.server.to(`user:${body.targetUserId}`).emit('call:incoming', {
-      conversationId: body.conversationId,
-      callerId: client.data.user.sub,
-      callerName: body.callerName,
-      callerAvatar: body.callerAvatar,
-    });
-  }
-
-  @SubscribeMessage('call:accept')
-  async handleCallAccept(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { conversationId: number; targetUserId: number },
-  ) {
-    this.server.to(`user:${body.targetUserId}`).emit('call:accepted', {
-      conversationId: body.conversationId,
-      responderId: client.data.user.sub,
-    });
-  }
-
-  @SubscribeMessage('call:reject')
-  async handleCallReject(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { conversationId: number; targetUserId: number; reason?: string },
-  ) {
-    this.server.to(`user:${body.targetUserId}`).emit('call:rejected', {
-      conversationId: body.conversationId,
-      responderId: client.data.user.sub,
-      reason: body.reason,
-    });
-  }
-
-  @SubscribeMessage('call:end')
-  async handleCallEnd(
-    @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { conversationId: number; targetUserId: number },
-  ) {
-    this.server.to(`user:${body.targetUserId}`).emit('call:ended', {
-      conversationId: body.conversationId,
-      endedBy: client.data.user.sub,
-    });
-  }
 
   @SubscribeMessage('webrtc:offer')
   async handleWebrtcOffer(

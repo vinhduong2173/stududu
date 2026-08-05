@@ -1,4 +1,17 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "prisma", "**/*spec.ts"]
+  // `scripts` và `scratch` phải nằm ngoài build: có file .ts ngoài src/ thì
+  // TypeScript nới rootDir lên thư mục gốc, output đổi từ dist/main.js sang
+  // dist/src/main.js và `npm run start:prod` (node dist/main) gãy.
+  // `__fixtures__` chỉ phục vụ test, không cần vào bundle chạy thật.
+  "exclude": [
+    "node_modules",
+    "test",
+    "dist",
+    "prisma",
+    "scripts",
+    "scratch",
+    "**/__fixtures__/**",
+    "**/*spec.ts"
+  ]
 }

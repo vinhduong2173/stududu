@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Flag, LayoutDashboard, ListTree, LogOut, Users } from "lucide-react";
+import { FileText, Flag, LayoutDashboard, ListTree, LogOut, Trophy, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { Logo } from "@/components/ui/Logo";
@@ -62,6 +62,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: "Báo cáo", href: "/admin/reports", icon: Flag, exact: false, badge: openReportsCount },
     { name: "Người dùng", href: "/admin/users", icon: Users, exact: false },
     { name: "Danh mục", href: "/admin/catalog", icon: ListTree, exact: false },
+    { name: "Bộ đề", href: "/admin/question-sets", icon: FileText, exact: false },
+    { name: "Thử thách", href: "/admin/challenges", icon: Trophy, exact: false },
   ];
 
   return (
