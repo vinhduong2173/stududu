@@ -848,7 +848,44 @@ export default function QuizCreatePage() {
               <Button
                 disabled={publishBlocked}
                 onClick={() => {
-                  alert(`Đã xuất bản bộ đề "${title || "Thời tiết — B1"}" thành công!`);
+                  const finalTitle = title || `${topic || "Ẩm thực"} — ${level || "A1"}`;
+                  const newSet = {
+                    id: `qs-${Date.now()}`,
+                    title: finalTitle,
+                    language: language || "Tiếng Anh",
+                    level: level || "A1",
+                    topic: topic || "Ẩm thực",
+                    wordCount: rows.length,
+                    status: "published",
+                    updatedAt: new Date().toISOString().split("T")[0],
+                  };
+
+                  const existingStr = localStorage.getItem("stududu_custom_quiz_sets");
+                  let existing = [];
+                  if (existingStr) {
+                    try {
+                      existing = JSON.parse(existingStr);
+                    } catch {
+                      // ignore
+                    }
+                  }
+                  existing.unshift(newSet);
+                  localStorage.setItem("stududu_custom_quiz_sets", JSON.stringify(existing));
+
+                  import("@/lib/api")
+                    .then(({ api }) =>
+                      api("/admin/question-sets", {
+                        method: "POST",
+                        body: {
+                          title: finalTitle,
+                          targetLevel: level || "A1",
+                          description,
+                        },
+                      })
+                    )
+                    .catch(() => {});
+
+                  alert(`Đã xuất bản bộ đề "${finalTitle}" thành công với ${rows.length} từ vựng/câu hỏi!`);
                   router.push("/admin/quizzes");
                 }}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl px-7 py-3 shadow-md disabled:opacity-50 flex items-center gap-2"

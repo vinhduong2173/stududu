@@ -60,10 +60,56 @@ const INITIAL_QUIZ_SETS: QuizSet[] = [
 ];
 
 export default function AdminQuizzesPage() {
-  const [quizSets] = React.useState<QuizSet[]>(INITIAL_QUIZ_SETS);
+  const [quizSets, setQuizSets] = React.useState<QuizSet[]>(INITIAL_QUIZ_SETS);
   const [search, setSearch] = React.useState("");
   const [selectedLang, setSelectedLang] = React.useState("ALL");
   const [selectedLevel, setSelectedLevel] = React.useState("ALL");
+
+  React.useEffect(() => {
+    // 1. Đọc dữ liệu từ localStorage
+    const savedLocalStr = typeof window !== "undefined" ? localStorage.getItem("stududu_custom_quiz_sets") : null;
+    let localSets: QuizSet[] = [];
+    if (savedLocalStr) {
+      try {
+        localSets = JSON.parse(savedLocalStr);
+      } catch {
+        // ignore
+      }
+    }
+
+    // 2. Fetch danh sách bộ đề từ API Backend
+    import("@/lib/api")
+      .then(({ api }) => api<any[]>("/admin/question-sets"))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const apiSets: QuizSet[] = data.map((item) => ({
+            id: String(item.id),
+            title: item.title || "Bộ đề mới",
+            language: item.language?.name || "Tiếng Anh",
+            level: item.targetLevel || "A1",
+            topic: item.topic?.name || "Từ vựng",
+            wordCount: item._count?.questions || item.questions?.length || 20,
+            status: item.publishedAt ? "published" : "draft",
+            updatedAt: new Date(item.updatedAt || item.createdAt || Date.now()).toISOString().split("T")[0],
+          }));
+
+          const combined = [...localSets];
+          for (const apiItem of apiSets) {
+            if (!combined.some((c) => c.id === apiItem.id)) {
+              combined.push(apiItem);
+            }
+          }
+          setQuizSets(combined.length > 0 ? combined : INITIAL_QUIZ_SETS);
+        } else if (localSets.length > 0) {
+          setQuizSets([...localSets, ...INITIAL_QUIZ_SETS]);
+        }
+      })
+      .catch(() => {
+        if (localSets.length > 0) {
+          setQuizSets([...localSets, ...INITIAL_QUIZ_SETS]);
+        }
+      });
+  }, []);
 
   const filteredSets = quizSets.filter((item) => {
     const matchesSearch = item.title.toLowerCase().includes(search.toLowerCase()) || item.topic.toLowerCase().includes(search.toLowerCase());
