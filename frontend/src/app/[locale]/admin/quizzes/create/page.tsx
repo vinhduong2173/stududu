@@ -167,9 +167,71 @@ export default function QuizCreatePage() {
     }
   };
 
+  const parseCSVText = (text: string): VocabRow[] => {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (lines.length <= 1) return [];
+
+    const parsedRows: VocabRow[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      const columns: string[] = [];
+      let current = "";
+      let inQuotes = false;
+
+      for (let charIndex = 0; charIndex < line.length; charIndex++) {
+        const char = line[charIndex];
+        if (char === '"' || char === "'") {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          columns.push(current.trim());
+          current = "";
+        } else {
+          current += char;
+        }
+      }
+      columns.push(current.trim());
+
+      if (columns.length >= 3 && columns[0]) {
+        const word = columns[0].replace(/^["']|["']$/g, '');
+        const phonetic = columns[1]?.replace(/^["']|["']$/g, '') || '';
+        const meaning = columns[2]?.replace(/^["']|["']$/g, '') || '';
+        const type = columns[3]?.replace(/^["']|["']$/g, '') || 'Danh từ';
+        const example = columns[4]?.replace(/^["']|["']$/g, '') || '';
+        const d1 = columns[5]?.replace(/^["']|["']$/g, '') || 'Đáp án sai 1';
+        const d2 = columns[6]?.replace(/^["']|["']$/g, '') || 'Đáp án sai 2';
+        const d3 = columns[7]?.replace(/^["']|["']$/g, '') || 'Đáp án sai 3';
+
+        parsedRows.push({
+          id: i,
+          word,
+          phonetic,
+          meaning,
+          type,
+          example,
+          distractors: [d1, d2, d3],
+          status: "valid",
+        });
+      }
+    }
+    return parsedRows;
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setUploadedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setUploadedFile(file);
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        if (text) {
+          const parsed = parseCSVText(text);
+          if (parsed.length > 0) {
+            setRows(parsed);
+          }
+        }
+      };
+      reader.readAsText(file, "UTF-8");
     }
   };
 
@@ -460,7 +522,7 @@ export default function QuizCreatePage() {
                   <FileSpreadsheet className="h-6 w-6 text-emerald-600" />
                   <div>
                     <p className="text-xs font-bold text-foreground">{uploadedFile.name}</p>
-                    <p className="text-[11px] text-muted">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
+                    <p className="text-[11px] text-muted">{(uploadedFile.size / 1024).toFixed(1)} KB · Đã trích xuất {rows.length} từ vựng</p>
                   </div>
                 </div>
                 <span className="text-xs font-bold text-emerald-600 bg-emerald-500/20 px-2.5 py-1 rounded-full">
@@ -495,11 +557,11 @@ export default function QuizCreatePage() {
 
         {/* STEP 4 — Kiểm tra */}
         {currentStep === 4 && (
-          <div className="bg-surface rounded-2xl border border-border shadow-xs p-6 md:p-8 space-y-6 max-w-4xl mx-auto">
+          <div className="bg-surface rounded-2xl border border-border shadow-xs p-6 md:p-8 space-y-6 max-w-5xl mx-auto">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-foreground">Bước 4 — Kiểm tra dữ liệu từ vựng</h2>
-                <p className="text-sm text-muted mt-1">Bảng trích xuất dữ liệu từ file. Kiểm tra thông tin trước khi tiếp tục.</p>
+                <p className="text-sm text-muted mt-1">Bảng trích xuất dữ liệu từ file <strong>{uploadedFile?.name || "CSV mẫu"}</strong>. Kiểm tra thông tin trước khi tiếp tục.</p>
               </div>
               <span className="text-xs font-bold px-3 py-1 bg-emerald-500/10 text-emerald-600 rounded-full border border-emerald-500/20">
                 {rows.length} từ vựng hợp lệ
@@ -515,6 +577,7 @@ export default function QuizCreatePage() {
                     <th className="p-3">Phiên âm</th>
                     <th className="p-3">Nghĩa tiếng Việt</th>
                     <th className="p-3">Loại từ</th>
+                    <th className="p-3">Ví dụ</th>
                     <th className="p-3">Đáp án sai</th>
                   </tr>
                 </thead>
@@ -526,7 +589,8 @@ export default function QuizCreatePage() {
                       <td className="p-3 text-muted">{r.phonetic}</td>
                       <td className="p-3 font-medium text-emerald-700">{r.meaning}</td>
                       <td className="p-3">{r.type}</td>
-                      <td className="p-3 text-muted">{r.distractors.join(", ")}</td>
+                      <td className="p-3 text-muted italic max-w-xs truncate">{r.example || "—"}</td>
+                      <td className="p-3 text-muted">{r.distractors.filter(Boolean).join(", ")}</td>
                     </tr>
                   ))}
                 </tbody>
