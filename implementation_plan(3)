@@ -1,0 +1,66 @@
+# Kế hoạch Refactor: Thống nhất Request / Response API (NestJS & Next.js)
+
+Tài liệu này mô tả chi tiết kế hoạch refactor để thống nhất cấu trúc Request & Response (`APIRequest<T>` và `APIResponse<T>`) giữa Backend (NestJS) và Frontend (Next.js) trong dự án **stududu**.
+
+## Tổng quan giải pháp
+
+Mô hình hóa dữ liệu trả về theo chuẩn **Response Envelope Pattern**:
+```typescript
+export interface APIResponse<T = unknown> {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: T;
+  timestamp: string;
+  errors?: string[] | Record<string, unknown>;
+}
+
+export interface APIRequest<T = unknown> {
+  payload: T;
+  headers?: Record<string, string>;
+}
+```
+
+- **Phía Backend (NestJS)**: Sử dụng **`TransformInterceptor`** để tự động bọc mọi kết quả từ Controller vào `APIResponse<T>`, và **`AllExceptionsFilter`** để tự động bọc mọi lỗi vào cùng chuẩn `APIResponse<null>`.
+- **Phía Frontend (Next.js)**: Cập nhật [`frontend/src/lib/api.ts`](file:///f:/stududu/frontend/src/lib/api.ts) để tự động unwrap `APIResponse<T>`, đồng thời export các helper `handleAPIData` và `handleAPIError`.
+
+---
+
+## Các thay đổi chi tiết
+
+### 1. Phía Backend (NestJS)
+
+#### [NEW] [api-response.interface.ts](file:///f:/stududu/backend/src/common/types/api-response.interface.ts)
+- Định nghĩa interface `APIResponse<T>` và `APIRequest<T>`.
+
+#### [NEW] [transform.interceptor.ts](file:///f:/stududu/backend/src/common/interceptors/transform.interceptor.ts)
+- NestJS Interceptor tự động bọc phản hồi thành công (HTTP 2xx) vào định dạng `APIResponse<T>`.
+
+#### [NEW] [http-exception.filter.ts](file:///f:/stududu/backend/src/common/filters/http-exception.filter.ts)
+- NestJS Exception Filter tự động bọc các phản hồi lỗi (HTTP 4xx, 5xx, Validation errors) vào cùng định dạng `APIResponse<null>`.
+
+#### [MODIFY] [main.ts](file:///f:/stududu/backend/src/main.ts)
+- Đăng ký `TransformInterceptor` và `AllExceptionsFilter` toàn cục (`app.useGlobalInterceptors` và `app.useGlobalFilters`).
+
+---
+
+### 2. Phía Frontend (Next.js)
+
+#### [NEW] [api-response.interface.ts](file:///f:/stududu/frontend/src/types/api-response.interface.ts)
+- Định nghĩa interface `APIResponse<T>`, `APIRequest<T>`, `VerifyEmailResponse` và các loại response type thông dụng.
+
+#### [MODIFY] [api.ts](file:///f:/stududu/frontend/src/lib/api.ts)
+- Cập nhật hàm `api<T>` để nhận và tự động bóc tách envelope `APIResponse<T>` một cách trong suốt (transparently), giúp các lệnh gọi `api<T>()` hiện tại ở Frontend không bị vỡ.
+- Export các hàm helper `handleAPIData<T>()` và `handleAPIError<T>()` như yêu cầu.
+
+---
+
+## Kế hoạch kiểm thử & Xác minh (Verification Plan)
+
+### Kiểm thử Backend
+- Khởi chạy backend / kiểm tra TypeScript build: `npm run build` tại folder `backend`.
+- Test thử response thành công và response lỗi qua cURL hoặc HTTP Client.
+
+### Kiểm thử Frontend
+- Kiểm tra TypeScript build: `npm run build` tại folder `frontend`.
+- Đảm bảo các luồng login, register, fetch profile và vocabulary hoạt động mượt mà với cấu trúc response mới.

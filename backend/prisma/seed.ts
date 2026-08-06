@@ -27,6 +27,23 @@ const TOPICS = [
   'Exams (IELTS/TOEIC…)',
 ];
 
+// Chủ đề TỪ VỰNG cho bộ đề — cố tình khác TOPICS ở trên (TOPICS = sở thích để
+// ghép người nói chuyện, xem question-set-design.md mục 2)
+const VOCAB_TOPICS = [
+  'Động vật',
+  'Thức ăn & đồ uống',
+  'Gia đình',
+  'Nghề nghiệp',
+  'Cơ thể & sức khoẻ',
+  'Nhà cửa & đồ dùng',
+  'Thời tiết & thiên nhiên',
+  'Giao thông & đi lại',
+  'Mua sắm & tiền bạc',
+  'Học tập & trường lớp',
+  'Cảm xúc & tính cách',
+  'Công nghệ & Internet',
+];
+
 async function main() {
   for (const lang of LANGUAGES) {
     await prisma.language.upsert({
@@ -38,6 +55,14 @@ async function main() {
 
   for (const name of TOPICS) {
     await prisma.topic.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+
+  for (const name of VOCAB_TOPICS) {
+    await prisma.vocabTopic.upsert({
       where: { name },
       update: {},
       create: { name },

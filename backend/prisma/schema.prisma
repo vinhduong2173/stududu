@@ -111,6 +111,32 @@ enum ScheduleStatus {
   expired
 }
 
+// ===== Bộ đề trắc nghiệm (docs/01-requirements/question-set-design.md) =====
+
+enum SetStatus {
+  draft
+  published
+  archived
+}
+
+enum QuestionType {
+  vocabulary
+  grammar
+  cloze
+  reading
+}
+
+enum QuestionStatus {
+  active
+  retired
+}
+
+// Không có csv_import — luồng CSV đã bị bỏ (question-set-ai-only-flow.md mục 6)
+enum QuestionSource {
+  manual
+  ai_generated
+}
+
 // ===== Models =====
 
 model User {
@@ -165,6 +191,7 @@ model User {
   groupMemberships      GroupMember[]
   joinRequestsSent      GroupJoinRequest[] @relation("JoinRequestUser")
   joinRequestsReviewed  GroupJoinRequest[] @relation("JoinRequestReviewer")
+  testAttempts          TestAttempt[]
 
   @@map("users")
 }
@@ -179,6 +206,7 @@ model Language {
   userLanguages UserLanguage[]
   wordLibrary   WordLibrary[]
   groups        Group[]
+  questionSets  QuestionSet[]
 
   @@map("languages")
 }
@@ -535,6 +563,135 @@ model Notification {
 
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+// ===== Bộ đề trắc nghiệm — Admin soạn, học viên làm (question-set-design.md) =====
+
+// Chủ đề TỪ VỰNG — cố tình tách khỏi `Topic` (sở thích để ghép người nói chuyện).
+// Dùng chung sẽ khiến Admin ẩn chủ đề cho matching (US-21) làm mất luôn bộ đề.
+model VocabTopic {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  hidden Boolean @default(false)
+
+  sets QuestionSet[]
+
+  @@map("vocab_topics")
+}
+
+model QuestionSet {
+  id              Int       @id @default(autoincrement())
+  languageId      Int       @map("language_id")
+  topicId         Int       @map("topic_id")
+  framework       String // CEFR | HSK | JLPT | TOPIK
+  level           String // A1..C2
+  levelOrder      Int       @map("level_order") // 1..6 — so sánh/lên bậc
+  title           String
+  description     String?
+  contentLanguage String    @default("vi") @map("content_language")
+  status          SetStatus @default(draft)
+  questionCount   Int       @default(0) @map("question_count")
+  createdById     Int       @map("created_by_id")
+  updatedById     Int?      @map("updated_by_id")
+  publishedAt     DateTime? @map("published_at")
+  lastGeneratedAt DateTime? @map("last_generated_at") // BR-52: chặn gọi AI quá 1 lần/phút
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  language   Language             @relation(fields: [languageId], references: [id])
+  topic      VocabTopic           @relation(fields: [topicId], references: [id])
+  questions  TestQuestion[]
+  attempts   TestAttempt[]
+  challenges CommunityChallenge[]
+
+  @@unique([languageId, topicId, level])
+  @@index([status, languageId, levelOrder])
+  @@map("question_sets")
+}
+
+model TestQuestion {
+  id          Int            @id @default(autoincrement())
+  setId       Int            @map("set_id")
+  orderIndex  Int            @map("order_index")
+  type        QuestionType
+  term        String?
+  passage     String?
+  prompt      String
+  options     String[]
+  answerIndex Int            @map("answer_index")
+  explanation String?
+  status      QuestionStatus @default(active)
+  source      QuestionSource @default(manual)
+  sourceMeta  Json?          @map("source_meta") // BR-49/BR-57: chỉ khi source = ai_generated
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  set     QuestionSet  @relation(fields: [setId], references: [id], onDelete: Cascade)
+  answers TestAnswer[]
+
+  @@index([setId, status])
+  @@map("test_questions")
+}
+
+model TestAttempt {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  setId        Int       @map("set_id")
+  challengeId  Int?      @map("challenge_id") // khác null = lượt làm trong thử thách community
+  totalCount   Int       @default(20) @map("total_count")
+  correctCount Int       @default(0) @map("correct_count")
+  // Thứ tự câu + hoán vị đáp án của riêng lượt này (mục 7: đảo mỗi lần làm).
+  // Phải lưu để chấm ngược được chỉ số client gửi lên về chỉ số gốc.
+  questionOrder Int[]    @default([]) @map("question_order")
+  optionOrder   Json?    @map("option_order") // { "<questionId>": [vị trí hiển thị -> index gốc] }
+  startedAt    DateTime  @default(now()) @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  set       QuestionSet         @relation(fields: [setId], references: [id])
+  challenge CommunityChallenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  answers   TestAnswer[]
+
+  // Mỗi người chỉ tính MỘT lượt trong một thử thách (NULL không bị ràng buộc ở Postgres,
+  // nên luyện tập tự do vẫn lưu được nhiều lượt như quyết định 28/07)
+  @@unique([userId, challengeId])
+  @@index([userId, startedAt])
+  @@index([userId, setId])
+  @@index([challengeId, correctCount])
+  @@map("test_attempts")
+}
+
+model TestAnswer {
+  id          Int     @id @default(autoincrement())
+  attemptId   Int     @map("attempt_id")
+  questionId  Int     @map("question_id")
+  chosenIndex Int?    @map("chosen_index") // index GỐC (đã map ngược từ vị trí hiển thị)
+  isCorrect   Boolean @map("is_correct")
+
+  attempt  TestAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question TestQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@map("test_answers")
+}
+
+// Thử thách community — một bộ đề mở trong một khoảng thời gian, có bảng xếp hạng.
+// BXH chỉ tồn tại trong phạm vi thử thách: KHÔNG có điểm tích luỹ trên hồ sơ,
+// không có rank toàn hệ thống — BR-13 (no-credit) vẫn nguyên vẹn.
+model CommunityChallenge {
+  id          Int      @id @default(autoincrement())
+  setId       Int      @map("set_id")
+  title       String
+  description String?
+  startsAt    DateTime @map("starts_at")
+  endsAt      DateTime @map("ends_at")
+  createdById Int      @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  set      QuestionSet   @relation(fields: [setId], references: [id])
+  attempts TestAttempt[]
+
+  @@index([startsAt, endsAt])
+  @@map("community_challenges")
 }
 
 // Log kiểm duyệt = lịch sử vi phạm (đếm để xác định tái phạm — US-20)

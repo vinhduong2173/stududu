@@ -56,3 +56,29 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
+
+/**
+ * Upload multipart/form-data (tải tài liệu cho AI sinh câu hỏi).
+ * KHÔNG tự đặt Content-Type — trình duyệt phải tự sinh boundary cho FormData.
+ */
+export async function apiUpload<T>(path: string, form: FormData, token?: string): Promise<T> {
+  let activeToken = token;
+  if (!activeToken && typeof window !== "undefined") {
+    activeToken = localStorage.getItem("accessToken") || undefined;
+  }
+
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: activeToken ? { Authorization: `Bearer ${activeToken}` } : undefined,
+    body: form,
+  });
+
+  if (!res.ok) {
+    const data = (await res.json().catch(() => null)) as { message?: string | string[] } | null;
+    const message = Array.isArray(data?.message) ? data.message.join(", ") : data?.message;
+    throw new ApiError(res.status, message ?? res.statusText);
+  }
+
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}

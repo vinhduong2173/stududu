@@ -54,10 +54,12 @@ describe('CallsService', () => {
         findUnique: jest.fn().mockResolvedValue(makeSession()),
         // Prisma trả về BẢN GHI SAU KHI SỬA, không phải riêng phần data — mock
         // phải trộn lên bản hiện có, nếu không `kind` luôn rơi về mặc định.
-        update: jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({
-          ...(await prisma.callSession.findUnique({ where: { id: 0 } })),
-          ...data,
-        })),
+        update: jest.fn(
+          async ({ data }: { data: Record<string, unknown> }) => ({
+            ...(await prisma.callSession.findUnique({ where: { id: 0 } })),
+            ...data,
+          }),
+        ),
         findMany: jest.fn().mockResolvedValue([]),
         aggregate: jest.fn().mockResolvedValue({ _sum: { durationSec: 0 } }),
       },
@@ -87,7 +89,10 @@ describe('CallsService', () => {
         CallsService,
         { provide: PrismaService, useValue: prisma },
         { provide: ChatService, useValue: { assertParticipant: jest.fn() } },
-        { provide: ConfigService, useValue: { get: (key: string) => config[key] } },
+        {
+          provide: ConfigService,
+          useValue: { get: (key: string) => config[key] },
+        },
         { provide: I18nService, useValue: { t: (key: string) => key } },
       ],
     }).compile();
@@ -134,7 +139,9 @@ describe('CallsService', () => {
 
       expect(result).toMatchObject({ blocked: CallStatus.busy });
       expect(prisma.callSession.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: CallStatus.busy }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: CallStatus.busy }),
+        }),
       );
       expect(emit).not.toHaveBeenCalledWith('call:incoming', expect.anything());
     });
@@ -179,7 +186,10 @@ describe('CallsService', () => {
 
         expect(prisma.callSession.update).toHaveBeenCalledWith(
           expect.objectContaining({
-            data: expect.objectContaining({ status: CallStatus.missed, durationSec: 0 }),
+            data: expect.objectContaining({
+              status: CallStatus.missed,
+              durationSec: 0,
+            }),
           }),
         );
       } finally {
@@ -191,12 +201,18 @@ describe('CallsService', () => {
   describe('accept', () => {
     it('chỉ người nhận mới bắt máy được', async () => {
       await expect(
-        service.accept(CALLER, { callId: 100, sdp: { type: 'answer', sdp: 'v=0' } }),
+        service.accept(CALLER, {
+          callId: 100,
+          sdp: { type: 'answer', sdp: 'v=0' },
+        }),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
     it('đặt startedAt lúc kết nối, không phải lúc bấm gọi (mục 5)', async () => {
-      await service.accept(CALLEE, { callId: 100, sdp: { type: 'answer', sdp: 'v=0' } });
+      await service.accept(CALLEE, {
+        callId: 100,
+        sdp: { type: 'answer', sdp: 'v=0' },
+      });
 
       expect(prisma.callSession.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -206,7 +222,10 @@ describe('CallsService', () => {
           }),
         }),
       );
-      expect(emit).toHaveBeenCalledWith('call:accepted', expect.objectContaining({ callId: 100 }));
+      expect(emit).toHaveBeenCalledWith(
+        'call:accepted',
+        expect.objectContaining({ callId: 100 }),
+      );
     });
   });
 
@@ -264,7 +283,10 @@ describe('CallsService', () => {
 
   describe('relayIce', () => {
     it('chỉ chuyển tiếp cho phía bên kia của đúng cuộc gọi đó', async () => {
-      await service.relayIce(CALLER, { callId: 100, candidate: { candidate: 'a' } });
+      await service.relayIce(CALLER, {
+        callId: 100,
+        candidate: { candidate: 'a' },
+      });
       expect(emit).toHaveBeenCalledWith(
         'call:ice-candidate',
         expect.objectContaining({ callId: 100 }),
@@ -281,10 +303,18 @@ describe('CallsService', () => {
   describe('relayMediaState', () => {
     it('chuyển tiếp trạng thái camera cho phía bên kia (mục 4.2 video)', async () => {
       prisma.callSession.findUnique.mockResolvedValue(
-        makeSession({ kind: CallKind.video, status: CallStatus.connected, startedAt: new Date() }),
+        makeSession({
+          kind: CallKind.video,
+          status: CallStatus.connected,
+          startedAt: new Date(),
+        }),
       );
 
-      await service.relayMediaState(CALLER, { callId: 100, audio: true, video: false });
+      await service.relayMediaState(CALLER, {
+        callId: 100,
+        audio: true,
+        video: false,
+      });
 
       expect(emit).toHaveBeenCalledWith('call:media-state', {
         callId: 100,
@@ -301,9 +331,15 @@ describe('CallsService', () => {
     });
 
     it('cuộc gọi đã kết thúc thì im lặng bỏ qua', async () => {
-      prisma.callSession.findUnique.mockResolvedValue(makeSession({ status: CallStatus.ended }));
+      prisma.callSession.findUnique.mockResolvedValue(
+        makeSession({ status: CallStatus.ended }),
+      );
 
-      await service.relayMediaState(CALLER, { callId: 100, audio: true, video: false });
+      await service.relayMediaState(CALLER, {
+        callId: 100,
+        audio: true,
+        video: false,
+      });
 
       expect(emit).not.toHaveBeenCalled();
     });
@@ -328,7 +364,10 @@ describe('CallsService', () => {
 
       expect(prisma.callSession.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ status: CallStatus.ended, endReason: 'disconnect' }),
+          data: expect.objectContaining({
+            status: CallStatus.ended,
+            endReason: 'disconnect',
+          }),
         }),
       );
     });

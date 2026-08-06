@@ -1,11 +1,20 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CallKind, CallStatus, MessageType, Prisma } from '@prisma/client';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import type { Server } from 'socket.io';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChatService } from '../chat/chat.service';
-import { MAX_CALL_MS, RING_TIMEOUT_MS, TIMEOUT_WARNING_MS } from './calls.constants';
+import {
+  MAX_CALL_MS,
+  RING_TIMEOUT_MS,
+  TIMEOUT_WARNING_MS,
+} from './calls.constants';
 import type {
   CallAcceptPayload,
   CallHistoryItem,
@@ -60,7 +69,9 @@ export class CallsService {
    * không phải build lại frontend.
    */
   getIceConfig(): IceConfigResponse {
-    const stunUrls = (this.config.get<string>('STUN_URLS') ?? 'stun:stun.l.google.com:19302')
+    const stunUrls = (
+      this.config.get<string>('STUN_URLS') ?? 'stun:stun.l.google.com:19302'
+    )
       .split(',')
       .map((u) => u.trim())
       .filter(Boolean);
@@ -78,14 +89,19 @@ export class CallsService {
       iceServers.push({ urls: turnUrls, username, credential });
     } else {
       // Không có TURN thì cuộc gọi vẫn chạy trong LAN nhưng hỏng ở mức 3 (mục 10).
-      this.logger.warn('Chưa cấu hình TURN — gọi giữa 2 mạng khác nhau có thể thất bại');
+      this.logger.warn(
+        'Chưa cấu hình TURN — gọi giữa 2 mạng khác nhau có thể thất bại',
+      );
     }
 
     return { iceServers };
   }
 
   /** Lịch sử cuộc gọi của một hội thoại (dùng cho tab lịch sử / kiểm tra BR-24). */
-  async getHistory(userId: number, conversationId: number): Promise<CallHistoryItem[]> {
+  async getHistory(
+    userId: number,
+    conversationId: number,
+  ): Promise<CallHistoryItem[]> {
     await this.chatService.assertParticipant(userId, conversationId);
     return this.prisma.callSession.findMany({
       where: { conversationId },
@@ -128,13 +144,15 @@ export class CallsService {
 
     const { memberId, candidateId } = conversation.match;
     const partnerId = callerId === memberId ? candidateId : memberId;
-    if (partnerId !== calleeId) throw new ForbiddenException(this.t('calls.notInConversation'));
+    if (partnerId !== calleeId)
+      throw new ForbiddenException(this.t('calls.notInConversation'));
 
     const caller = await this.prisma.user.findUnique({
       where: { id: callerId },
       select: { id: true, displayName: true, avatarUrl: true, status: true },
     });
-    if (caller?.status !== 'active') throw new ForbiddenException(this.t('calls.suspendedNoCall'));
+    if (caller?.status !== 'active')
+      throw new ForbiddenException(this.t('calls.suspendedNoCall'));
 
     // Mục 9 (glare) — một trong hai phía đang có cuộc khác thì báo bận ngay,
     // không tạo cuộc chồng lên nhau.
@@ -179,13 +197,23 @@ export class CallsService {
     }
 
     const session = await this.prisma.callSession.create({
-      data: { conversationId, callerId, calleeId, kind, status: CallStatus.ringing },
+      data: {
+        conversationId,
+        callerId,
+        calleeId,
+        kind,
+        status: CallStatus.ringing,
+      },
     });
 
     const incoming: CallIncomingEvent = {
       callId: session.id,
       conversationId,
-      caller: { id: caller.id, displayName: caller.displayName, avatarUrl: caller.avatarUrl },
+      caller: {
+        id: caller.id,
+        displayName: caller.displayName,
+        avatarUrl: caller.avatarUrl,
+      },
       sdp,
       kind,
     };
@@ -194,7 +222,9 @@ export class CallsService {
     this.setTimers(session.id, {
       ring: setTimeout(() => {
         void this.expireRinging(session.id).catch((err) =>
-          this.logger.error(`Hết giờ đổ chuông call ${session.id}: ${String(err)}`),
+          this.logger.error(
+            `Hết giờ đổ chuông call ${session.id}: ${String(err)}`,
+          ),
         );
       }, RING_TIMEOUT_MS),
     });
@@ -203,9 +233,13 @@ export class CallsService {
   }
 
   /** `call:accept` — chỉ người nhận, chỉ khi đang đổ chuông. */
-  async accept(userId: number, { callId, sdp }: CallAcceptPayload): Promise<void> {
+  async accept(
+    userId: number,
+    { callId, sdp }: CallAcceptPayload,
+  ): Promise<void> {
     const session = await this.loadSession(callId);
-    if (session.calleeId !== userId) throw new ForbiddenException(this.t('calls.notYourCall'));
+    if (session.calleeId !== userId)
+      throw new ForbiddenException(this.t('calls.notYourCall'));
     if (session.status !== CallStatus.ringing) {
       throw new ForbiddenException(this.t('calls.notRinging'));
     }
@@ -223,11 +257,18 @@ export class CallsService {
     // BR-23 — cảnh báo phút 28, tự ngắt phút 30.
     this.setTimers(callId, {
       warning: setTimeout(() => {
-        const secondsLeft = Math.round((MAX_CALL_MS - TIMEOUT_WARNING_MS) / 1000);
-        this.emitToBoth(session.callerId, session.calleeId, 'call:timeout-warning', {
-          callId,
-          secondsLeft,
-        });
+        const secondsLeft = Math.round(
+          (MAX_CALL_MS - TIMEOUT_WARNING_MS) / 1000,
+        );
+        this.emitToBoth(
+          session.callerId,
+          session.calleeId,
+          'call:timeout-warning',
+          {
+            callId,
+            secondsLeft,
+          },
+        );
       }, TIMEOUT_WARNING_MS),
       hardStop: setTimeout(() => {
         void this.terminate(callId, CallStatus.ended, 'timeout').catch((err) =>
@@ -240,7 +281,8 @@ export class CallsService {
   /** `call:reject` — người nhận từ chối. */
   async reject(userId: number, callId: number): Promise<void> {
     const session = await this.loadSession(callId);
-    if (session.calleeId !== userId) throw new ForbiddenException(this.t('calls.notYourCall'));
+    if (session.calleeId !== userId)
+      throw new ForbiddenException(this.t('calls.notYourCall'));
     if (session.status !== CallStatus.ringing) return;
     await this.terminate(callId, CallStatus.rejected, 'rejected');
   }
@@ -248,7 +290,8 @@ export class CallsService {
   /** `call:cancel` — người gọi tự huỷ trước khi bên kia bắt máy. */
   async cancel(userId: number, callId: number): Promise<void> {
     const session = await this.loadSession(callId);
-    if (session.callerId !== userId) throw new ForbiddenException(this.t('calls.notYourCall'));
+    if (session.callerId !== userId)
+      throw new ForbiddenException(this.t('calls.notYourCall'));
     if (session.status !== CallStatus.ringing) return;
     await this.terminate(callId, CallStatus.missed, 'cancelled');
   }
@@ -275,12 +318,20 @@ export class CallsService {
    * Vẫn phải kiểm tra người gửi thuộc cuộc gọi, nếu không thì ai cũng bơm được
    * candidate vào cuộc của người khác.
    */
-  async relayIce(userId: number, { callId, candidate }: CallIcePayload): Promise<void> {
+  async relayIce(
+    userId: number,
+    { callId, candidate }: CallIcePayload,
+  ): Promise<void> {
     const session = await this.loadSession(callId);
     this.assertPartyOf(session, userId);
-    if (session.status !== CallStatus.ringing && session.status !== CallStatus.connected) return;
+    if (
+      session.status !== CallStatus.ringing &&
+      session.status !== CallStatus.connected
+    )
+      return;
 
-    const targetId = session.callerId === userId ? session.calleeId : session.callerId;
+    const targetId =
+      session.callerId === userId ? session.calleeId : session.callerId;
     this.emitToUser(targetId, 'call:ice-candidate', { callId, candidate });
   }
 
@@ -299,9 +350,14 @@ export class CallsService {
   ): Promise<void> {
     const session = await this.loadSession(callId);
     this.assertPartyOf(session, userId);
-    if (session.status !== CallStatus.ringing && session.status !== CallStatus.connected) return;
+    if (
+      session.status !== CallStatus.ringing &&
+      session.status !== CallStatus.connected
+    )
+      return;
 
-    const targetId = session.callerId === userId ? session.calleeId : session.callerId;
+    const targetId =
+      session.callerId === userId ? session.calleeId : session.callerId;
     this.emitToUser(targetId, 'call:media-state', {
       callId,
       audio: Boolean(audio),
@@ -333,7 +389,9 @@ export class CallsService {
             ? CallStatus.missed
             : CallStatus.rejected;
       await this.terminate(session.id, status, 'disconnect').catch((err) =>
-        this.logger.error(`Dọn call ${session.id} khi disconnect: ${String(err)}`),
+        this.logger.error(
+          `Dọn call ${session.id} khi disconnect: ${String(err)}`,
+        ),
       );
     }
   }
@@ -342,7 +400,9 @@ export class CallsService {
 
   /** Hết 45 giây đổ chuông mà không ai bắt máy. */
   private async expireRinging(callId: number): Promise<void> {
-    const session = await this.prisma.callSession.findUnique({ where: { id: callId } });
+    const session = await this.prisma.callSession.findUnique({
+      where: { id: callId },
+    });
     if (!session || session.status !== CallStatus.ringing) return;
     await this.terminate(callId, CallStatus.missed, 'timeout');
   }
@@ -351,19 +411,34 @@ export class CallsService {
    * Điểm kết duy nhất của mọi cuộc gọi: chốt trạng thái, tính thời lượng, dọn
    * timer, báo hai phía và sinh tin nhắn hệ thống (BR-25).
    */
-  private async terminate(callId: number, status: CallStatus, endReason: string): Promise<void> {
+  private async terminate(
+    callId: number,
+    status: CallStatus,
+    endReason: string,
+  ): Promise<void> {
     this.clearTimers(callId);
 
-    const session = await this.prisma.callSession.findUnique({ where: { id: callId } });
+    const session = await this.prisma.callSession.findUnique({
+      where: { id: callId },
+    });
     if (!session) return;
     // Chống chạy hai lần (vd cả hai phía cùng bấm cúp máy).
-    if (session.status !== CallStatus.ringing && session.status !== CallStatus.connected) return;
+    if (
+      session.status !== CallStatus.ringing &&
+      session.status !== CallStatus.connected
+    )
+      return;
 
     const endedAt = new Date();
     const durationSec =
       status === CallStatus.ended && session.startedAt
         ? Math.min(
-            Math.max(0, Math.round((endedAt.getTime() - session.startedAt.getTime()) / 1000)),
+            Math.max(
+              0,
+              Math.round(
+                (endedAt.getTime() - session.startedAt.getTime()) / 1000,
+              ),
+            ),
             MAX_CALL_MS / 1000,
           )
         : 0;
@@ -390,7 +465,9 @@ export class CallsService {
       status === CallStatus.rejected
     ) {
       await this.createCallMessage(updated, status).catch((err) =>
-        this.logger.error(`Tạo tin nhắn hệ thống cho call ${callId}: ${String(err)}`),
+        this.logger.error(
+          `Tạo tin nhắn hệ thống cho call ${callId}: ${String(err)}`,
+        ),
       );
     }
   }
@@ -402,7 +479,13 @@ export class CallsService {
    * mốc giờ chat).
    */
   private async createCallMessage(
-    session: { id: number; conversationId: number; callerId: number; kind: CallKind; durationSec: number },
+    session: {
+      id: number;
+      conversationId: number;
+      callerId: number;
+      kind: CallKind;
+      durationSec: number;
+    },
     status: 'ended' | 'missed' | 'rejected' | CallStatus,
   ): Promise<void> {
     const payload: CallMessagePayload = {
@@ -414,7 +497,8 @@ export class CallsService {
     };
 
     // content chỉ là bản dự phòng cho preview inbox — client render theo payload.
-    const label = session.kind === CallKind.video ? 'Cuộc gọi video' : 'Cuộc gọi thoại';
+    const label =
+      session.kind === CallKind.video ? 'Cuộc gọi video' : 'Cuộc gọi thoại';
     const content =
       status === CallStatus.ended
         ? `${label} · ${formatDuration(session.durationSec)}`
@@ -432,16 +516,23 @@ export class CallsService {
       },
     });
 
-    this.server?.to(`conversation:${session.conversationId}`).emit('message:new', message);
+    this.server
+      ?.to(`conversation:${session.conversationId}`)
+      .emit('message:new', message);
   }
 
   private async loadSession(callId: number) {
-    const session = await this.prisma.callSession.findUnique({ where: { id: callId } });
+    const session = await this.prisma.callSession.findUnique({
+      where: { id: callId },
+    });
     if (!session) throw new NotFoundException(this.t('calls.notFound'));
     return session;
   }
 
-  private assertPartyOf(session: { callerId: number; calleeId: number }, userId: number): void {
+  private assertPartyOf(
+    session: { callerId: number; calleeId: number },
+    userId: number,
+  ): void {
     if (session.callerId !== userId && session.calleeId !== userId) {
       throw new ForbiddenException(this.t('calls.notYourCall'));
     }
@@ -457,7 +548,12 @@ export class CallsService {
     this.server?.to(`user:${userId}`).emit(event, payload);
   }
 
-  private emitToBoth(a: number, b: number, event: string, payload: unknown): void {
+  private emitToBoth(
+    a: number,
+    b: number,
+    event: string,
+    payload: unknown,
+  ): void {
     this.emitToUser(a, event, payload);
     this.emitToUser(b, event, payload);
   }
@@ -476,7 +572,9 @@ export class CallsService {
   }
 
   private t(key: string): string {
-    return this.i18n.t(`translation.${key}`, { lang: I18nContext.current()?.lang });
+    return this.i18n.t(`translation.${key}`, {
+      lang: I18nContext.current()?.lang,
+    });
   }
 }
 

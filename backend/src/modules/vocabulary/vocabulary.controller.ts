@@ -13,7 +13,11 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { JwtPayload } from '../../common/types/jwt-payload';
-import { SaveWordDto, UpdateLibraryWordDto, UpdateWordStatusDto } from './dto/save-word.dto';
+import {
+  SaveWordDto,
+  UpdateLibraryWordDto,
+  UpdateWordStatusDto,
+} from './dto/save-word.dto';
 import { VocabularyService } from './vocabulary.service';
 
 import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
@@ -58,7 +62,10 @@ export class VocabularyController {
 
   @Delete('my-words/:id')
   @UseGuards(JwtAuthGuard)
-  removeSavedWord(@CurrentUser() user: JwtPayload, @Param('id', ParseIntPipe) id: number) {
+  removeSavedWord(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     return this.vocabularyService.removeSavedWord(user.sub, id);
   }
 

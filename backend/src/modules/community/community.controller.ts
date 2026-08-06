@@ -84,10 +84,11 @@ export class CommunityController {
       }
     }
     const rawTargetUserId = targetUserIdQuery || userIdQuery;
-    const targetId = rawTargetUserId ? parseInt(rawTargetUserId, 10) : undefined;
+    const targetId = rawTargetUserId
+      ? parseInt(rawTargetUserId, 10)
+      : undefined;
     return this.communityService.feed(viewerId, targetId);
   }
-
 
   // Đăng bài chia sẻ tự do
   @Post('posts')

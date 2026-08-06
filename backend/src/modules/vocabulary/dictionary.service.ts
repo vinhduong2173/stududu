@@ -53,7 +53,9 @@ export class DictionaryService {
         if (wikResult) return wikResult;
 
         if (res.status !== 404) {
-          this.logger.warn(`Dictionary API trả về status ${res.status} cho "${trimmed}" (${lang})`);
+          this.logger.warn(
+            `Dictionary API trả về status ${res.status} cho "${trimmed}" (${lang})`,
+          );
         }
         return null;
       }
@@ -71,10 +73,9 @@ export class DictionaryService {
 
       // Lấy phonetic — ưu tiên trường `phonetic`, fallback sang phonetics[]
       const phonetic =
-        entry.phonetic ||
-        entry.phonetics?.find((p) => p.text)?.text ||
-        null;
+        entry.phonetic || entry.phonetics?.find((p) => p.text)?.text || null;
 
+      // Lấy audioUrl từ phonetics array
       // Lấy audioUrl từ phonetics array
       let audioUrl =
         entry.phonetics?.find((p) => p.audio && p.audio.trim() !== '')?.audio || null;

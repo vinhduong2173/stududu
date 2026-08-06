@@ -15,6 +15,7 @@ import { TrustModule } from './modules/trust/trust.module';
 import { UserModule } from './modules/user/user.module';
 import { VocabularyModule } from './modules/vocabulary/vocabulary.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { QuestionSetsModule } from './modules/question-sets/question-sets.module';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 
@@ -68,7 +69,9 @@ import * as path from 'path';
             path.join(process.cwd(), 'src/i18n/'),
             path.join(process.cwd(), 'dist/i18n/'),
           ];
-          return candidates.find((p: string) => fs.existsSync(p)) || candidates[0];
+          return (
+            candidates.find((p: string) => fs.existsSync(p)) || candidates[0]
+          );
         })(),
         watch: true,
       },
@@ -89,6 +92,7 @@ import * as path from 'path';
     GroupsModule,
     ScheduleModule, // FS-28
     NotificationModule,
+    QuestionSetsModule, // Bộ đề trắc nghiệm + thử thách community
   ],
 })
 export class AppModule {}
