@@ -12,7 +12,7 @@ export class CommunityService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly i18n: I18nService,
-  ) {}
+  ) { }
 
   async feed(viewerId?: number, targetUserId?: number) {
     const whereCondition: any = { groupId: null };
@@ -39,9 +39,9 @@ export class CommunityService {
       .map((p) => Number(p.contentRef));
     const words = wordIds.length
       ? await this.prisma.wordLibrary.findMany({
-          where: { id: { in: wordIds } },
-          include: { language: true },
-        })
+        where: { id: { in: wordIds } },
+        include: { language: true },
+      })
       : [];
     const wordById = new Map(words.map((w) => [w.id, w]));
 
