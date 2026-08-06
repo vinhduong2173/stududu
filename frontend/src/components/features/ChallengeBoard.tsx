@@ -77,6 +77,8 @@ export function ChallengeBoard() {
 
       {challenges.map((c) => {
         const done = Boolean(c.myAttempt?.finishedAt);
+        // Đã mở đề nhưng chưa nộp: backend trả lại đúng lượt cũ, nên đây là "làm tiếp"
+        const inProgress = Boolean(c.myAttempt) && !done;
         return (
           <div key={c.id} className="rounded-2xl border border-border bg-surface p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -111,7 +113,7 @@ export function ChallengeBoard() {
                 {c.phase === "running" && !done && (
                   <Button asChild size="sm">
                     <Link href={`/quiz/${c.setId}?challengeId=${c.id}`}>
-                      {t("join")}
+                      {inProgress ? t("resume") : t("join")}
                     </Link>
                   </Button>
                 )}

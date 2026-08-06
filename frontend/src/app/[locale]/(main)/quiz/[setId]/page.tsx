@@ -9,7 +9,12 @@ import { Button } from "@/components/ui/Button";
 import { QuizQuestionCard } from "@/components/features/QuizQuestionCard";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { AttemptResult, AttemptStart, formatDuration } from "@/lib/questionSets";
+import {
+  AttemptResult,
+  AttemptStart,
+  displayIndexOfCorrect,
+  formatDuration,
+} from "@/lib/questionSets";
 
 export default function QuizAttemptPage() {
   const t = useTranslations("quiz");
@@ -25,8 +30,17 @@ export default function QuizAttemptPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Mỗi lần gọi là một lượt làm bài mới trong DB, nên effect phải chạy đúng một lần
+  // cho mỗi (bộ đề × thử thách). React Strict Mode ở dev gọi effect hai lần: không
+  // chốt lại thì thử thách sẽ dựng ngay lỗi "chỉ được làm một lần" ở lần gọi thứ hai.
+  const startedFor = React.useRef<string | null>(null);
+
   React.useEffect(() => {
     if (!Number.isFinite(setId)) return;
+    const key = `${setId}:${challengeId ?? ""}`;
+    if (startedFor.current === key) return;
+    startedFor.current = key;
+
     const query = challengeId ? `?challengeId=${challengeId}` : "";
     api<AttemptStart>(`/question-sets/${setId}/attempts${query}`, { method: "POST" })
       .then(setAttempt)
@@ -125,11 +139,7 @@ export default function QuizAttemptPage() {
               selectedIndex={answers[q.id] ?? null}
               onSelect={(idx) => setAnswers((prev) => ({ ...prev, [q.id]: idx }))}
               revealed={Boolean(result)}
-              correctIndex={
-                review
-                  ? q.options.indexOf(review.options[review.answerIndex])
-                  : null
-              }
+              correctIndex={displayIndexOfCorrect(q.options, review)}
               explanation={review?.explanation ?? null}
               disabled={Boolean(result)}
             />

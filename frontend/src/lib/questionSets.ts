@@ -11,7 +11,14 @@ export const QUESTION_TYPES: { value: QuestionTypeValue; label: string }[] = [
 ];
 
 export const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
-export const FRAMEWORKS = ["CEFR", "HSK", "JLPT", "TOPIK"] as const;
+
+/**
+ * Chỉ CEFR. Khung trình độ riêng theo ngôn ngữ (HSK/JLPT/TOPIK) nằm trong danh sách
+ * "việc KHÔNG làm" của AGENTS.md mục 7 — cột `framework` để mở sẵn cho sau này,
+ * nhưng cho chọn bây giờ chỉ tạo ra dữ liệu vô nghĩa kiểu "JLPT A1" vì thang trình
+ * độ và `levelOrder` ở backend đều đang theo CEFR.
+ */
+export const FRAMEWORKS = ["CEFR"] as const;
 
 /** Số câu bắt buộc để publish — khớp REQUIRED_QUESTION_COUNT ở backend */
 export const REQUIRED_QUESTION_COUNT = 20;
@@ -60,6 +67,8 @@ export type PublishGate = {
   activeCount: number;
   hasEnoughQuestions: boolean;
   hasAdminTrial: boolean;
+  /** Có làm thử rồi nhưng bộ đề đã đổi câu sau đó → lượt cũ hết hiệu lực */
+  trialOutdated: boolean;
   adminTrial: { id: number; correctCount: number; totalCount: number; finishedAt: string } | null;
   canPublish: boolean;
 };
@@ -217,4 +226,20 @@ export function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/**
+ * Kết quả chấm trả `answerIndex` theo thứ tự GỐC của câu hỏi, còn màn làm bài đang
+ * render theo thứ tự ĐÃ ĐẢO — nên phải dò lại vị trí theo nội dung đáp án.
+ * Dò theo nội dung là an toàn: validator đã cấm hai đáp án trùng nhau trong một câu.
+ */
+export function displayIndexOfCorrect(
+  displayedOptions: string[],
+  review?: { options: string[]; answerIndex: number } | null,
+): number | null {
+  if (!review) return null;
+  const correctText = review.options[review.answerIndex];
+  if (correctText === undefined) return null;
+  const index = displayedOptions.indexOf(correctText);
+  return index >= 0 ? index : null;
 }

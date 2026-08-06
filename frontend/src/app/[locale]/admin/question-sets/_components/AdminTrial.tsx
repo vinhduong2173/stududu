@@ -5,7 +5,12 @@ import { CheckCircle2, PlayCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { QuizQuestionCard } from "@/components/features/QuizQuestionCard";
 import { api, ApiError } from "@/lib/api";
-import { AttemptResult, AttemptStart, formatDuration } from "@/lib/questionSets";
+import {
+  AttemptResult,
+  AttemptStart,
+  displayIndexOfCorrect,
+  formatDuration,
+} from "@/lib/questionSets";
 
 /**
  * Admin làm thử trọn bộ — điều kiện thứ hai của cửa publish (question-set-design.md mục 4).
@@ -29,7 +34,14 @@ export function AdminTrial({
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Mỗi lần gọi tạo một lượt làm bài trong DB — chốt lại để Strict Mode ở dev không
+  // đẻ ra hai lượt cho một lần Admin bấm "Làm thử"
+  const startedFor = React.useRef<number | null>(null);
+
   React.useEffect(() => {
+    if (startedFor.current === setId) return;
+    startedFor.current = setId;
+
     api<AttemptStart>(`/admin/question-sets/${setId}/attempt`, { method: "POST" })
       .then(setAttempt)
       .catch((e: ApiError) => setError(e.message))
@@ -107,7 +119,7 @@ export function AdminTrial({
                     mode="attempt"
                     selectedIndex={answers[q.id] ?? null}
                     revealed
-                    correctIndex={displayIndexOf(q.options, review?.options, review?.answerIndex)}
+                    correctIndex={displayIndexOfCorrect(q.options, review)}
                     explanation={review?.explanation ?? null}
                     disabled
                   />
@@ -150,19 +162,4 @@ export function AdminTrial({
       </div>
     </div>
   );
-}
-
-/**
- * Review từ API trả về `answerIndex` theo thứ tự GỐC của câu hỏi, còn thẻ đang
- * render theo thứ tự đã đảo → phải map lại theo nội dung đáp án.
- */
-function displayIndexOf(
-  displayedOptions: string[],
-  originalOptions?: string[],
-  originalAnswerIndex?: number,
-): number | null {
-  if (!originalOptions || originalAnswerIndex === undefined) return null;
-  const correctText = originalOptions[originalAnswerIndex];
-  const idx = displayedOptions.indexOf(correctText);
-  return idx >= 0 ? idx : null;
 }

@@ -168,14 +168,29 @@ export class QuestionSetsService {
 
   async updateSet(adminId: number, id: number, dto: UpdateQuestionSetDto) {
     await this.getSet(id);
-    return this.prisma.questionSet.update({
-      where: { id },
-      data: {
-        ...dto,
-        ...(dto.level ? { levelOrder: levelOrderOf(dto.level) } : {}),
-        updatedById: adminId,
-      },
-    });
+    try {
+      return await this.prisma.questionSet.update({
+        where: { id },
+        data: {
+          ...dto,
+          ...(dto.level ? { levelOrder: levelOrderOf(dto.level) } : {}),
+          updatedById: adminId,
+        },
+      });
+    } catch (err) {
+      // Đổi `level` có thể đụng @@unique([languageId, topicId, level]) — không bắt
+      // ở đây thì lỗi Prisma thô lọt ra thành 500 khó hiểu
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'Đã có bộ đề khác cho đúng (ngôn ngữ × chủ đề × trình độ) này. ' +
+            'Mỗi tổ hợp chỉ được một bộ đề.',
+        );
+      }
+      throw err;
+    }
   }
 
   // ===== Sinh câu hỏi bằng AI (chỉ dry-run, KHÔNG tự lưu — BR-48) =====
@@ -204,7 +219,16 @@ export class QuestionSetsService {
     }
 
     const extracted = await this.extractor.extract(file.buffer, file.mimetype);
-    console.log(extracted.text);
+
+    // Đặt mốc TRƯỚC khi gọi AI: BR-52 chặn bấm nhầm liên tiếp, mà lần bấm thứ hai
+    // thường rơi vào lúc lần đầu còn đang chạy. Đặt sau khi gọi xong thì hai
+    // request song song cùng lọt qua cửa. Lỗi đọc file xảy ra trước dòng này nên
+    // không bị "phạt" 60 giây oan.
+    await this.prisma.questionSet.update({
+      where: { id: setId },
+      data: { lastGeneratedAt: new Date() },
+    });
+
     const generated = await this.generator.generate(
       {
         targetLanguage: set.language.name,
@@ -216,11 +240,6 @@ export class QuestionSetsService {
       },
       { fileName: file.originalname, fileType: file.mimetype },
     );
-
-    await this.prisma.questionSet.update({
-      where: { id: setId },
-      data: { lastGeneratedAt: new Date() },
-    });
 
     const existingPrompts = set.questions.map((q) => q.prompt);
     const dryRun = this.validator.dryRun(generated.questions, existingPrompts);
@@ -298,6 +317,11 @@ export class QuestionSetsService {
     source: QuestionSource,
     sourceMeta?: Record<string, unknown>,
   ) {
+    // Cửa publish đòi ĐÚNG 20 câu (design mục 4). Không chặn ở đây thì Admin nhập
+    // dư sẽ kẹt vĩnh viễn: bộ 25 câu không bao giờ publish được, mà khung "còn N
+    // chỗ" ở FE đã biến mất nên cũng không thấy đường sửa.
+    await this.assertRoomFor(setId, questions.length);
+
     const maxOrder = await this.prisma.testQuestion.aggregate({
       where: { setId },
       _max: { orderIndex: true },
@@ -413,6 +437,22 @@ export class QuestionSetsService {
     return { message: 'Đã xoá câu hỏi khỏi bộ đề' };
   }
 
+  /** Còn đủ chỗ cho `incoming` câu nữa không — trần là REQUIRED_QUESTION_COUNT */
+  private async assertRoomFor(setId: number, incoming: number) {
+    const activeCount = await this.prisma.testQuestion.count({
+      where: { setId, status: QuestionStatus.active },
+    });
+    const room = REQUIRED_QUESTION_COUNT - activeCount;
+    if (incoming > room) {
+      throw new BadRequestException(
+        room <= 0
+          ? `Bộ đề đã đủ ${REQUIRED_QUESTION_COUNT} câu. Xoá bớt câu cũ trước khi thêm câu mới.`
+          : `Bộ đề chỉ nhận đúng ${REQUIRED_QUESTION_COUNT} câu: hiện có ${activeCount}, ` +
+              `còn ${room} chỗ nhưng bạn đang thêm ${incoming} câu. Hãy bỏ bớt ${incoming - room} câu rồi nhập lại.`,
+      );
+    }
+  }
+
   private async syncQuestionCount(setId: number, adminId: number) {
     const count = await this.prisma.testQuestion.count({
       where: { setId, status: QuestionStatus.active },
@@ -425,31 +465,65 @@ export class QuestionSetsService {
 
   // ===== Cửa publish — hai điều kiện (design mục 4) =====
 
+  /** Số lượt làm thử gần nhất đọc lên để tìm lượt còn hiệu lực — đủ cho quy mô MVP */
+  private static readonly TRIAL_SCAN_LIMIT = 20;
+
   /** Tính lại khi đọc, không cache — cùng tinh thần BR-05/BR-14 */
   async getPublishGate(setId: number) {
-    const activeCount = await this.prisma.testQuestion.count({
+    const activeQuestions = await this.prisma.testQuestion.findMany({
       where: { setId, status: QuestionStatus.active },
+      select: { id: true },
     });
-    const adminTrial = await this.prisma.testAttempt.findFirst({
+    const activeCount = activeQuestions.length;
+
+    // Lượt làm thử chỉ có giá trị nếu Admin đã đi qua ĐÚNG bộ câu đang dùng.
+    // Không kiểm điều này thì một lượt làm hồi bộ mới có 3 câu vẫn mở cửa publish,
+    // và 17 câu thêm sau đó lên sóng mà chưa ai đọc — đúng thứ điều kiện 2 sinh ra
+    // để chặn (design mục 4).
+    const trials = await this.prisma.testAttempt.findMany({
       where: {
         setId,
         finishedAt: { not: null },
         user: { role: UserRole.admin },
       },
       orderBy: { finishedAt: 'desc' },
+      take: QuestionSetsService.TRIAL_SCAN_LIMIT,
       select: {
         id: true,
         correctCount: true,
         totalCount: true,
         finishedAt: true,
+        questionOrder: true,
       },
     });
+
+    const covering =
+      activeCount > 0
+        ? trials.find((trial) => {
+            const seen = new Set(trial.questionOrder);
+            return activeQuestions.every((q) => seen.has(q.id));
+          })
+        : undefined;
+
+    const adminTrial = covering
+      ? {
+          id: covering.id,
+          correctCount: covering.correctCount,
+          totalCount: covering.totalCount,
+          finishedAt: covering.finishedAt,
+        }
+      : null;
+
+    // Có làm thử nhưng từ đó bộ đề đã đổi câu → phải làm lại, nói rõ để Admin
+    // không tưởng nút "Làm thử" bị hỏng
+    const trialOutdated = adminTrial === null && trials.length > 0;
 
     return {
       requiredCount: REQUIRED_QUESTION_COUNT,
       activeCount,
       hasEnoughQuestions: activeCount === REQUIRED_QUESTION_COUNT,
       hasAdminTrial: adminTrial !== null,
+      trialOutdated,
       adminTrial,
       canPublish:
         activeCount === REQUIRED_QUESTION_COUNT && adminTrial !== null,
@@ -466,7 +540,9 @@ export class QuestionSetsService {
     }
     if (!gate.hasAdminTrial) {
       throw new BadRequestException(
-        'Bạn phải làm thử trọn bộ đề ít nhất một lần trước khi publish.',
+        gate.trialOutdated
+          ? 'Bộ đề đã đổi câu hỏi kể từ lần làm thử gần nhất. Hãy làm thử lại trọn bộ rồi publish.'
+          : 'Bạn phải làm thử trọn bộ đề ít nhất một lần trước khi publish.',
       );
     }
     return this.prisma.questionSet.update({
@@ -481,6 +557,22 @@ export class QuestionSetsService {
 
   async unpublish(adminId: number, setId: number) {
     await this.getSet(setId);
+
+    // Gỡ phát hành giữa lúc thử thách đang chạy = người học bấm "Tham gia" rồi ăn
+    // lỗi "bộ đề chưa được phát hành", còn bảng xếp hạng thì dở dang. Chặn ở đây,
+    // Admin muốn dừng thì xoá thử thách trước.
+    const now = new Date();
+    const running = await this.prisma.communityChallenge.findFirst({
+      where: { setId, startsAt: { lte: now }, endsAt: { gte: now } },
+      select: { title: true },
+    });
+    if (running) {
+      throw new ConflictException(
+        `Thử thách "${running.title}" đang dùng bộ đề này và chưa kết thúc. ` +
+          'Hãy xoá hoặc chờ thử thách kết thúc rồi mới gỡ phát hành.',
+      );
+    }
+
     return this.prisma.questionSet.update({
       where: { id: setId },
       data: { status: SetStatus.draft, updatedById: adminId },

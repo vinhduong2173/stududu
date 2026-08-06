@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Check, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,12 +25,8 @@ export type QuizQuestion = {
   options: string[];
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  vocabulary: "Từ vựng",
-  grammar: "Ngữ pháp",
-  cloze: "Điền từ",
-  reading: "Đọc hiểu",
-};
+/** Loại câu có khoá dịch riêng; loại lạ thì hiện thẳng giá trị thô */
+const TRANSLATED_TYPES = ["vocabulary", "grammar", "cloze", "reading"];
 
 export type QuizQuestionCardProps = {
   question: QuizQuestion;
@@ -58,6 +55,7 @@ export function QuizQuestionCard({
   explanation = null,
   disabled = false,
 }: QuizQuestionCardProps) {
+  const t = useTranslations("quiz");
   // Ở preview, Admin bấm thử để xem đáp án — không gọi API chấm điểm
   const [previewPick, setPreviewPick] = React.useState<number | null>(null);
   const isPreview = mode === "preview";
@@ -83,7 +81,9 @@ export function QuizQuestionCard({
           {total ? `/${total}` : ""}
         </span>
         <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted">
-          {TYPE_LABEL[question.type] ?? question.type}
+          {TRANSLATED_TYPES.includes(question.type)
+            ? t(`type_${question.type}` as "type_vocabulary")
+            : question.type}
         </span>
         {question.term && (
           <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-[11px] font-semibold text-secondary">
@@ -155,16 +155,15 @@ export function QuizQuestionCard({
 
       {showResult && explanation && (
         <p className="mt-3 rounded-xl border border-border bg-muted/5 p-3 text-sm text-muted">
-          <span className="font-semibold text-foreground">Giải thích: </span>
+          <span className="font-semibold text-foreground">
+            {t("explanation_label")}{" "}
+          </span>
           {explanation}
         </p>
       )}
 
       {isPreview && previewPick === null && (
-        <p className="mt-3 text-xs text-muted">
-          Bấm thử một đáp án để xem kết quả — chế độ xem trước không chấm điểm và
-          không lưu gì cả.
-        </p>
+        <p className="mt-3 text-xs text-muted">{t("preview_hint")}</p>
       )}
     </div>
   );

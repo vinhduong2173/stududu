@@ -563,7 +563,13 @@
     "level_up": "Bạn làm rất tốt — thử bộ đề ở trình độ cao hơn xem sao.",
     "level_down": "Bộ này hơi khó — thử lùi một bậc để chắc nền tảng hơn.",
     "level_stay": "Kết quả ổn — cứ tiếp tục ở trình độ này nhé.",
-    "review_hint": "Kéo xuống để xem đáp án đúng và giải thích từng câu."
+    "review_hint": "Kéo xuống để xem đáp án đúng và giải thích từng câu.",
+    "type_vocabulary": "Từ vựng",
+    "type_grammar": "Ngữ pháp",
+    "type_cloze": "Điền từ",
+    "type_reading": "Đọc hiểu",
+    "explanation_label": "Giải thích:",
+    "preview_hint": "Bấm thử một đáp án để xem kết quả — chế độ xem trước không chấm điểm và không lưu gì cả."
   },
   "challenge": {
     "title": "Thử thách",
@@ -580,6 +586,7 @@
     "my_result": "Kết quả của bạn: {correct}/{total} câu đúng trong {time}",
     "phase_upcoming": "Sắp diễn ra",
     "phase_running": "Đang diễn ra",
-    "phase_ended": "Đã kết thúc"
+    "phase_ended": "Đã kết thúc",
+    "resume": "Làm tiếp"
   }
 }

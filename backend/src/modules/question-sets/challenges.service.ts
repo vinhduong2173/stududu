@@ -78,7 +78,11 @@ export class ChallengesService {
             topic: { select: { id: true, name: true } },
           },
         },
-        _count: { select: { attempts: true } },
+        // Chỉ đếm lượt ĐÃ NỘP: đếm cả lượt mở dở thì con số "N người tham gia"
+        // luôn lớn hơn số dòng trong bảng xếp hạng ngay bên dưới
+        _count: {
+          select: { attempts: { where: { finishedAt: { not: null } } } },
+        },
         ...(viewerId
           ? {
               attempts: {

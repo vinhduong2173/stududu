@@ -563,7 +563,13 @@
     "level_up": "Nicely done — try a set one level up.",
     "level_down": "This one was tough — a level down may build a firmer base.",
     "level_stay": "Solid result — keep practising at this level.",
-    "review_hint": "Scroll down to see the correct answers and explanations."
+    "review_hint": "Scroll down to see the correct answers and explanations.",
+    "type_vocabulary": "Vocabulary",
+    "type_grammar": "Grammar",
+    "type_cloze": "Fill in the blank",
+    "type_reading": "Reading",
+    "explanation_label": "Explanation:",
+    "preview_hint": "Tap an option to see the result — preview mode does not score or save anything."
   },
   "challenge": {
     "title": "Challenges",
@@ -580,6 +586,7 @@
     "my_result": "Your result: {correct}/{total} correct in {time}",
     "phase_upcoming": "Upcoming",
     "phase_running": "Running",
-    "phase_ended": "Ended"
+    "phase_ended": "Ended",
+    "resume": "Continue"
   }
 }

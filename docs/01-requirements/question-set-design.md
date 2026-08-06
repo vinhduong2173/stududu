@@ -135,9 +135,13 @@ enum QuestionSource { manual  ai_generated }
 Bộ đề chỉ publish được khi:
 
 1. **Đủ đúng 20 câu** `status = active`
-2. **Admin đã làm thử ít nhất một lần**
+2. **Admin đã làm thử ít nhất một lần, và lượt đó phải phủ hết bộ câu đang dùng**
 
 Điều kiện 2 bắt được thứ máy không kiểm được: đáp án đúng bị đánh sai vị trí, nhiễu quá dễ đoán, độ khó không đúng trình độ, câu hỏi tối nghĩa. Người học **chỉ thấy bộ `published`**.
+
+**Làm rõ 05/08 — "phủ hết bộ câu đang dùng" nghĩa là gì.** Chỉ đếm "đã từng có một lượt làm thử" là chưa đủ: Admin làm thử lúc bộ mới có 3 câu, thêm nốt 17 câu rồi publish thì 17 câu đó lên sóng mà chưa ai đọc — đúng thứ điều kiện 2 sinh ra để chặn. Nên `getPublishGate` chỉ nhận lượt làm thử mà `questionOrder` của nó **chứa toàn bộ id câu `active` hiện tại**; thay hay thêm câu sau khi làm thử đều làm lượt cũ hết hiệu lực và cờ `trialOutdated` bật lên để FE nói rõ phải làm thử lại.
+
+**Trần 20 câu được chặn ngay từ lúc thêm.** Điều kiện 1 là "đúng 20", không phải "≥20", nên mọi đường thêm câu (nhập hàng loạt sau khi AI sinh lẫn form nhập tay) đều bị chặn nếu vượt trần. Không chặn thì bộ 25 câu kẹt vĩnh viễn: không bao giờ publish được mà khung "còn N chỗ" ở FE cũng đã biến mất nên Admin không thấy đường sửa.
 
 ## 5. Sửa bộ đã publish
 

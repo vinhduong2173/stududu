@@ -151,11 +151,13 @@ export default function AdminQuestionSetEditorPage() {
           />
           <GateItem
             done={gate.hasAdminTrial}
-            label="Admin đã làm thử ít nhất một lần"
+            label="Admin đã làm thử trọn bộ câu hiện tại"
             detail={
               gate.adminTrial
                 ? `Lần gần nhất: ${gate.adminTrial.correctCount}/${gate.adminTrial.totalCount}`
-                : "Chưa làm thử lần nào"
+                : gate.trialOutdated
+                  ? "Bộ đề đã đổi câu sau lần làm thử trước — cần làm thử lại"
+                  : "Chưa làm thử lần nào"
             }
           />
         </div>

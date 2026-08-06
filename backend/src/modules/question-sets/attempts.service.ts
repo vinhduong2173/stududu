@@ -4,7 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, QuestionStatus, SetStatus, UserRole } from '@prisma/client';
+import {
+  Prisma,
+  QuestionSet,
+  QuestionStatus,
+  SetStatus,
+  TestAttempt,
+  TestQuestion,
+  UserRole,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SubmitAttemptDto } from './dto/question-set.dto';
 
@@ -53,6 +61,22 @@ function shuffled<T>(items: T[]): T[] {
 /** Hoán vị đáp án: mảng ánh xạ [vị trí hiển thị] -> index gốc */
 type OptionOrderMap = Record<string, number[]>;
 
+/** Phần của lượt làm bài đủ để dựng lại đề đúng như lúc bắt đầu */
+type AttemptRow = Pick<
+  TestAttempt,
+  'id' | 'startedAt' | 'questionOrder' | 'optionOrder'
+>;
+
+/** Phần của bộ đề cần để hiển thị đề — không kèm `answerIndex` */
+type AttemptSet = Pick<QuestionSet, 'id' | 'title' | 'framework' | 'level'> & {
+  language: { id: number; code: string; name: string };
+  topic: { id: number; name: string };
+  questions: Pick<
+    TestQuestion,
+    'id' | 'type' | 'term' | 'passage' | 'prompt' | 'options'
+  >[];
+};
+
 @Injectable()
 export class AttemptsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -97,7 +121,10 @@ export class AttemptsService {
     });
     const since = startOfLocalDay(user?.timezone);
     const rows = await this.prisma.testAttempt.findMany({
-      where: { userId, startedAt: { gte: since } },
+      // Lượt trong thử thách KHÔNG tính vào hạn mức: `start` đã cho nó đi vòng qua
+      // cửa hạn mức rồi, đếm ở đây nữa thì tham gia thử thách lại âm thầm ăn mất
+      // một suất luyện tập của chính người đó.
+      where: { userId, challengeId: null, startedAt: { gte: since } },
       select: { setId: true },
       distinct: ['setId'],
     });
@@ -141,7 +168,17 @@ export class AttemptsService {
     }
 
     if (challengeId !== undefined) {
-      await this.assertChallengeOpen(challengeId, setId, userId);
+      const resumable = await this.assertChallengeOpen(
+        challengeId,
+        setId,
+        userId,
+      );
+      // Đóng tab giữa chừng rồi quay lại: trả đúng lượt cũ thay vì tạo lượt mới
+      // (`@@unique([userId, challengeId])` chặn lượt thứ hai) — nếu không, người
+      // học kẹt vĩnh viễn ở màn "chỉ được làm một lần" mà chưa hề nộp bài.
+      if (resumable) {
+        return this.buildAttemptView(resumable, set);
+      }
     } else if (!isAdmin) {
       const quota = await this.getDailyQuota(userId);
       // Lượt dở dang của cùng bộ đề thì không tính thêm — cho phép làm tiếp
@@ -149,6 +186,7 @@ export class AttemptsService {
         where: {
           userId,
           setId,
+          challengeId: null,
           startedAt: { gte: startOfLocalDay(user.timezone) },
         },
       });
@@ -176,7 +214,17 @@ export class AttemptsService {
       },
     });
 
+    return this.buildAttemptView(attempt, set);
+  }
+
+  /**
+   * Dựng đề để trả cho client — dùng chung cho lượt mới và lượt mở lại, nên thứ tự
+   * câu/đáp án luôn lấy từ bản đã lưu, không bốc lại.
+   */
+  private buildAttemptView(attempt: AttemptRow, set: AttemptSet) {
+    const optionOrder = (attempt.optionOrder ?? {}) as OptionOrderMap;
     const byId = new Map(set.questions.map((q) => [q.id, q]));
+
     return {
       attemptId: attempt.id,
       startedAt: attempt.startedAt,
@@ -188,20 +236,24 @@ export class AttemptsService {
         language: set.language,
         topic: set.topic,
       },
-      questions: order.map((qid, position) => {
-        const q = byId.get(qid)!;
-        const perm = optionOrder[String(qid)];
-        return {
-          id: q.id,
-          position,
-          type: q.type,
-          term: q.term,
-          passage: q.passage,
-          prompt: q.prompt,
-          // Đáp án đã đảo — chỉ số gửi lên khi nộp là chỉ số HIỂN THỊ
-          options: perm.map((original) => q.options[original]),
-        };
-      }),
+      questions: attempt.questionOrder
+        // Câu bị retire sau khi lượt này bắt đầu thì bỏ khỏi đề — `submit` cũng bỏ
+        // qua đúng những câu đó nên hai bên khớp nhau
+        .filter((qid) => byId.has(qid) && optionOrder[String(qid)])
+        .map((qid, position) => {
+          const q = byId.get(qid)!;
+          const perm = optionOrder[String(qid)];
+          return {
+            id: q.id,
+            position,
+            type: q.type,
+            term: q.term,
+            passage: q.passage,
+            prompt: q.prompt,
+            // Đáp án đã đảo — chỉ số gửi lên khi nộp là chỉ số HIỂN THỊ
+            options: perm.map((original) => q.options[original]),
+          };
+        }),
     };
   }
 
@@ -326,11 +378,15 @@ export class AttemptsService {
     });
   }
 
+  /**
+   * @returns lượt còn dở của người này trong thử thách (để làm tiếp), `null` nếu
+   *   chưa từng vào. Đã NỘP rồi thì ném lỗi — mỗi người một lượt (design mục 7b).
+   */
   private async assertChallengeOpen(
     challengeId: number,
     setId: number,
     userId: number,
-  ) {
+  ): Promise<AttemptRow | null> {
     const challenge = await this.prisma.communityChallenge.findUnique({
       where: { id: challengeId },
     });
@@ -345,13 +401,22 @@ export class AttemptsService {
     if (now > challenge.endsAt) {
       throw new BadRequestException('Thử thách đã kết thúc');
     }
+
     const existing = await this.prisma.testAttempt.findFirst({
       where: { userId, challengeId },
+      select: {
+        id: true,
+        startedAt: true,
+        questionOrder: true,
+        optionOrder: true,
+        finishedAt: true,
+      },
     });
-    if (existing) {
+    if (existing?.finishedAt) {
       throw new BadRequestException(
         'Mỗi người chỉ được làm thử thách này một lần — kết quả đã được ghi nhận.',
       );
     }
+    return existing ?? null;
   }
 }

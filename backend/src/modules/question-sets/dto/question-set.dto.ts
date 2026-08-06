@@ -8,11 +8,13 @@ import {
   IsEnum,
   IsInt,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 import { QuestionType, SetStatus } from '@prisma/client';
 
@@ -166,8 +168,11 @@ export class GenerateQuestionsDto {
 
 /** Nhập hàng loạt các câu đã đạt sau bước xem trước (dùng chung AI + nhập tay) */
 export class ImportQuestionsDto {
+  // Cố tình KHÔNG @ValidateNested ở đây: nội dung từng câu do QuestionValidatorService
+  // kiểm (BR-55 — một pipeline dùng chung cho AI lẫn nhập tay), và nó trả lỗi theo
+  // từng dòng để Admin biết sửa dòng nào. Chặn bằng DTO trước sẽ nuốt mất thông tin đó.
   @IsArray()
-  @Type(() => QuestionPayloadDto)
+  @ArrayMinSize(1, { message: 'Chưa có câu hỏi nào để nhập' })
   questions!: QuestionPayloadDto[];
 
   @IsOptional()
@@ -175,12 +180,27 @@ export class ImportQuestionsDto {
   aiGenerated?: boolean;
 
   @IsOptional()
+  @IsObject()
   sourceMeta?: Record<string, unknown>;
+}
+
+export class SubmitAnswerDto {
+  @IsInt()
+  questionId!: number;
+
+  /** null = bỏ trống câu này */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  chosenIndex?: number | null;
 }
 
 export class SubmitAttemptDto {
   @IsArray()
-  answers!: { questionId: number; chosenIndex: number | null }[];
+  @ValidateNested({ each: true })
+  @Type(() => SubmitAnswerDto)
+  answers!: SubmitAnswerDto[];
 }
 
 export class CreateChallengeDto {

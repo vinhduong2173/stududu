@@ -28,8 +28,35 @@ type DraftQuestion = {
   options: string[];
   answerIndex: number;
   explanation: string;
+  /** Lỗi backend trả về ở lần kiểm gần nhất; xoá khi Admin sửa lại dòng */
   errors: string[];
 };
+
+/**
+ * Kiểm nhanh phía client để nút "Nhập" không hứa suông rồi để backend từ chối cả lô.
+ * Backend (`QuestionValidatorService`) vẫn là nơi quyết định — đây chỉ là bản rút gọn
+ * đủ để bắt những lỗi Admin nhìn thấy ngay trên form.
+ */
+function draftIssues(draft: DraftQuestion): string[] {
+  const issues: string[] = [];
+  if (!draft.prompt.trim()) issues.push("Thiếu nội dung câu hỏi");
+
+  const options = draft.options.map((o) => o.trim());
+  if (options.some((o) => !o)) issues.push("Có đáp án để trống");
+  else if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) {
+    issues.push("Có hai đáp án trùng nội dung");
+  }
+  if (draft.answerIndex < 0 || draft.answerIndex > 3) {
+    issues.push("Chưa chọn đáp án đúng");
+  }
+  if (draft.type === "vocabulary" && !draft.term.trim()) {
+    issues.push('Câu loại "Từ vựng" phải có từ vựng gốc');
+  }
+  if ((draft.type === "cloze" || draft.type === "reading") && !draft.passage.trim()) {
+    issues.push("Loại câu này phải có đoạn văn");
+  }
+  return issues;
+}
 
 export function GeneratePanel({
   setId,
@@ -40,10 +67,11 @@ export function GeneratePanel({
   remainingSlots: number;
   onImported: () => void;
 }) {
+  // Trần là số chỗ còn trống: sinh nhiều hơn chỗ trống thì chắc chắn nhập không lọt
+  // (bộ đề chốt đúng REQUIRED_QUESTION_COUNT câu)
+  const maxCount = Math.max(1, Math.min(REQUIRED_QUESTION_COUNT, remainingSlots));
   const [file, setFile] = React.useState<File | null>(null);
-  const [questionCount, setQuestionCount] = React.useState(
-    Math.max(1, Math.min(REQUIRED_QUESTION_COUNT, remainingSlots || REQUIRED_QUESTION_COUNT)),
-  );
+  const [questionCount, setQuestionCount] = React.useState(maxCount);
   const [note, setNote] = React.useState("");
   const [generating, setGenerating] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -136,7 +164,18 @@ export function GeneratePanel({
       prev ? prev.map((d) => (d.key === key ? { ...d, ...changes, errors: [] } : d)) : prev,
     );
 
-  const errorCount = drafts?.filter((d) => d.errors.length > 0).length ?? 0;
+  // Lỗi hiển thị = lỗi backend trả về (nếu chưa sửa) hoặc lỗi client tự thấy
+  const issuesOf = (draft: DraftQuestion) =>
+    draft.errors.length > 0 ? draft.errors : draftIssues(draft);
+
+  const errorCount = drafts?.filter((d) => issuesOf(d).length > 0).length ?? 0;
+  const overCapacity = (drafts?.length ?? 0) - remainingSlots;
+  const blockedReason =
+    errorCount > 0
+      ? `Còn ${errorCount} câu chưa hợp lệ`
+      : overCapacity > 0
+        ? `Dư ${overCapacity} câu so với chỗ trống`
+        : null;
 
   return (
     <div className="space-y-4">
@@ -170,14 +209,21 @@ export function GeneratePanel({
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-muted">Số câu muốn sinh</span>
+                <span className="mb-1 block text-xs font-semibold text-muted">
+                  Số câu muốn sinh (tối đa {maxCount})
+                </span>
                 <input
                   type="number"
                   min={1}
-                  max={REQUIRED_QUESTION_COUNT}
+                  max={maxCount}
                   className={INPUT}
                   value={questionCount}
-                  onChange={(e) => setQuestionCount(Number(e.target.value))}
+                  // Kẹp ngay tại đây: gõ 50 rồi bấm sinh sẽ ăn lỗi 400 khó hiểu từ DTO
+                  onChange={(e) =>
+                    setQuestionCount(
+                      Math.max(1, Math.min(maxCount, Number(e.target.value) || 1)),
+                    )
+                  }
                 />
               </label>
               <label className="block">
@@ -219,6 +265,12 @@ export function GeneratePanel({
               <p className="text-xs text-muted">
                 Còn {remainingSlots} chỗ trống trong bộ. Sửa trực tiếp rồi bấm nhập.
               </p>
+              {overCapacity > 0 && (
+                <p className="mt-1 text-xs font-medium text-rose-600">
+                  Bộ đề chỉ nhận đúng {REQUIRED_QUESTION_COUNT} câu — hãy bỏ bớt{" "}
+                  {overCapacity} câu trước khi nhập.
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -239,8 +291,17 @@ export function GeneratePanel({
               <Button variant="ghost" size="sm" onClick={() => setDrafts(null)}>
                 Bỏ, sinh lại
               </Button>
-              <Button size="sm" onClick={importAll} disabled={importing || drafts.length === 0}>
-                {importing ? "Đang nhập…" : `Nhập ${drafts.length} câu vào bộ`}
+              {/* Backend nhập cả lô hoặc không nhập gì — chặn từ đây để Admin không
+                  bấm rồi mới biết cả 20 câu đều chưa vào */}
+              <Button
+                size="sm"
+                onClick={importAll}
+                disabled={importing || drafts.length === 0 || blockedReason !== null}
+                title={blockedReason ?? undefined}
+              >
+                {importing
+                  ? "Đang nhập…"
+                  : (blockedReason ?? `Nhập ${drafts.length} câu vào bộ`)}
               </Button>
             </div>
           </div>
@@ -286,6 +347,7 @@ export function GeneratePanel({
                 <DraftRow
                   key={d.key}
                   draft={d}
+                  issues={issuesOf(d)}
                   index={i}
                   onChange={(changes) => patch(d.key, changes)}
                   onRemove={() =>
@@ -303,16 +365,18 @@ export function GeneratePanel({
 
 function DraftRow({
   draft,
+  issues,
   index,
   onChange,
   onRemove,
 }: {
   draft: DraftQuestion;
+  issues: string[];
   index: number;
   onChange: (changes: Partial<DraftQuestion>) => void;
   onRemove: () => void;
 }) {
-  const hasError = draft.errors.length > 0;
+  const hasError = issues.length > 0;
   return (
     <div
       className={cn(
@@ -348,7 +412,7 @@ function DraftRow({
 
       {hasError && (
         <ul className="mb-3 list-inside list-disc rounded-lg bg-rose-100 p-2 text-xs text-rose-700">
-          {draft.errors.map((e, i) => (
+          {issues.map((e, i) => (
             <li key={i}>{e}</li>
           ))}
         </ul>

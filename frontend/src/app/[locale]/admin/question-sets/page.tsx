@@ -54,6 +54,9 @@ export default function AdminQuestionSetsPage() {
 
   React.useEffect(load, [load]);
 
+  // Chủ đề đang ẩn không được tạo bộ đề mới (người học sẽ không thấy bộ đó)
+  const availableTopics = topics.filter((t) => !t.hidden);
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -71,7 +74,13 @@ export default function AdminQuestionSetsPage() {
             <strong className="text-foreground">3.</strong> Làm thử → publish.
           </p>
         </div>
-        <Button size="sm" onClick={() => setCreating(true)}>
+        {/* Modal lấy giá trị mặc định từ languages[0]/topics[0]; mở khi chưa tải xong
+            sẽ gửi languageId = 0 và ăn lỗi "Không tìm thấy ngôn ngữ" */}
+        <Button
+          size="sm"
+          onClick={() => setCreating(true)}
+          disabled={loading || languages.length === 0 || availableTopics.length === 0}
+        >
           <Plus className="mr-2 h-4 w-4" /> Tạo bộ đề
         </Button>
       </div>
@@ -178,7 +187,7 @@ export default function AdminQuestionSetsPage() {
       {creating && (
         <CreateSetModal
           languages={languages}
-          topics={topics.filter((t) => !t.hidden)}
+          topics={availableTopics}
           onClose={() => setCreating(false)}
           // Tạo xong đi thẳng vào màn soạn đề — bộ đề mới chỉ là cái vỏ 0/20 câu,
           // dừng lại ở bảng danh sách khiến người dùng tưởng luồng đã hết
