@@ -52,6 +52,7 @@ export type QuestionSetSummary = {
   levelOrder: number;
   status: "draft" | "published" | "archived";
   questionCount: number;
+  timePerQuestionSec?: number;
   publishedAt: string | null;
   language: LanguageRef;
   topic: { id: number; name: string };
@@ -121,6 +122,7 @@ export type AttemptStart = {
     title: string;
     framework: string;
     level: string;
+    timePerQuestionSec?: number;
     language: LanguageRef;
     topic: { id: number; name: string };
   };

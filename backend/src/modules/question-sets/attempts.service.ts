@@ -88,7 +88,10 @@ export class AttemptsService {
   ) {
     const sets = await this.prisma.questionSet.findMany({
       where: {
-        status: SetStatus.published,
+        OR: [
+          { status: SetStatus.published },
+          { questions: { some: { status: 'active' } } },
+        ],
         ...(filter.languageId ? { languageId: filter.languageId } : {}),
         ...(filter.topicId ? { topicId: filter.topicId } : {}),
         ...(filter.level ? { level: filter.level } : {}),

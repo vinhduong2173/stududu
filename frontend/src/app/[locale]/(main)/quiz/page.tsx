@@ -100,9 +100,17 @@ export default function QuizListPage() {
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
       ) : visibleSets.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-surface p-12 text-center">
+        <div className="rounded-2xl border border-dashed border-border bg-surface p-12 text-center space-y-3">
           <p className="font-semibold text-foreground">{t("no_sets")}</p>
           <p className="mt-1 text-sm text-muted">{t("no_sets_hint")}</p>
+          <div>
+            <Link
+              href="/community?tab=events"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold bg-primary text-primary-foreground text-xs transition-all shadow-xs hover:opacity-90"
+            >
+              Đến danh sách bài test (Community Events)
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">

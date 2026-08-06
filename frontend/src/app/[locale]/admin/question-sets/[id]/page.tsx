@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -40,7 +40,23 @@ export default function AdminQuestionSetEditorPage() {
   const [showTrial, setShowTrial] = React.useState(false);
   // Chế độ soạn (bảng dữ liệu thô) vs xem trước (đúng giao diện học viên)
   const [previewMode, setPreviewMode] = React.useState(false);
+  const router = useRouter();
   const [busy, setBusy] = React.useState(false);
+
+  const handleDeleteSet = async () => {
+    if (!set) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xoá bộ đề "${set.title}" không? Hành động này không thể hoàn tác.`)) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await api(`/admin/question-sets/${setId}`, { method: "DELETE" });
+      router.push("/admin/question-sets");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không xoá được bộ đề");
+      setBusy(false);
+    }
+  };
 
   const load = React.useCallback(() => {
     if (!Number.isFinite(setId)) return;
@@ -131,6 +147,17 @@ export default function AdminQuestionSetEditorPage() {
               <Send className="mr-2 h-4 w-4" /> Publish
             </Button>
           )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={handleDeleteSet}
+            className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40"
+            title="Xoá bộ đề"
+          >
+            <Trash2 className="mr-1.5 h-4 w-4" /> Xoá bộ đề
+          </Button>
         </div>
       </div>
 

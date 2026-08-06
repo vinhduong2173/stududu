@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
-import { BookOpen, Plus, Search, Filter, CheckCircle2, Clock, Layers, Sparkles } from "lucide-react";
+import { BookOpen, Plus, Search, Filter, CheckCircle2, Clock, Layers, Sparkles, Trash2 } from "lucide-react";
 
 type QuizSet = {
   id: string;
@@ -60,13 +60,44 @@ const INITIAL_QUIZ_SETS: QuizSet[] = [
 ];
 
 export default function AdminQuizzesPage() {
-  const [quizSets, setQuizSets] = React.useState<QuizSet[]>(INITIAL_QUIZ_SETS);
+  const [quizSets, setQuizSets] = React.useState<QuizSet[]>([]);
   const [search, setSearch] = React.useState("");
   const [selectedLang, setSelectedLang] = React.useState("ALL");
   const [selectedLevel, setSelectedLevel] = React.useState("ALL");
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa bộ đề "${title}" không? Hành động này không thể hoàn tác.`)) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      if (!isNaN(Number(id))) {
+        const { api } = await import("@/lib/api");
+        await api(`/admin/question-sets/${id}`, { method: "DELETE" });
+      }
+
+      const savedLocalStr = typeof window !== "undefined" ? localStorage.getItem("stududu_custom_quiz_sets") : null;
+      if (savedLocalStr) {
+        try {
+          const localSets: QuizSet[] = JSON.parse(savedLocalStr);
+          const updatedLocal = localSets.filter((s) => s.id !== id);
+          localStorage.setItem("stududu_custom_quiz_sets", JSON.stringify(updatedLocal));
+        } catch {
+          // ignore
+        }
+      }
+
+      setQuizSets((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Không xóa được bộ đề");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   React.useEffect(() => {
-    // 1. Đọc dữ liệu từ localStorage
+    // 1. Read from localStorage
     const savedLocalStr = typeof window !== "undefined" ? localStorage.getItem("stududu_custom_quiz_sets") : null;
     let localSets: QuizSet[] = [];
     if (savedLocalStr) {
@@ -77,7 +108,7 @@ export default function AdminQuizzesPage() {
       }
     }
 
-    // 2. Fetch danh sách bộ đề từ API Backend
+    // 2. Fetch question sets from Backend API
     import("@/lib/api")
       .then(({ api }) => api<any[]>("/admin/question-sets"))
       .then((data) => {
@@ -86,10 +117,10 @@ export default function AdminQuizzesPage() {
             id: String(item.id),
             title: item.title || "Bộ đề mới",
             language: item.language?.name || "Tiếng Anh",
-            level: item.targetLevel || "A1",
+            level: item.level || item.targetLevel || "A1",
             topic: item.topic?.name || "Từ vựng",
-            wordCount: item._count?.questions || item.questions?.length || 20,
-            status: item.publishedAt ? "published" : "draft",
+            wordCount: item.questionCount || item._count?.questions || item.questions?.length || 20,
+            status: item.status === "published" || item.publishedAt ? "published" : "draft",
             updatedAt: new Date(item.updatedAt || item.createdAt || Date.now()).toISOString().split("T")[0],
           }));
 
@@ -99,15 +130,13 @@ export default function AdminQuizzesPage() {
               combined.push(apiItem);
             }
           }
-          setQuizSets(combined.length > 0 ? combined : INITIAL_QUIZ_SETS);
-        } else if (localSets.length > 0) {
-          setQuizSets([...localSets, ...INITIAL_QUIZ_SETS]);
+          setQuizSets(combined);
+        } else {
+          setQuizSets(localSets);
         }
       })
       .catch(() => {
-        if (localSets.length > 0) {
-          setQuizSets([...localSets, ...INITIAL_QUIZ_SETS]);
-        }
+        setQuizSets(localSets);
       });
   }, []);
 
@@ -282,6 +311,17 @@ export default function AdminQuizzesPage() {
                         >
                           Chỉnh sửa
                         </Link>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDelete(qs.id, qs.title)}
+                          disabled={deletingId === qs.id}
+                          className="px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40 rounded-lg transition-colors border border-rose-200/60"
+                          title="Xóa bộ đề"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />
+                          Xóa
+                        </Button>
                       </div>
                     </td>
                   </tr>

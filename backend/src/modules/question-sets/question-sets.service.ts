@@ -442,13 +442,10 @@ export class QuestionSetsService {
     const activeCount = await this.prisma.testQuestion.count({
       where: { setId, status: QuestionStatus.active },
     });
-    const room = REQUIRED_QUESTION_COUNT - activeCount;
-    if (incoming > room) {
+    const MAX_ALLOWED = 100;
+    if (activeCount + incoming > MAX_ALLOWED) {
       throw new BadRequestException(
-        room <= 0
-          ? `Bộ đề đã đủ ${REQUIRED_QUESTION_COUNT} câu. Xoá bớt câu cũ trước khi thêm câu mới.`
-          : `Bộ đề chỉ nhận đúng ${REQUIRED_QUESTION_COUNT} câu: hiện có ${activeCount}, ` +
-              `còn ${room} chỗ nhưng bạn đang thêm ${incoming} câu. Hãy bỏ bớt ${incoming - room} câu rồi nhập lại.`,
+        `Bộ đề tối đa ${MAX_ALLOWED} câu. Hiện có ${activeCount} câu, không thể thêm ${incoming} câu.`,
       );
     }
   }
@@ -531,19 +528,10 @@ export class QuestionSetsService {
   }
 
   async publish(adminId: number, setId: number) {
-    await this.getSet(setId);
-    const gate = await this.getPublishGate(setId);
-    if (!gate.hasEnoughQuestions) {
-      throw new BadRequestException(
-        `Bộ đề cần đúng ${REQUIRED_QUESTION_COUNT} câu đang dùng (hiện có ${gate.activeCount}).`,
-      );
-    }
-    if (!gate.hasAdminTrial) {
-      throw new BadRequestException(
-        gate.trialOutdated
-          ? 'Bộ đề đã đổi câu hỏi kể từ lần làm thử gần nhất. Hãy làm thử lại trọn bộ rồi publish.'
-          : 'Bạn phải làm thử trọn bộ đề ít nhất một lần trước khi publish.',
-      );
+    const set = await this.getSet(setId);
+    const activeCount = set.questions?.length ?? 0;
+    if (activeCount === 0) {
+      throw new BadRequestException('Bộ đề chưa có câu hỏi nào để xuất bản.');
     }
     return this.prisma.questionSet.update({
       where: { id: setId },
@@ -577,5 +565,17 @@ export class QuestionSetsService {
       where: { id: setId },
       data: { status: SetStatus.draft, updatedById: adminId },
     });
+  }
+
+  async deleteSet(setId: number) {
+    await this.getSet(setId);
+    await this.prisma.testAnswer.deleteMany({
+      where: { attempt: { setId } },
+    });
+    await this.prisma.testAttempt.deleteMany({ where: { setId } });
+    await this.prisma.testQuestion.deleteMany({ where: { setId } });
+    await this.prisma.communityChallenge.deleteMany({ where: { setId } });
+    await this.prisma.questionSet.delete({ where: { id: setId } });
+    return { message: "Đã xoá bộ đề thành công" };
   }
 }

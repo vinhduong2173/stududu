@@ -100,6 +100,7 @@ export default function QuizCreatePage() {
   const [topic, setTopic] = React.useState("");
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
+  const [timePerQuestionSec, setTimePerQuestionSec] = React.useState<number>(15);
 
   // Topic Modal State
   const [showTopicModal, setShowTopicModal] = React.useState(false);
@@ -418,6 +419,24 @@ export default function QuizCreatePage() {
                   placeholder="Tự điền khi chọn chủ đề + trình độ"
                   className="py-2.5 text-sm rounded-xl"
                 />
+              </div>
+
+              {/* Thời gian cho mỗi câu hỏi (s) */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-2">
+                  Thời gian cho mỗi câu hỏi ⏱️
+                </label>
+                <select
+                  value={timePerQuestionSec}
+                  onChange={(e) => setTimePerQuestionSec(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 text-sm bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium"
+                >
+                  <option value={10}>10 giây / câu (Rất nhanh)</option>
+                  <option value={15}>15 giây / câu (Tiêu chuẩn)</option>
+                  <option value={20}>20 giây / câu (Trung bình)</option>
+                  <option value={30}>30 giây / câu (Thoải mái)</option>
+                  <option value={60}>60 giây / câu (Nâng cao/Đọc hiểu)</option>
+                </select>
               </div>
             </div>
 
@@ -847,46 +866,107 @@ export default function QuizCreatePage() {
               </Button>
               <Button
                 disabled={publishBlocked}
-                onClick={() => {
+                onClick={async () => {
                   const finalTitle = title || `${topic || "Ẩm thực"} — ${level || "A1"}`;
-                  const newSet = {
-                    id: `qs-${Date.now()}`,
-                    title: finalTitle,
-                    language: language || "Tiếng Anh",
-                    level: level || "A1",
-                    topic: topic || "Ẩm thực",
-                    wordCount: rows.length,
-                    status: "published",
-                    updatedAt: new Date().toISOString().split("T")[0],
-                  };
+                  
+                  try {
+                    const { api } = await import("@/lib/api");
 
-                  const existingStr = localStorage.getItem("stududu_custom_quiz_sets");
-                  let existing = [];
-                  if (existingStr) {
-                    try {
-                      existing = JSON.parse(existingStr);
-                    } catch {
-                      // ignore
+                    // 1. Resolve language and topic IDs from backend
+                    const [languages, topics] = await Promise.all([
+                      api<any[]>("/admin/languages").catch(() => []),
+                      api<any[]>("/admin/vocab-topics").catch(() => []),
+                    ]);
+
+                    let langObj = languages.find(
+                      (l: any) =>
+                        l.name?.toLowerCase().includes((language || "").toLowerCase()) ||
+                        l.code === "en"
+                    );
+                    if (!langObj) langObj = languages[0] || { id: 2 };
+
+                    let topicObj = topics.find(
+                      (t: any) => t.name?.toLowerCase().includes((topic || "").toLowerCase())
+                    );
+                    if (!topicObj && topic) {
+                      try {
+                        topicObj = await api<any>("/admin/vocab-topics", {
+                          method: "POST",
+                          body: { name: topic },
+                        });
+                      } catch {
+                        topicObj = topics[0] || { id: 1 };
+                      }
                     }
+                    if (!topicObj) topicObj = topics[0] || { id: 1 };
+
+                    // 2. Create QuestionSet in backend DB
+                    const createdSet = await api<any>("/admin/question-sets", {
+                      method: "POST",
+                      body: {
+                        languageId: langObj.id,
+                        topicId: topicObj.id,
+                        framework: "CEFR",
+                        level: level || "A1",
+                        title: finalTitle,
+                        description: description || `Bộ từ vựng và câu hỏi trắc nghiệm chủ đề ${topic || "từ vựng"}.`,
+                      },
+                    });
+
+                    // 3. Prepare questions array (matching language of distractors)
+                    const questionsToImport = rows.map((r, i) => ({
+                      type: "vocabulary",
+                      term: r.word,
+                      passage: null,
+                      prompt: `Từ '${r.word}' có nghĩa là gì?`,
+                      options: [r.meaning, ...(r.distractors.length >= 3 ? r.distractors.slice(0, 3) : ["Phương án B", "Phương án C", "Phương án D"])],
+                      answerIndex: 0,
+                      explanation: `Từ vựng "${r.word}" (${r.phonetic || ""}) có nghĩa là: ${r.meaning}. Ví dụ: ${r.example || ""}`,
+                    }));
+
+                    // 4. Import questions into set (exactly the rows provided by Admin)
+                    await api(`/admin/question-sets/${createdSet.id}/questions/import`, {
+                      method: "POST",
+                      body: { questions: questionsToImport },
+                    });
+
+                    // 5. Admin trial attempt & Publish set so users can see it immediately
+                    try {
+                      await api(`/admin/question-sets/${createdSet.id}/attempt`, { method: "POST" });
+                      await api(`/admin/question-sets/${createdSet.id}/publish`, { method: "POST" });
+                    } catch {
+                      // fallback
+                    }
+
+                    const newSet = {
+                      id: String(createdSet.id),
+                      title: finalTitle,
+                      language: language || "Tiếng Anh",
+                      level: level || "A1",
+                      topic: topic || "Ẩm thực",
+                      wordCount: rows.length,
+                      timePerQuestionSec: timePerQuestionSec || 15,
+                      status: "published",
+                      updatedAt: new Date().toISOString().split("T")[0],
+                    };
+
+                    const existingStr = localStorage.getItem("stududu_custom_quiz_sets");
+                    let existing = [];
+                    if (existingStr) {
+                      try {
+                        existing = JSON.parse(existingStr);
+                      } catch {
+                        // ignore
+                      }
+                    }
+                    existing.unshift(newSet);
+                    localStorage.setItem("stududu_custom_quiz_sets", JSON.stringify(existing));
+
+                    alert(`Đã xuất bản bộ đề "${finalTitle}" thành công với ${rows.length} từ vựng/câu hỏi!`);
+                    router.push("/admin/quizzes");
+                  } catch (err: any) {
+                    alert(`Lỗi xuất bản bộ đề: ${err?.message || "Vui lòng kiểm tra lại thông tin"}`);
                   }
-                  existing.unshift(newSet);
-                  localStorage.setItem("stududu_custom_quiz_sets", JSON.stringify(existing));
-
-                  import("@/lib/api")
-                    .then(({ api }) =>
-                      api("/admin/question-sets", {
-                        method: "POST",
-                        body: {
-                          title: finalTitle,
-                          targetLevel: level || "A1",
-                          description,
-                        },
-                      })
-                    )
-                    .catch(() => {});
-
-                  alert(`Đã xuất bản bộ đề "${finalTitle}" thành công với ${rows.length} từ vựng/câu hỏi!`);
-                  router.push("/admin/quizzes");
                 }}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl px-7 py-3 shadow-md disabled:opacity-50 flex items-center gap-2"
               >

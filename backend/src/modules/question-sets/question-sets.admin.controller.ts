@@ -184,6 +184,11 @@ export class QuestionSetsAdminController {
     return this.service.unpublish(admin.sub, id);
   }
 
+  @Delete('question-sets/:id')
+  deleteSet(@Param('id', ParseIntPipe) id: number) {
+    return this.service.deleteSet(id);
+  }
+
   // ----- Thử thách community -----
 
   @Post('challenges')

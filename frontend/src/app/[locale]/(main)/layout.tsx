@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Bell, BookOpen, Compass, GraduationCap, LogOut, MessageCircle, Settings, User, UserRound, Users } from "lucide-react";
+import { Bell, BookOpen, Compass, LogOut, MessageCircle, Settings, User, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { disconnectSocket, getSocket } from "@/lib/socket";
@@ -125,7 +125,6 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     { name: t("nav.discover"), href: "/discover", icon: Compass },
     { name: t("nav.messages"), href: "/inbox", icon: MessageCircle },
     { name: t("nav.vocabulary"), href: "/vocabulary", icon: BookOpen },
-    { name: t("nav.quiz"), href: "/quiz", icon: GraduationCap },
     { name: t("nav.profile"), href: "/profile/me", icon: User },
   ];
 

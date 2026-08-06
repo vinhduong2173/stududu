@@ -40,8 +40,11 @@ import {
   GroupItem,
 } from "@/components/features/GroupModals";
 import { ChallengeBoard } from "@/components/features/ChallengeBoard";
+import { EventTestCard, TestSetItem } from "@/components/features/EventTestCard";
+import { LearnerSet } from "@/lib/questionSets";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
+import { useSearchParams } from "next/navigation";
 
 type FeedPost = {
   id: number;
@@ -162,16 +165,165 @@ export default function CommunityPage() {
   const locale = useLocale();
   const { show: showToast, toast } = useToast();
 
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
   // Navigation tab state
   const [activeTab, setActiveTab] = React.useState<
     "feed" | "challenges" | "groups" | "events"
   >("feed");
+
+  React.useEffect(() => {
+    if (tabParam === "events" || tabParam === "feed" || tabParam === "groups") {
+      setActiveTab(tabParam as any);
+    }
+  }, [tabParam]);
 
   // Groups state
   const [realGroups, setRealGroups] = React.useState<GroupItem[]>([]);
   const [loadingGroups, setLoadingGroups] = React.useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = React.useState(false);
   const [selectedGroupIdOrSlug, setSelectedGroupIdOrSlug] = React.useState<number | string | null>(null);
+
+  // Default sample test sets matching mockup design
+  const DEFAULT_EVENT_TESTS: TestSetItem[] = [
+    {
+      id: 1,
+      title: "Bão tố Từ vựng: Thời tiết",
+      languageCode: "en",
+      languageName: "English",
+      countryCode: "GB",
+      framework: "CEFR",
+      level: "B1",
+      questionCount: 8,
+      timePerQuestion: "15s/câu",
+      takerCount: 342,
+      status: "not_started",
+      expiryText: "Còn 2 ngày",
+    },
+    {
+      id: 2,
+      title: "Từ điển Văn phòng",
+      languageCode: "en",
+      languageName: "English",
+      countryCode: "GB",
+      framework: "CEFR",
+      level: "B2",
+      questionCount: 15,
+      timePerQuestion: "12s/câu",
+      takerCount: 518,
+      status: "completed",
+      score: 1320,
+      correctCount: 15,
+      totalCount: 15,
+      expiryText: "Đã kết thúc",
+    },
+    {
+      id: 3,
+      title: "Hiragana Cơ bản",
+      languageCode: "ja",
+      languageName: "Tiếng Nhật",
+      countryCode: "JP",
+      framework: "CEFR",
+      level: "A1",
+      questionCount: 10,
+      timePerQuestion: "20s/câu",
+      takerCount: 187,
+      status: "in_progress",
+      currentQuestion: 4,
+      totalCount: 10,
+      expiryText: "Còn 4 ngày",
+    },
+    {
+      id: 4,
+      title: "Bão tố Từ vựng: Ẩm thực & Thức ăn",
+      languageCode: "en",
+      languageName: "English",
+      countryCode: "GB",
+      framework: "CEFR",
+      level: "B1",
+      questionCount: 20,
+      timePerQuestion: "15s/câu",
+      takerCount: 420,
+      status: "not_started",
+      expiryText: "Còn 5 ngày",
+    },
+  ];
+
+  // Test sets state for Events tab
+  const [eventTests, setEventTests] = React.useState<TestSetItem[]>([]);
+
+  React.useEffect(() => {
+    // 1. Read custom quiz sets created by Admin in /admin/quizzes/create
+    const savedLocalStr = typeof window !== "undefined" ? localStorage.getItem("stududu_custom_quiz_sets") : null;
+    let localTestItems: TestSetItem[] = [];
+    if (savedLocalStr) {
+      try {
+        const parsed = JSON.parse(savedLocalStr);
+        if (Array.isArray(parsed)) {
+          localTestItems = parsed.map((item: any, idx: number) => ({
+            id: isNaN(Number(item.id)) ? 9000 + idx : Number(item.id),
+            title: item.title,
+            languageCode: item.language?.toLowerCase().includes("nhật") ? "ja" : "en",
+            languageName: item.language || "English",
+            countryCode: item.language?.toLowerCase().includes("nhật") ? "JP" : "GB",
+            framework: "CEFR",
+            level: item.level || "A1",
+            questionCount: item.wordCount || 15,
+            timePerQuestion: "15s/câu",
+            takerCount: 150 + idx * 25,
+            status: "not_started" as const,
+            expiryText: "Còn 3 ngày",
+          }));
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 2. Fetch published question sets from Backend API
+    api<LearnerSet[]>("/question-sets")
+      .then((sets) => {
+        const apiMapped: TestSetItem[] = Array.isArray(sets)
+          ? sets.map((s, idx) => {
+              const hasAttempt = !!s.lastAttempt;
+              const isFinished = hasAttempt && !!s.lastAttempt?.finishedAt;
+              let status: "not_started" | "completed" | "in_progress" = "not_started";
+              if (isFinished) status = "completed";
+              else if (hasAttempt) status = "in_progress";
+
+              return {
+                id: s.id,
+                title: s.title,
+                languageCode: s.language?.code || "en",
+                languageName: s.language?.name || "English",
+                framework: s.framework,
+                level: s.level,
+                questionCount: s.questionCount || s._count?.questions || 10,
+                timePerQuestion: `${12 + (idx % 3) * 4}s/câu`,
+                takerCount: 180 + s.id * 35,
+                status,
+                score: isFinished ? (s.lastAttempt?.correctCount ? s.lastAttempt.correctCount * 88 : 1320) : undefined,
+                correctCount: s.lastAttempt?.correctCount,
+                totalCount: s.lastAttempt?.totalCount || s.questionCount || 10,
+                currentQuestion: hasAttempt && !isFinished ? 4 : undefined,
+                expiryText: status === "completed" ? "Đã kết thúc" : `Còn ${2 + (idx % 4)} ngày`,
+              };
+            })
+          : [];
+
+        const combined = [...apiMapped];
+        for (const localItem of localTestItems) {
+          if (!combined.some((c) => c.title.toLowerCase() === localItem.title.toLowerCase() || c.id === localItem.id)) {
+            combined.push(localItem);
+          }
+        }
+        setEventTests(combined);
+      })
+      .catch(() => {
+        setEventTests(localTestItems);
+      });
+  }, []);
 
   const fetchRealGroups = React.useCallback(async () => {
     setLoadingGroups(true);
@@ -662,19 +814,6 @@ export default function CommunityPage() {
             </button>
 
             <button
-              onClick={() => setActiveTab("challenges")}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left",
-                activeTab === "challenges"
-                  ? "bg-primary/10 text-primary shadow-xs font-bold"
-                  : "text-muted hover:text-foreground hover:bg-muted/10"
-              )}
-            >
-              <Trophy className="w-4 h-4" />
-              <span>{t("challenge.title")}</span>
-            </button>
-
-            <button
               onClick={() => setActiveTab("groups")}
               className={cn(
                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left",
@@ -1146,51 +1285,31 @@ export default function CommunityPage() {
             </div>
           )}
 
-          {/* EVENTS TAB VIEW (PREVIEW) */}
+          {/* EVENTS TAB VIEW — Danh sách bài test từ Admin */}
           {activeTab === "events" && (
             <div className="space-y-4">
               <div className="bg-surface rounded-2xl border border-border shadow-sm p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600">
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-foreground font-display">{t("community.events_title") || "Sự kiện & Bài thi thử sức"}</h2>
+                    <h2 className="text-lg font-bold text-foreground font-display">
+                      {t("community.events_title") || "Events & Exam Competitions"}
+                    </h2>
                     <p className="text-xs text-muted">
-                      {t("community.events_coming_soon")}
+                      {t("community.events_coming_soon") ||
+                        "Events is where Admins will host exams and competitions for users to practice together."}
                     </p>
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-3 mt-6">
-                  <div className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary">{t("community.status_upcoming")}</span>
-                        <span className="text-xs text-muted">{t("community.event1_time")}</span>
-                      </div>
-                      <h4 className="text-sm font-bold text-foreground">{t("community.event1_title")}</h4>
-                      <p className="text-xs text-muted mt-0.5">{t("community.event1_desc")}</p>
-                    </div>
-                    <Button size="sm" className="rounded-xl text-xs flex-shrink-0" onClick={() => showToast(t("community.event_toast_notice"))}>
-                      {t("community.event1_btn")}
-                    </Button>
-                  </div>
-
-                  <div className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-pink-100 text-pink-600">JLPT N3</span>
-                        <span className="text-xs text-muted">{t("community.event2_time")}</span>
-                      </div>
-                      <h4 className="text-sm font-bold text-foreground">{t("community.event2_title")}</h4>
-                      <p className="text-xs text-muted mt-0.5">{t("community.event2_desc")}</p>
-                    </div>
-                    <Button size="sm" variant="outline" className="rounded-xl text-xs flex-shrink-0" onClick={() => showToast(t("community.event_toast_notice"))}>
-                      {t("community.event2_btn")}
-                    </Button>
-                  </div>
-                </div>
+              {/* Grid / List of test set cards matching mockup */}
+              <div className="space-y-4">
+                {eventTests.map((item) => (
+                  <EventTestCard key={item.id} item={item} />
+                ))}
               </div>
             </div>
           )}

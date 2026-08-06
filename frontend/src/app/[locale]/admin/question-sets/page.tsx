@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, FileText, Plus, Sparkles, X } from "lucide-react";
+import { ArrowRight, FileText, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,23 @@ export default function AdminQuestionSetsPage() {
   const [loading, setLoading] = React.useState(true);
   const [creating, setCreating] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [deletingId, setDeletingId] = React.useState<number | null>(null);
+
+  const handleDeleteSet = async (id: number, title: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xoá bộ đề "${title}" không? Hành động này không thể hoàn tác.`)) {
+      return;
+    }
+    setDeletingId(id);
+    setError(null);
+    try {
+      await api(`/admin/question-sets/${id}`, { method: "DELETE" });
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không xoá được bộ đề");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // `loading` khởi tạo là true nên không set lại ở đây — set state đồng bộ ngay
   // trong effect sẽ gây cascading render (react-hooks/purity)
@@ -162,19 +179,32 @@ export default function AdminQuestionSetsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button asChild size="sm" variant={active === 0 ? "default" : "ghost"}>
-                        <Link href={`/admin/question-sets/${set.id}`}>
-                          {active === 0 ? (
-                            <>
-                              <Sparkles className="mr-1.5 h-4 w-4" /> Thêm câu hỏi
-                            </>
-                          ) : (
-                            <>
-                              Soạn đề <ArrowRight className="ml-1.5 h-4 w-4" />
-                            </>
-                          )}
-                        </Link>
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button asChild size="sm" variant={active === 0 ? "default" : "ghost"}>
+                          <Link href={`/admin/question-sets/${set.id}`}>
+                            {active === 0 ? (
+                              <>
+                                <Sparkles className="mr-1.5 h-4 w-4" /> Thêm câu hỏi
+                              </>
+                            ) : (
+                              <>
+                                Soạn đề <ArrowRight className="ml-1.5 h-4 w-4" />
+                              </>
+                            )}
+                          </Link>
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteSet(set.id, set.title)}
+                          disabled={deletingId === set.id}
+                          className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40 p-2 h-8 w-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                          title="Xoá bộ đề"
+                        >
+                          <Trash2 className="h-4 w-4 text-rose-600" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
