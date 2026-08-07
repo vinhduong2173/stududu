@@ -133,6 +133,10 @@ export class QuestionSetsService {
           title: dto.title,
           description: dto.description,
           contentLanguage: dto.contentLanguage ?? 'vi',
+          timePerQuestionSec: dto.timePerQuestionSec ?? 15,
+          maxAttempts: dto.maxAttempts ?? null,
+          startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+          endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
           createdById: adminId,
         },
       });
@@ -168,11 +172,14 @@ export class QuestionSetsService {
 
   async updateSet(adminId: number, id: number, dto: UpdateQuestionSetDto) {
     await this.getSet(id);
+    const { startsAt, endsAt, ...restDto } = dto;
     try {
       return await this.prisma.questionSet.update({
         where: { id },
         data: {
-          ...dto,
+          ...restDto,
+          ...(startsAt !== undefined ? { startsAt: startsAt ? new Date(startsAt) : null } : {}),
+          ...(endsAt !== undefined ? { endsAt: endsAt ? new Date(endsAt) : null } : {}),
           ...(dto.level ? { levelOrder: levelOrderOf(dto.level) } : {}),
           updatedById: adminId,
         },
@@ -518,12 +525,11 @@ export class QuestionSetsService {
     return {
       requiredCount: REQUIRED_QUESTION_COUNT,
       activeCount,
-      hasEnoughQuestions: activeCount === REQUIRED_QUESTION_COUNT,
+      hasEnoughQuestions: activeCount > 0,
       hasAdminTrial: adminTrial !== null,
       trialOutdated,
       adminTrial,
-      canPublish:
-        activeCount === REQUIRED_QUESTION_COUNT && adminTrial !== null,
+      canPublish: activeCount > 0,
     };
   }
 

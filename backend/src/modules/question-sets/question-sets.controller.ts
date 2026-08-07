@@ -67,6 +67,24 @@ export class QuestionSetsController {
       challengeId ? parseInt(challengeId, 10) : undefined,
     );
   }
+
+  @Get(':id/leaderboard')
+  leaderboard(@Param('id', ParseIntPipe) id: number) {
+    return this.attempts.getLeaderboard(id);
+  }
+
+  @Get(':id/result')
+  result(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+    @Query('attemptId') attemptId?: string,
+  ) {
+    return this.attempts.getAttemptDetail(
+      user.sub,
+      id,
+      attemptId ? parseInt(attemptId, 10) : undefined,
+    );
+  }
 }
 
 @Controller('attempts')
@@ -81,6 +99,14 @@ export class AttemptsController {
     @Body() dto: SubmitAttemptDto,
   ) {
     return this.attempts.submit(user.sub, id, dto);
+  }
+
+  @Get(':id/detail')
+  detail(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.attempts.getAttemptDetail(user.sub, 0, id);
   }
 }
 

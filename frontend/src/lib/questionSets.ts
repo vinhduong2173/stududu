@@ -53,6 +53,9 @@ export type QuestionSetSummary = {
   status: "draft" | "published" | "archived";
   questionCount: number;
   timePerQuestionSec?: number;
+  maxAttempts?: number | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
   publishedAt: string | null;
   language: LanguageRef;
   topic: { id: number; name: string };

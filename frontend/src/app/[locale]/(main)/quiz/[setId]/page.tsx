@@ -17,10 +17,13 @@ import {
   formatDuration,
 } from "@/lib/questionSets";
 
+import { useRouter } from "next/navigation";
+
 export default function QuizAttemptPage() {
   const t = useTranslations("quiz");
   const params = useParams();
   const search = useSearchParams();
+  const router = useRouter();
   const setId = Number(params?.setId);
   const challengeId = search.get("challengeId");
 
@@ -45,7 +48,10 @@ export default function QuizAttemptPage() {
       .finally(() => setLoading(false));
   }, [setId, challengeId]);
 
-  const handleCompleteAttempt = async (userAnswers: Record<number, number>) => {
+  const handleCompleteAttempt = async (
+    userAnswers: Record<number, number>,
+    liveScore?: number
+  ) => {
     if (!attempt) return;
     setSubmitting(true);
     setError(null);
@@ -57,10 +63,10 @@ export default function QuizAttemptPage() {
             questionId: q.id,
             chosenIndex: userAnswers[q.id] ?? null,
           })),
+          score: liveScore,
         },
       });
-      setResult(res);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      router.push(`/quiz/${setId}/result?attemptId=${attempt.attemptId}`);
       return res;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("submit_failed"));

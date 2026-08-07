@@ -589,6 +589,10 @@ model QuestionSet {
   title           String
   description     String?
   contentLanguage String    @default("vi") @map("content_language")
+  timePerQuestionSec Int    @default(15) @map("time_per_question_sec")
+  maxAttempts     Int?      @map("max_attempts")
+  startsAt        DateTime? @map("starts_at")
+  endsAt          DateTime? @map("ends_at")
   status          SetStatus @default(draft)
   questionCount   Int       @default(0) @map("question_count")
   createdById     Int       @map("created_by_id")
@@ -639,6 +643,7 @@ model TestAttempt {
   challengeId  Int?      @map("challenge_id") // khác null = lượt làm trong thử thách community
   totalCount   Int       @default(20) @map("total_count")
   correctCount Int       @default(0) @map("correct_count")
+  score        Int       @default(0) // Điểm Tốc độ & Chính xác Kahoot thời gian thực
   // Thứ tự câu + hoán vị đáp án của riêng lượt này (mục 7: đảo mỗi lần làm).
   // Phải lưu để chấm ngược được chỉ số client gửi lên về chỉ số gốc.
   questionOrder Int[]    @default([]) @map("question_order")

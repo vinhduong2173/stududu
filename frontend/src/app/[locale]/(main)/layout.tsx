@@ -14,6 +14,58 @@ import { TextSelectionPopup } from "@/components/features/TextSelectionPopup";
 import { Logo } from "@/components/ui/Logo";
 import { CallProvider } from "@/components/call/CallProvider";
 
+function getNotificationMessage(n: any, t: any) {
+  if (!n) return "";
+  const name = n.sender?.displayName || t("notifications.someone");
+
+  const quotes: string[] = [];
+  if (n.message) {
+    const re = /"([^"]+)"/g;
+    let m;
+    while ((m = re.exec(n.message)) !== null) {
+      quotes.push(m[1]);
+    }
+  }
+
+  const group = quotes[0] || "";
+  const reason = quotes[1] || quotes[0] || "";
+
+  switch (n.type) {
+    case "follow":
+      return t("notifications.follow_message", { name });
+    case "new_post":
+      return t("notifications.new_post_message", { name });
+    case "like":
+      return t("notifications.like_message", { name });
+    case "match":
+      return t("notifications.match_message", { name });
+    case "group_join_approved":
+      return t("notifications.group_join_approved", { group });
+    case "group_join_rejected":
+      return t("notifications.group_join_rejected", { group });
+    case "group_post_approved":
+      return t("notifications.group_post_approved", { group });
+    case "group_post_rejected":
+      return t("notifications.group_post_rejected", { group });
+    case "pending_join_request":
+      return t("notifications.pending_join_request", { name, group });
+    case "pending_group_post":
+      return t("notifications.pending_group_post", { name, group });
+    case "group_member_kicked":
+      return t("notifications.group_member_kicked", { group });
+    case "group_member_muted":
+      return t("notifications.group_member_muted", { group });
+    case "group_member_report":
+      return t("notifications.group_member_report", { group, reason });
+    case "group_post_report":
+      return t("notifications.group_post_report", { group, reason });
+    case "schedule_reminder":
+      return t("notifications.schedule_reminder");
+    default:
+      return n.message;
+  }
+}
+
 /** CallProvider bọc toàn bộ khu vực đã đăng nhập để chuông đổ được ở mọi trang,
  *  không chỉ khi đang mở Inbox (audio-call-design.md mục 3). */
 export default function MainLayout({ children }: { children: React.ReactNode }) {
@@ -52,14 +104,15 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     if (!token) return;
     const socket = getSocket(token);
     const onNotification = (n: any) => {
+      const msg = getNotificationMessage(n, t);
       if (n.type === "schedule_reminder" && n.timeUtc) {
-        const local = new Date(n.timeUtc).toLocaleTimeString("vi-VN", {
+        const local = new Date(n.timeUtc).toLocaleTimeString(locale, {
           hour: "2-digit",
           minute: "2-digit",
         });
-        showToast(`⏰ ${n.message} (${local})`);
+        showToast(`⏰ ${msg} (${local})`);
       } else {
-        showToast(n.message);
+        showToast(msg);
       }
       setNotifications((prev) => [n, ...prev]);
     };
@@ -68,7 +121,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
       socket.off("notification", onNotification);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [t, locale]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -106,7 +159,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     if (diffMin < 60) return t("community.time_minutes_ago", { count: diffMin });
     const h = Math.floor(diffMin / 60);
     if (h < 24) return t("community.time_hours_ago", { count: h });
-    return new Date(iso).toLocaleDateString(pathname.startsWith("/en") ? "en-US" : "vi-VN", {
+    return new Date(iso).toLocaleDateString(locale, {
       day: "2-digit",
       month: "2-digit",
     });
@@ -206,15 +259,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-foreground leading-relaxed break-words">
-                              {n.type === "follow"
-                                ? t("notifications.follow_message", { name: n.sender?.displayName || "Ai đó" })
-                                : n.type === "new_post"
-                                ? t("notifications.new_post_message", { name: n.sender?.displayName || "Ai đó" })
-                                : n.type === "like"
-                                ? t("notifications.like_message", { name: n.sender?.displayName || "Ai đó" })
-                                : n.type === "match"
-                                ? t("notifications.match_message", { name: n.sender?.displayName || "Ai đó" })
-                                : n.message}
+                              {getNotificationMessage(n, t)}
                             </p>
                             <span className="text-[10px] text-muted mt-1 block">
                               {timeAgo(n.createdAt)}

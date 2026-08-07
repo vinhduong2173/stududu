@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ArrowLeft,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -30,7 +31,7 @@ import {
 
 export type KahootQuizEngineProps = {
   attempt: AttemptStart;
-  onComplete: (answers: Record<number, number>) => Promise<AttemptResult | void>;
+  onComplete: (answers: Record<number, number>, score?: number) => Promise<AttemptResult | void>;
   submitting: boolean;
   result: AttemptResult | null;
 };
@@ -81,6 +82,7 @@ export function KahootQuizEngine({
   submitting,
   result,
 }: KahootQuizEngineProps) {
+  const t = useTranslations("quiz");
   const timePerQuestionSec = attempt.set.timePerQuestionSec || 15;
   const questions = attempt.questions;
 
@@ -162,7 +164,7 @@ export function KahootQuizEngine({
       setFeedback(null);
     } else {
       // Submit entire attempt to backend
-      await onComplete(userAnswers);
+      await onComplete(userAnswers, score);
     }
   };
 
@@ -359,7 +361,7 @@ export function KahootQuizEngine({
         <div className="flex items-center justify-between gap-2 text-xs md:text-sm font-bold">
           <div className="flex items-center gap-2.5">
             <span className="px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs md:text-sm font-extrabold">
-              Câu {currentIndex + 1} / {questions.length}
+              {t("question_num", { n: `${currentIndex + 1}/${questions.length}` })}
             </span>
             <span className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-surface border border-border text-muted font-medium text-xs md:text-sm">
               {attempt.set.title}
@@ -370,7 +372,7 @@ export function KahootQuizEngine({
             {/* Streak Counter */}
             <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 text-xs md:text-sm font-extrabold animate-pulse">
               <Flame className="w-4 h-4 md:w-5 md:h-5 fill-rose-500" />
-              <span>STREAK x{streak}</span>
+              <span>{t("streak_multiplier", { count: streak })}</span>
             </div>
 
             {/* Live Score */}
@@ -385,7 +387,7 @@ export function KahootQuizEngine({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs md:text-sm font-bold text-muted">
             <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-primary" />Thời gian còn lại:
+              <Clock className="w-4 h-4 text-primary" />{t("remaining_time")}
             </span>
             <span
               className={cn(
@@ -415,11 +417,19 @@ export function KahootQuizEngine({
         {/* Type Badge & Term */}
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="px-3.5 py-1.5 rounded-full bg-primary/10 text-primary text-xs md:text-sm font-extrabold uppercase tracking-wider">
-            {currentQ?.type || "Từ vựng"}
+            {currentQ?.type === "vocabulary"
+              ? t("type_vocabulary")
+              : currentQ?.type === "grammar"
+              ? t("type_grammar")
+              : currentQ?.type === "cloze"
+              ? t("type_cloze")
+              : currentQ?.type === "reading"
+              ? t("type_reading")
+              : currentQ?.type}
           </span>
           {currentQ?.term && (
             <span className="px-3.5 py-1.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 text-xs md:text-sm font-bold">
-              Từ vựng: {currentQ.term}
+              {t("term_label", { term: currentQ.term })}
             </span>
           )}
         </div>
@@ -481,16 +491,16 @@ export function KahootQuizEngine({
             {feedback?.type === "correct" ? (
               <div className="flex items-center gap-2 text-emerald-600 font-extrabold text-sm">
                 <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                <span>Xuất sắc! +{feedback.pointsAdded} PTS 🎉</span>
+                <span>{t("excellent_added", { pts: feedback.pointsAdded ?? 0 })}</span>
               </div>
             ) : feedback?.type === "timeout" ? (
               <div className="flex items-center gap-2 text-rose-500 font-extrabold text-sm">
                 <XCircle className="w-5 h-5 text-rose-500" />
-                <span>Hết giờ làm bài cho câu này! ⏱️</span>
+                <span>{t("timeout_added")}</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
-                <span>Đã ghi nhận câu trả lời</span>
+                <span>{t("wrong_added")}</span>
               </div>
             )}
 
@@ -501,13 +511,12 @@ export function KahootQuizEngine({
             >
               {currentIndex < questions.length - 1 ? (
                 <>
-                  <span>Câu tiếp theo</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>{t("next_question")}</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>{submitting ? "Đang nộp bài..." : "Hoàn tất & Nộp bài"}</span>
+                  <span>{submitting ? t("submitting") : t("submit_attempt")}</span>
                 </>
               )}
             </Button>

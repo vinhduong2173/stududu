@@ -306,7 +306,7 @@ export default function AdminQuizzesPage() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link
-                          href={`/admin/quizzes/create?id=${qs.id}`}
+                          href={`/admin/question-sets/${!isNaN(Number(qs.id)) ? qs.id : qs.id.replace("qs-", "")}`}
                           className="px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors border border-primary/20"
                         >
                           Chỉnh sửa

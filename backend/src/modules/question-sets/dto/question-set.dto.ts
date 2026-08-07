@@ -49,6 +49,25 @@ export class CreateQuestionSetDto {
   @IsString()
   @MaxLength(10)
   contentLanguage?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(5)
+  @Max(300)
+  timePerQuestionSec?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  maxAttempts?: number;
+
+  @IsOptional()
+  @IsDateString()
+  startsAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endsAt?: string;
 }
 
 export class UpdateQuestionSetDto {
@@ -76,6 +95,25 @@ export class UpdateQuestionSetDto {
   @IsString()
   @MaxLength(10)
   contentLanguage?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(5)
+  @Max(300)
+  timePerQuestionSec?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  maxAttempts?: number;
+
+  @IsOptional()
+  @IsDateString()
+  startsAt?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endsAt?: string;
 }
 
 export class QuestionPayloadDto {
@@ -201,6 +239,10 @@ export class SubmitAttemptDto {
   @ValidateNested({ each: true })
   @Type(() => SubmitAnswerDto)
   answers!: SubmitAnswerDto[];
+
+  @IsOptional()
+  @IsInt()
+  score?: number;
 }
 
 export class CreateChallengeDto {

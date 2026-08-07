@@ -101,6 +101,9 @@ export default function QuizCreatePage() {
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [timePerQuestionSec, setTimePerQuestionSec] = React.useState<number>(15);
+  const [maxAttempts, setMaxAttempts] = React.useState<number>(0);
+  const [startsAt, setStartsAt] = React.useState<string>("");
+  const [endsAt, setEndsAt] = React.useState<string>("");
 
   // Topic Modal State
   const [showTopicModal, setShowTopicModal] = React.useState(false);
@@ -437,6 +440,51 @@ export default function QuizCreatePage() {
                   <option value={30}>30 giây / câu (Thoải mái)</option>
                   <option value={60}>60 giây / câu (Nâng cao/Đọc hiểu)</option>
                 </select>
+              </div>
+
+              {/* Giới hạn số lần làm bài */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-2">
+                  Giới hạn số lần làm bài 🎯
+                </label>
+                <select
+                  value={maxAttempts}
+                  onChange={(e) => setMaxAttempts(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 text-sm bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium"
+                >
+                  <option value={0}>Không giới hạn</option>
+                  <option value={1}>1 lần duy nhất</option>
+                  <option value={2}>2 lần</option>
+                  <option value={3}>3 lần</option>
+                  <option value={5}>5 lần</option>
+                  <option value={10}>10 lần</option>
+                </select>
+              </div>
+
+              {/* Ngày bắt đầu */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-2">
+                  Ngày bắt đầu 📅 <span className="text-muted font-normal">(tùy chọn)</span>
+                </label>
+                <input
+                  type="date"
+                  value={startsAt}
+                  onChange={(e) => setStartsAt(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium"
+                />
+              </div>
+
+              {/* Ngày kết thúc */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-2">
+                  Ngày kết thúc ⏳ <span className="text-muted font-normal">(tùy chọn)</span>
+                </label>
+                <input
+                  type="date"
+                  value={endsAt}
+                  onChange={(e) => setEndsAt(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium"
+                />
               </div>
             </div>
 
@@ -910,6 +958,10 @@ export default function QuizCreatePage() {
                         level: level || "A1",
                         title: finalTitle,
                         description: description || `Bộ từ vựng và câu hỏi trắc nghiệm chủ đề ${topic || "từ vựng"}.`,
+                        timePerQuestionSec: timePerQuestionSec || 15,
+                        maxAttempts: maxAttempts > 0 ? maxAttempts : null,
+                        startsAt: startsAt ? new Date(`${startsAt}T00:00:00`).toISOString() : null,
+                        endsAt: endsAt ? new Date(`${endsAt}T23:59:59`).toISOString() : null,
                       },
                     });
 

@@ -285,12 +285,16 @@ export default function CommunityPage() {
     api<LearnerSet[]>("/question-sets")
       .then((sets) => {
         const apiMapped: TestSetItem[] = Array.isArray(sets)
-          ? sets.map((s, idx) => {
+          ? sets.map((s: any) => {
               const hasAttempt = !!s.lastAttempt;
               const isFinished = hasAttempt && !!s.lastAttempt?.finishedAt;
               let status: "not_started" | "completed" | "in_progress" = "not_started";
               if (isFinished) status = "completed";
               else if (hasAttempt) status = "in_progress";
+              const totalCount = s.lastAttempt?.totalCount || s.questionCount || 10;
+              const correctCount = s.lastAttempt?.correctCount ?? 0;
+              const calculatedScore = totalCount > 0 ? Math.round((correctCount / totalCount) * 1000) : 0;
+              const attemptScore = s.lastAttempt?.score ?? s.score ?? calculatedScore;
 
               return {
                 id: s.id,
@@ -300,14 +304,18 @@ export default function CommunityPage() {
                 framework: s.framework,
                 level: s.level,
                 questionCount: s.questionCount || s._count?.questions || 10,
-                timePerQuestion: `${12 + (idx % 3) * 4}s/câu`,
-                takerCount: 180 + s.id * 35,
+                timePerQuestionSec: s.timePerQuestionSec || 15,
+                takerCount: s.takerCount ?? 0,
                 status,
-                score: isFinished ? (s.lastAttempt?.correctCount ? s.lastAttempt.correctCount * 88 : 1320) : undefined,
-                correctCount: s.lastAttempt?.correctCount,
-                totalCount: s.lastAttempt?.totalCount || s.questionCount || 10,
-                currentQuestion: hasAttempt && !isFinished ? 4 : undefined,
-                expiryText: status === "completed" ? "Đã kết thúc" : `Còn ${2 + (idx % 4)} ngày`,
+                score: isFinished ? attemptScore : undefined,
+                correctCount: isFinished ? correctCount : undefined,
+                totalCount,
+                currentQuestion: hasAttempt && !isFinished ? 1 : undefined,
+                diffDays: s.diffDays ?? null,
+                expiryText: s.expiryText,
+                isExpired: !!s.isExpired,
+                isLimitReached: !!s.isLimitReached,
+                isNotStarted: !!s.isNotStarted,
               };
             })
           : [];

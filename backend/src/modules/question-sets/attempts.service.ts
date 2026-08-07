@@ -68,7 +68,7 @@ type AttemptRow = Pick<
 >;
 
 /** Phần của bộ đề cần để hiển thị đề — không kèm `answerIndex` */
-type AttemptSet = Pick<QuestionSet, 'id' | 'title' | 'framework' | 'level'> & {
+type AttemptSet = Pick<QuestionSet, 'id' | 'title' | 'framework' | 'level' | 'timePerQuestionSec'> & {
   language: { id: number; code: string; name: string };
   topic: { id: number; name: string };
   questions: Pick<
@@ -104,16 +104,93 @@ export class AttemptsService {
           where: { userId, finishedAt: { not: null } },
           orderBy: { finishedAt: 'desc' },
           take: 1,
-          select: { correctCount: true, totalCount: true, finishedAt: true },
+          select: { score: true, correctCount: true, totalCount: true, finishedAt: true, startedAt: true },
         },
       },
       orderBy: [{ levelOrder: 'asc' }, { title: 'asc' }],
     });
 
-    return sets.map(({ attempts, ...set }) => ({
-      ...set,
-      lastAttempt: attempts[0] ?? null,
-    }));
+    const setIds = sets.map((s) => s.id);
+
+    // Tính takerCount (số user duy nhất đã từng nộp bài test này)
+    const takerCountsRaw = await this.prisma.testAttempt.groupBy({
+      by: ['setId', 'userId'],
+      where: { setId: { in: setIds }, finishedAt: { not: null } },
+    });
+
+    const takerCountMap: Record<number, number> = {};
+    for (const row of takerCountsRaw) {
+      takerCountMap[row.setId] = (takerCountMap[row.setId] || 0) + 1;
+    }
+
+    // Tính số lần user đã hoàn thành cho mỗi set
+    const userAttemptsRaw = await this.prisma.testAttempt.groupBy({
+      by: ['setId'],
+      where: { userId, setId: { in: setIds }, finishedAt: { not: null } },
+      _count: { id: true },
+    });
+
+    const userAttemptsMap: Record<number, number> = {};
+    for (const row of userAttemptsRaw) {
+      userAttemptsMap[row.setId] = row._count.id;
+    }
+
+    const now = new Date();
+
+    return sets.map(({ attempts, ...set }) => {
+      const lastAttempt = attempts[0] ?? null;
+      const takerCount = takerCountMap[set.id] || 0;
+      const userAttemptsCount = userAttemptsMap[set.id] || 0;
+
+      const isExpired = set.endsAt ? now > set.endsAt : false;
+      const isNotStarted = set.startsAt ? now < set.startsAt : false;
+      const isLimitReached = set.maxAttempts && set.maxAttempts > 0
+        ? userAttemptsCount >= set.maxAttempts
+        : false;
+
+      let diffDays: number | null = null;
+      let expiryText = '';
+      if (isExpired) {
+        expiryText = 'Đã kết thúc';
+      } else if (isNotStarted && set.startsAt) {
+        expiryText = `Mở vào ${new Date(set.startsAt).toLocaleDateString('vi-VN')}`;
+      } else if (set.endsAt) {
+        const diffMs = new Date(set.endsAt).getTime() - now.getTime();
+        diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+        if (diffDays > 1) {
+          expiryText = `Còn ${diffDays} ngày`;
+        } else {
+          expiryText = 'Hết hạn hôm nay';
+        }
+      } else if (set.maxAttempts) {
+        expiryText = `Tối đa ${set.maxAttempts} lần`;
+      } else {
+        expiryText = 'Không giới hạn';
+      }
+
+      const score = lastAttempt
+        ? (lastAttempt.score > 0
+            ? lastAttempt.score
+            : lastAttempt.totalCount > 0
+              ? Math.round((lastAttempt.correctCount / lastAttempt.totalCount) * 1000)
+              : 0)
+        : undefined;
+
+      return {
+        ...set,
+        timePerQuestionSec: set.timePerQuestionSec || 15,
+        timePerQuestion: `${set.timePerQuestionSec || 15}s/câu`,
+        takerCount,
+        userAttemptsCount,
+        isExpired,
+        isNotStarted,
+        isLimitReached,
+        diffDays,
+        expiryText,
+        score,
+        lastAttempt,
+      };
+    });
   }
 
   /** Hạn mức còn lại hôm nay — tính lại khi đọc, không cache */
@@ -168,6 +245,26 @@ export class AttemptsService {
     }
     if (set.questions.length === 0) {
       throw new BadRequestException('Bộ đề chưa có câu hỏi nào');
+    }
+
+    const now = new Date();
+    if (set.startsAt && now < set.startsAt && !isAdmin) {
+      throw new ForbiddenException(`Bài test chưa mở. Thời gian mở: ${new Date(set.startsAt).toLocaleString('vi-VN')}`);
+    }
+    if (set.endsAt && now > set.endsAt && !isAdmin) {
+      throw new ForbiddenException('Bài test này đã kết thúc.');
+    }
+
+    if (set.maxAttempts && set.maxAttempts > 0 && !isAdmin) {
+      const finishedCount = await this.prisma.testAttempt.count({
+        where: { userId, setId, finishedAt: { not: null } },
+      });
+      const inProgress = await this.prisma.testAttempt.findFirst({
+        where: { userId, setId, finishedAt: null },
+      });
+      if (finishedCount >= set.maxAttempts && !inProgress) {
+        throw new ForbiddenException(`Bạn đã sử dụng hết ${set.maxAttempts} lần làm bài cho bài test này.`);
+      }
     }
 
     if (challengeId !== undefined) {
@@ -238,6 +335,7 @@ export class AttemptsService {
         level: set.level,
         language: set.language,
         topic: set.topic,
+        timePerQuestionSec: set.timePerQuestionSec || 15,
       },
       questions: attempt.questionOrder
         // Câu bị retire sau khi lượt này bắt đầu thì bỏ khỏi đề — `submit` cũng bỏ
@@ -330,6 +428,21 @@ export class AttemptsService {
     }
 
     const finishedAt = new Date();
+    const durationSec = Math.round(
+      (finishedAt.getTime() - attempt.startedAt.getTime()) / 1000,
+    );
+    const timePerQuestionSec = attempt.set.timePerQuestionSec || 15;
+    const totalPossibleTime = answerRows.length * timePerQuestionSec;
+    const timeSavedRatio =
+      totalPossibleTime > 0
+        ? Math.max(0, (totalPossibleTime - durationSec) / totalPossibleTime)
+        : 0;
+    const speedBonusTotal = Math.round(correctCount * 500 * timeSavedRatio);
+    const computedScore = correctCount * 1000 + speedBonusTotal;
+
+    const finalScore =
+      dto.score !== undefined && dto.score > 0 ? dto.score : computedScore;
+
     await this.prisma.$transaction([
       this.prisma.testAnswer.createMany({
         data: answerRows,
@@ -337,7 +450,12 @@ export class AttemptsService {
       }),
       this.prisma.testAttempt.update({
         where: { id: attemptId },
-        data: { correctCount, finishedAt, totalCount: answerRows.length },
+        data: {
+          correctCount,
+          finishedAt,
+          totalCount: answerRows.length,
+          score: finalScore,
+        },
       }),
     ]);
 
@@ -346,9 +464,8 @@ export class AttemptsService {
       attemptId,
       correctCount,
       totalCount: answerRows.length,
-      durationSec: Math.round(
-        (finishedAt.getTime() - attempt.startedAt.getTime()) / 1000,
-      ),
+      score: finalScore,
+      durationSec,
       // Chỉ gợi ý, không tự đổi trình độ của người học
       levelHint:
         ratio >= LEVEL_UP_RATIO
@@ -421,5 +538,160 @@ export class AttemptsService {
       );
     }
     return existing ?? null;
+  }
+
+  /** Bảng xếp hạng Top 10 thí sinh làm bài tốt nhất cho 1 bộ đề */
+  async getLeaderboard(setId: number) {
+    const attempts = await this.prisma.testAttempt.findMany({
+      where: { setId, finishedAt: { not: null } },
+      include: {
+        user: { select: { id: true, displayName: true, avatarUrl: true } },
+      },
+      orderBy: [{ score: 'desc' }, { finishedAt: 'asc' }],
+    });
+
+    // Chỉ lấy kết quả điểm cao nhất của mỗi người dùng
+    const userBestMap = new Map<number, typeof attempts[0]>();
+    for (const att of attempts) {
+      if (
+        !userBestMap.has(att.userId) ||
+        att.score > userBestMap.get(att.userId)!.score
+      ) {
+        userBestMap.set(att.userId, att);
+      }
+    }
+
+    const uniqueAttempts = Array.from(userBestMap.values()).sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      const durA =
+        a.finishedAt && a.startedAt
+          ? a.finishedAt.getTime() - a.startedAt.getTime()
+          : 999999;
+      const durB =
+        b.finishedAt && b.startedAt
+          ? b.finishedAt.getTime() - b.startedAt.getTime()
+          : 999999;
+      return durA - durB;
+    });
+
+    const top10 = uniqueAttempts.slice(0, 10).map((att, index) => {
+      const durationSec =
+        att.finishedAt && att.startedAt
+          ? Math.round(
+              (att.finishedAt.getTime() - att.startedAt.getTime()) / 1000,
+            )
+          : 0;
+      const score =
+        att.score > 0
+          ? att.score
+          : att.totalCount > 0
+            ? Math.round((att.correctCount / att.totalCount) * 1000)
+            : 0;
+
+      return {
+        rank: index + 1,
+        userId: att.userId,
+        displayName: att.user.displayName,
+        avatarUrl: att.user.avatarUrl,
+        correctCount: att.correctCount,
+        totalCount: att.totalCount,
+        score,
+        durationSec,
+      };
+    });
+
+    return top10;
+  }
+
+  /** Chi tiết bài làm dành cho trang kết quả */
+  async getAttemptDetail(userId: number, setId: number, attemptId?: number) {
+    let attempt;
+    if (attemptId) {
+      attempt = await this.prisma.testAttempt.findUnique({
+        where: { id: attemptId },
+        include: {
+          set: {
+            include: {
+              language: { select: { id: true, code: true, name: true } },
+              topic: { select: { id: true, name: true } },
+              questions: { where: { status: QuestionStatus.active } },
+            },
+          },
+          answers: true,
+        },
+      });
+    } else {
+      attempt = await this.prisma.testAttempt.findFirst({
+        where: { userId, setId, finishedAt: { not: null } },
+        orderBy: { finishedAt: 'desc' },
+        include: {
+          set: {
+            include: {
+              language: { select: { id: true, code: true, name: true } },
+              topic: { select: { id: true, name: true } },
+              questions: { where: { status: QuestionStatus.active } },
+            },
+          },
+          answers: true,
+        },
+      });
+    }
+
+    if (!attempt) {
+      throw new NotFoundException('Không tìm thấy dữ liệu lượt làm bài');
+    }
+
+    const durationSec = attempt.finishedAt && attempt.startedAt
+      ? Math.round((attempt.finishedAt.getTime() - attempt.startedAt.getTime()) / 1000)
+      : 0;
+
+    const answerByQuestionId = new Map(attempt.answers.map((a) => [a.questionId, a]));
+    const questionById = new Map(attempt.set.questions.map((q) => [q.id, q]));
+
+    const review = attempt.questionOrder.map((qid) => {
+      const q = questionById.get(qid);
+      const ans = answerByQuestionId.get(qid);
+
+      return {
+        questionId: qid,
+        prompt: q?.prompt || '',
+        term: q?.term || null,
+        passage: q?.passage || null,
+        options: q?.options || [],
+        chosenIndex: ans?.chosenIndex ?? null,
+        answerIndex: q?.answerIndex ?? 0,
+        isCorrect: ans?.isCorrect ?? false,
+        explanation: q?.explanation || null,
+      };
+    });
+
+    const leaderboard = await this.getLeaderboard(attempt.setId);
+    const myRank = leaderboard.find((item) => item.userId === userId)?.rank || null;
+
+    return {
+      attemptId: attempt.id,
+      startedAt: attempt.startedAt,
+      finishedAt: attempt.finishedAt,
+      durationSec,
+      score:
+        attempt.score > 0
+          ? attempt.score
+          : attempt.totalCount > 0
+            ? Math.round((attempt.correctCount / attempt.totalCount) * 1000)
+            : 0,
+      set: {
+        id: attempt.set.id,
+        title: attempt.set.title,
+        framework: attempt.set.framework,
+        level: attempt.set.level,
+        language: attempt.set.language,
+        topic: attempt.set.topic,
+      },
+      review,
+      myRank,
+      leaderboard,
+    };
   }
 }
