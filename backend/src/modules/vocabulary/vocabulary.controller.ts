@@ -90,7 +90,8 @@ export class VocabularyController {
   getDailyWords(
     @CurrentUser() user: JwtPayload,
     @Query('target') target?: string,
+    @Query('native') native?: string,
   ) {
-    return this.vocabularyService.getDailyWords(user.sub, target);
+    return this.vocabularyService.getDailyWords(user.sub, target, native);
   }
 }

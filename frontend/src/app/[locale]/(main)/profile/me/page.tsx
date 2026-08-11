@@ -2,28 +2,25 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
 import {
-  Pencil,
-  Settings,
-  Heart,
   FileText,
   User,
   MapPin,
   Clock,
-  Camera,
 } from "lucide-react";
 import { TIME_SLOTS, getTimezone } from "@/lib/timezones";
-import { ageFromDob, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { ChatStats, EndorsementBadges } from "@/components/features/Endorsements";
 import { LanguagesCard } from "@/components/features/LanguagesCard";
 import { useTranslations } from "next-intl";
 import { getTopicTranslation, getIntentTranslation, getGenderTranslation } from "@/lib/i18nHelper";
 import { PostCard, FeedPost } from "@/components/features/PostCard";
 import { ReportDialog, useToast } from "@/components/features/TrustDialogs";
+import { Avatar } from "@/components/ui/Avatar";
+import { ProfileHeader } from "@/components/features/profile/ProfileHeader";
 
 type Me = {
   id: number;
@@ -44,7 +41,6 @@ type Me = {
 
 export default function MyProfilePage() {
   const t = useTranslations("profile");
-  const tDisc = useTranslations("discover");
   const tRoot = useTranslations();
   const [me, setMe] = React.useState<Me | null>(null);
   const [error, setError] = React.useState("");
@@ -72,96 +68,25 @@ export default function MyProfilePage() {
       </div>
     );
 
-  const teachLangs = me.languages.filter((l) => l.role === "native" || l.role === "fluent");
-  const learnLangs = me.languages.filter((l) => l.role === "learning");
-
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8 pb-24">
-      {/* Header — cover banner + avatar đè mép */}
-      <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-6">
-        {/* Cover Photo Banner */}
-        <div className="sd-cover relative h-44 sm:h-60 md:h-72 lg:h-80 w-full group">
-          <div className="pointer-events-none absolute -top-16 -right-10 h-72 w-72 rounded-full bg-white/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 left-8 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
-        </div>
-        <div className="px-6 pb-6">
-          <div className="flex items-end justify-between -mt-12 mb-4">
-            <div className="inline-block rounded-full ring-4 ring-surface bg-surface">
-              <Avatar
-                src={me.avatarUrl ?? undefined}
-                fallback={me.displayName.charAt(0)}
-                size="xl"
-                className="shadow-lg"
-              />
-            </div>
-            <div className="flex gap-2 sm:gap-3">
-              <Button asChild size="sm">
-                <Link href="/profile/me/edit">
-                  <Pencil className="h-4 w-4 mr-2" /> {t("edit_profile")}
-                </Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/settings">
-                  <Settings className="h-4 w-4 mr-2" /> {t("settings")}
-                </Link>
-              </Button>
-            </div>
-          </div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
-            {me.displayName}
-            {ageFromDob(me.dob) !== null && (
-              <span className="font-medium text-muted">, {ageFromDob(me.dob)}</span>
-            )}
-          </h1>
-          <p className="text-muted mt-1">{me.email}</p>
-          {(me.city || me.gender) && (
-            <p className="text-sm text-muted mt-1">
-              {[me.gender, me.city].filter(Boolean).join(" · ")}
-            </p>
-          )}
-
-          {/* Navigation Tabs */}
-          <div className="border-t border-border pt-3 mt-4">
-            <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1">
-              <button
-                onClick={() => setActiveTab("posts")}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
-                  activeTab === "posts"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted hover:text-foreground hover:bg-surface-2"
-                )}
-              >
-                <FileText className="w-4 h-4" />
-                <span>{t("tab_posts")}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("about")}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
-                  activeTab === "about"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted hover:text-foreground hover:bg-surface-2"
-                )}
-              >
-                <User className="w-4 h-4" />
-                <span>{t("tab_about")}</span>
-              </button>
-            </nav>
-          </div>
-        </div>
-      </div>
+      {/* Profile Header (Banner, Avatar, Info, Tabs) */}
+      <ProfileHeader
+        me={me}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        t={t}
+      />
 
       {/* Grid Layout — Sidebar (Left) & Feed (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column — Sidebar (Trust Badges, Intro, Languages, Availability, Interests) */}
+        {/* Left Column — Sidebar */}
         <div className={cn(
           "lg:col-span-5 space-y-6",
           activeTab === "posts" && "block",
           activeTab === "about" && "block lg:col-span-12"
         )}>
-          {/* Trust Signals (Badge & Stats) */}
+          {/* Trust Signals */}
           <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
             <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <span>🏅</span> {t("trust_activity")}
@@ -173,116 +98,108 @@ export default function MyProfilePage() {
           </div>
 
           {/* Intro Box */}
-          {(activeTab === "posts" || activeTab === "about") && (
-            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <span>📌</span> {t("intro")}
-                </span>
-                <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
-                  {t("edit_btn")}
-                </Link>
-              </h2>
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <span>📌</span> {t("intro")}
+              </span>
+              <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
+                {t("edit_btn")}
+              </Link>
+            </h2>
 
-              <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm italic bg-surface-2/60 p-4 rounded-2xl border border-border/50 mb-4">
-                {me.bio ? `"${me.bio}"` : t("no_intro_me")}
-              </p>
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm italic bg-surface-2/60 p-4 rounded-2xl border border-border/50 mb-4">
+              {me.bio ? `"${me.bio}"` : t("no_intro_me")}
+            </p>
 
-              <div className="space-y-3 text-sm text-foreground">
-                {me.intent && (
-                  <div className="flex items-center gap-3">
-                    <span className="text-base">🎯</span>
-                    <div>
-                      <span className="font-semibold text-muted text-xs block uppercase">{t("intent")}</span>
-                      <span className="font-medium text-foreground">{getIntentTranslation(me.intent, tRoot)}</span>
-                    </div>
-                  </div>
-                )}
-
-                {me.city && (
-                  <div className="flex items-center gap-3">
-                    <MapPin className="w-4 h-4 text-muted shrink-0" />
-                    <div>
-                      <span className="font-semibold text-muted text-xs block uppercase">{t("lives_in")}</span>
-                      <span className="font-medium text-foreground">{me.city}</span>
-                    </div>
-                  </div>
-                )}
-
-                {me.gender && (
-                  <div className="flex items-center gap-3">
-                    <User className="w-4 h-4 text-muted shrink-0" />
-                    <div>
-                      <span className="font-semibold text-muted text-xs block uppercase">{t("gender_label")}</span>
-                      <span className="font-medium text-foreground">{getGenderTranslation(me.gender, tRoot)}</span>
-                    </div>
-                  </div>
-                )}
-
+            <div className="space-y-3 text-sm text-foreground">
+              {me.intent && (
                 <div className="flex items-center gap-3">
-                  <Clock className="w-4 h-4 text-muted shrink-0" />
+                  <span className="text-base">🎯</span>
                   <div>
-                    <span className="font-semibold text-muted text-xs block uppercase">{t("timezone_label_short")}</span>
-                    <span className="font-medium text-foreground">
-                      {getTimezone(me.timezone).flag} {getTimezone(me.timezone).name}
-                    </span>
+                    <span className="font-semibold text-muted text-xs block uppercase">{t("intent")}</span>
+                    <span className="font-medium text-foreground">{getIntentTranslation(me.intent, tRoot)}</span>
                   </div>
+                </div>
+              )}
+
+              {me.city && (
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-4 h-4 text-muted shrink-0" />
+                  <div>
+                    <span className="font-semibold text-muted text-xs block uppercase">{t("lives_in")}</span>
+                    <span className="font-medium text-foreground">{me.city}</span>
+                  </div>
+                </div>
+              )}
+
+              {me.gender && (
+                <div className="flex items-center gap-3">
+                  <User className="w-4 h-4 text-muted shrink-0" />
+                  <div>
+                    <span className="font-semibold text-muted text-xs block uppercase">{t("gender_label")}</span>
+                    <span className="font-medium text-foreground">{getGenderTranslation(me.gender, tRoot)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <Clock className="w-4 h-4 text-muted shrink-0" />
+                <div>
+                  <span className="font-semibold text-muted text-xs block uppercase">{t("timezone_label_short")}</span>
+                  <span className="font-medium text-foreground">
+                    {getTimezone(me.timezone).flag} {getTimezone(me.timezone).name}
+                  </span>
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Languages Card */}
-          {(activeTab === "posts" || activeTab === "about") && (
-            <LanguagesCard languages={me.languages} editHref="/profile/me/edit" />
-          )}
+          <LanguagesCard languages={me.languages} editHref="/profile/me/edit" />
 
           {/* Availability Card */}
-          {(activeTab === "posts" || activeTab === "about") && (
-            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <span>⏰</span> {t("availability")}
-                </span>
-                <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
-                  {t("edit_btn")}
-                </Link>
-              </h2>
-              <div className="flex flex-wrap gap-2 items-center">
-                {(me.availableSlots ?? []).length === 0 ? (
-                  <p className="text-xs text-muted">{t("no_availability")}</p>
-                ) : (
-                  TIME_SLOTS.filter((s) => (me.availableSlots ?? []).includes(s.id)).map((s) => (
-                    <Chip key={s.id} variant="secondary" className="text-xs py-1 px-3 rounded-xl">
-                      ⏰ {s.label}
-                    </Chip>
-                  ))
-                )}
-              </div>
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <span>⏰</span> {t("availability")}
+              </span>
+              <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
+                {t("edit_btn")}
+              </Link>
+            </h2>
+            <div className="flex flex-wrap gap-2 items-center">
+              {(me.availableSlots ?? []).length === 0 ? (
+                <p className="text-xs text-muted">{t("no_availability")}</p>
+              ) : (
+                TIME_SLOTS.filter((s) => (me.availableSlots ?? []).includes(s.id)).map((s) => (
+                  <Chip key={s.id} variant="secondary" className="text-xs py-1 px-3 rounded-xl">
+                    ⏰ {s.label}
+                  </Chip>
+                ))
+              )}
             </div>
-          )}
+          </div>
 
           {/* Interests Card */}
-          {(activeTab === "posts" || activeTab === "about") && (
-            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <span>⭐</span> {t("interests")}
-                </span>
-                <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
-                  {t("edit_btn")}
-                </Link>
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {me.interests.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
-                {me.interests.map((i) => (
-                  <Chip key={i.id} variant="outline" className="text-xs py-1 px-3 rounded-xl">
-                    {getTopicTranslation(i.topic.name, tRoot)}
-                  </Chip>
-                ))}
-              </div>
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <span>⭐</span> {t("interests")}
+              </span>
+              <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
+                {t("edit_btn")}
+              </Link>
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {me.interests.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
+              {me.interests.map((i) => (
+                <Chip key={i.id} variant="outline" className="text-xs py-1 px-3 rounded-xl">
+                  {getTopicTranslation(i.topic.name, tRoot)}
+                </Chip>
+              ))}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Right Column — Posts Feed */}
@@ -311,7 +228,7 @@ export default function MyProfilePage() {
             </div>
           )}
 
-          {/* User Posts Card Feed */}
+          {/* User Posts Feed */}
           {activeTab === "posts" && (
             <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
@@ -352,6 +269,18 @@ export default function MyProfilePage() {
           )}
         </div>
       </div>
+      {reportTarget && (
+        <ReportDialog
+          open
+          onClose={() => setReportTarget(null)}
+          targetId={reportTarget.user.id}
+          targetName={`Bài viết của ${reportTarget.user.displayName}`}
+          targetType="post"
+          targetContentId={reportTarget.id}
+          onDone={() => showToast(t("report_success"))}
+        />
+      )}
+      {toast}
     </div>
   );
 }

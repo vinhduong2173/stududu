@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { I18nService, I18nContext } from 'nestjs-i18n';
+import { scoreAndRankCandidates } from './utils/matching-score.calculator';
 
 const TEACH_ROLES: LanguageRole[] = [LanguageRole.native, LanguageRole.fluent];
 
@@ -103,76 +104,9 @@ export class MatchingService {
       take: 200,
     });
 
-    const myTopicIds = new Set(me.interests.map((i) => i.topicId));
     const likedMap = await this.getLikedMap(userId);
+    const picked = scoreAndRankCandidates(me, candidates, likedMap);
 
-    // MATCH_SCORE = lang_complement (chính) + shared_topic_count (phụ) + intent_alignment (cộng)
-    const scored = candidates.map((c) => {
-      const sharedTopicCount = c.interests.filter((i) =>
-        myTopicIds.has(i.topicId),
-      ).length;
-      const intentAlignment = Boolean(
-        me.intent && c.intent && me.intent === c.intent,
-      );
-      const total = 10 + sharedTopicCount + (intentAlignment ? 1 : 0);
-      const likedInfo = likedMap.get(c.id);
-      return {
-        user: c,
-        score: {
-          langComplement: true,
-          sharedTopicCount,
-          intentAlignment,
-          total,
-        },
-        liked: Boolean(likedInfo),
-        conversationId: likedInfo?.conversationId ?? null,
-        // why-matched (US-10 AC2)
-        whyMatched: {
-          sharedTopics: c.interests
-            .filter((i) => myTopicIds.has(i.topicId))
-            .map((i) => i.topic.name),
-        },
-      };
-    });
-
-    type Scored = (typeof scored)[number];
-
-    // Bậc nới lỏng — dừng ngay khi gom đủ SUGGESTIONS_MIN
-    const levelDesired = me.matchPreference?.levelDesired ?? null;
-    const matchesLevel = (c: Scored) =>
-      !levelDesired ||
-      c.user.languages.some(
-        (l) => l.role === LanguageRole.learning && l.level === levelDesired,
-      );
-    const tiers: ((c: Scored) => boolean)[] = [
-      (c) => c.score.sharedTopicCount > 0 && matchesLevel(c), // chặt: topic chung + đúng level
-      (c) => matchesLevel(c), // (1) bỏ lọc topic chung
-      () => true, // (2) nới level mong muốn
-    ];
-
-    const picked: Scored[] = [];
-    const pickedIds = new Set<number>();
-    for (const tier of tiers) {
-      for (const c of scored) {
-        if (pickedIds.has(c.user.id) || !tier(c)) continue;
-        picked.push(c);
-        pickedIds.add(c.user.id);
-      }
-      if (picked.length >= SUGGESTIONS_MIN) break;
-    }
-
-    // (3) bậc cuối: nếu vẫn thiếu thì bỏ ưu tiên sắp xếp theo last_active
-    const dropLastActiveOrdering = picked.length < SUGGESTIONS_MIN;
-    picked.sort((a, b) => {
-      const byScore = b.score.total - a.score.total;
-      if (byScore !== 0 || dropLastActiveOrdering) return byScore;
-      return (
-        (b.user.lastActive?.getTime() ?? 0) -
-        (a.user.lastActive?.getTime() ?? 0)
-      );
-    });
-
-    // Pool quá nhỏ → FE hiển thị "chưa đủ đối tác phù hợp, quay lại sau" thay vì empty state
     const insufficientPool = picked.length < SUGGESTIONS_MIN;
     const offset = Math.max(0, filter?.offset ?? 0);
     return {
