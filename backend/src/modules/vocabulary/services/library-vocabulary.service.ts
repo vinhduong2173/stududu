@@ -126,4 +126,22 @@ export class LibraryVocabularyService {
       include: { language: true },
     });
   }
+
+  async getDistractors(nativeCode = 'vi', targetCode = 'en'): Promise<string[]> {
+    const words = await this.prisma.wordLibrary.findMany({
+      where: { definition: { not: null } },
+      select: { definition: true, term: true },
+      take: 20,
+    });
+    const result = words
+      .map((w) => w.definition || w.term)
+      .filter((d): d is string => Boolean(d));
+
+    if (result.length >= 3) return result;
+
+    return [
+      'Quả táo', 'Con mèo', 'Ngôi nhà', 'Trái đất', 'Quyển sách',
+      'Trường học', 'Thành phố', 'Gia đình', 'Âm nhạc', 'Bầu trời',
+    ];
+  }
 }

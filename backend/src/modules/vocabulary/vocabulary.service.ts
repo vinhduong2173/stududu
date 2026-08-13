@@ -43,4 +43,8 @@ export class VocabularyService {
   getDailyWords(userId?: number, targetCode?: string, nativeCode?: string) {
     return this.dailyService.getDailyWords(userId, targetCode, nativeCode);
   }
+
+  getDistractors(nativeCode?: string, targetCode?: string) {
+    return this.libraryService.getDistractors(nativeCode, targetCode);
+  }
 }

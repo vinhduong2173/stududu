@@ -138,22 +138,24 @@ export function KahootQuizEngine({
     const updatedAnswers = { ...userAnswers, [currentQ.id]: optionIndex };
     setUserAnswers(updatedAnswers);
 
-    // Calculate score bonus based on speed
+    const isCorrect =
+      currentQ.answerIndex !== undefined && optionIndex === currentQ.answerIndex;
+
     const speedBonus = Math.round((timeLeft / timePerQuestionSec) * 500);
-    const addedPoints = 1000 + speedBonus;
+    const addedPoints = isCorrect ? 1000 + speedBonus : 0;
 
-    // We consider optionIndex 0 as default correct preview if unknown until server submit
-    setScore((prev) => prev + addedPoints);
-    setStreak((prev) => {
-      const nextStreak = prev + 1;
-      if (nextStreak > maxStreak) setMaxStreak(nextStreak);
-      return nextStreak;
-    });
-
-    setFeedback({
-      type: "correct",
-      pointsAdded: addedPoints,
-    });
+    if (isCorrect) {
+      setScore((prev) => prev + addedPoints);
+      setStreak((prev) => {
+        const nextStreak = prev + 1;
+        if (nextStreak > maxStreak) setMaxStreak(nextStreak);
+        return nextStreak;
+      });
+      setFeedback({ type: "correct", pointsAdded: addedPoints });
+    } else {
+      setStreak(0);
+      setFeedback({ type: "wrong" });
+    }
   };
 
   // Move to Next Question or Submit Game
@@ -451,6 +453,48 @@ export function KahootQuizEngine({
           {currentQ?.options.map((optText, optIdx) => {
             const theme = ANSWER_THEMES[optIdx % ANSWER_THEMES.length];
             const isPicked = userAnswers[currentQ.id] === optIdx;
+            const isCorrectOption =
+              currentQ.answerIndex !== undefined && optIdx === currentQ.answerIndex;
+
+            let cardStyle = theme.bg;
+            let iconNode = null;
+
+            if (isLocked) {
+              if (isPicked && isCorrectOption) {
+                // Người dùng chọn ĐÚNG -> Màu xanh lá sặc sỡ, viền & bóng emerald
+                cardStyle =
+                  "bg-emerald-600 border-emerald-500 text-white shadow-emerald-500/30 ring-4 ring-emerald-300 scale-[1.02]";
+                iconNode = (
+                  <span className="w-8 h-8 rounded-full bg-white text-emerald-600 flex items-center justify-center shrink-0 shadow-lg animate-in zoom-in duration-200">
+                    <Check className="w-5 h-5 stroke-[3]" />
+                  </span>
+                );
+              } else if (isPicked && !isCorrectOption) {
+                // Người dùng chọn SAI -> Màu đỏ rực rỡ, viền rose
+                cardStyle =
+                  "bg-rose-600 border-rose-500 text-white shadow-rose-500/30 ring-4 ring-rose-300";
+                iconNode = (
+                  <span className="w-8 h-8 rounded-full bg-white text-rose-600 flex items-center justify-center shrink-0 shadow-lg animate-in zoom-in duration-200">
+                    <X className="w-5 h-5 stroke-[3]" />
+                  </span>
+                );
+              } else if (!isPicked && isCorrectOption) {
+                // Không chọn nhưng đây là ĐÁP ÁN ĐÚNG -> Hiển thị Xanh lá để gợi ý đáp án chuẩn
+                cardStyle =
+                  "bg-emerald-600 border-emerald-500 text-white ring-4 ring-emerald-300/70 animate-pulse";
+                iconNode = (
+                  <span className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center shrink-0 shadow-lg">
+                    <Check className="w-5 h-5 stroke-[3]" />
+                  </span>
+                );
+              } else {
+                // Các đáp án sai khác -> Làm mờ
+                cardStyle =
+                  "bg-surface/50 text-muted border-border/40 opacity-40 grayscale-30 cursor-not-allowed";
+              }
+            } else if (isPicked) {
+              cardStyle = theme.activeBg;
+            }
 
             return (
               <button
@@ -460,9 +504,7 @@ export function KahootQuizEngine({
                 onClick={() => handleSelectOption(optIdx)}
                 className={cn(
                   "relative group min-h-[90px] md:min-h-[110px] p-5 md:p-6 rounded-2xl font-bold text-left transition-all transform active:scale-95 flex items-center justify-between gap-4 shadow-lg border-2",
-                  theme.bg,
-                  isPicked && theme.activeBg,
-                  isLocked && !isPicked && "opacity-50 grayscale-20 scale-98 cursor-not-allowed"
+                  cardStyle
                 )}
               >
                 <div className="flex items-center gap-4 flex-1">
@@ -475,11 +517,7 @@ export function KahootQuizEngine({
                   </span>
                 </div>
 
-                {isPicked && (
-                  <span className="w-7 h-7 rounded-full bg-white text-emerald-600 flex items-center justify-center shrink-0 shadow-lg animate-in zoom-in duration-200">
-                    <Check className="w-4 h-4 stroke-[3]" />
-                  </span>
-                )}
+                {iconNode}
               </button>
             );
           })}
@@ -489,18 +527,23 @@ export function KahootQuizEngine({
         {isLocked && (
           <div className="pt-4 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {feedback?.type === "correct" ? (
-              <div className="flex items-center gap-2 text-emerald-600 font-extrabold text-sm">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                <span>{t("excellent_added", { pts: feedback.pointsAdded ?? 0 })}</span>
+              <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-extrabold text-sm md:text-base">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                <span>Chính xác!</span>
               </div>
             ) : feedback?.type === "timeout" ? (
-              <div className="flex items-center gap-2 text-rose-500 font-extrabold text-sm">
-                <XCircle className="w-5 h-5 text-rose-500" />
-                <span>{t("timeout_added")}</span>
+              <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/20 font-extrabold text-sm md:text-base">
+                <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
+                <span>
+                  Hết giờ! {currentQ?.answerIndex !== undefined && `Đáp án đúng: ${currentQ.options[currentQ.answerIndex]}`}
+                </span>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
-                <span>{t("wrong_added")}</span>
+              <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/20 font-extrabold text-sm md:text-base">
+                <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
+                <span>
+                  Chưa chính xác! {currentQ?.answerIndex !== undefined && `Đáp án đúng: ${currentQ.options[currentQ.answerIndex]}`}
+                </span>
               </div>
             )}
 
@@ -512,6 +555,7 @@ export function KahootQuizEngine({
               {currentIndex < questions.length - 1 ? (
                 <>
                   <span>{t("next_question")}</span>
+                  <ChevronRight className="w-4 h-4" />
                 </>
               ) : (
                 <>

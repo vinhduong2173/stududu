@@ -133,10 +133,6 @@ export class QuestionSetsService {
           title: dto.title,
           description: dto.description,
           contentLanguage: dto.contentLanguage ?? 'vi',
-          timePerQuestionSec: dto.timePerQuestionSec ?? 15,
-          maxAttempts: dto.maxAttempts ?? null,
-          startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
-          endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
           createdById: adminId,
         },
       });
@@ -449,10 +445,9 @@ export class QuestionSetsService {
     const activeCount = await this.prisma.testQuestion.count({
       where: { setId, status: QuestionStatus.active },
     });
-    const MAX_ALLOWED = 100;
-    if (activeCount + incoming > MAX_ALLOWED) {
+    if (activeCount + incoming > REQUIRED_QUESTION_COUNT) {
       throw new BadRequestException(
-        `Bộ đề tối đa ${MAX_ALLOWED} câu. Hiện có ${activeCount} câu, không thể thêm ${incoming} câu.`,
+        `Bộ đề đã đủ ${REQUIRED_QUESTION_COUNT} câu, không thể thêm ${incoming} câu mới.`,
       );
     }
   }
@@ -522,23 +517,39 @@ export class QuestionSetsService {
     // không tưởng nút "Làm thử" bị hỏng
     const trialOutdated = adminTrial === null && trials.length > 0;
 
+    const hasEnoughQuestions = activeCount === REQUIRED_QUESTION_COUNT;
+    const hasAdminTrial = adminTrial !== null;
+    const canPublish = hasEnoughQuestions && hasAdminTrial;
+
     return {
       requiredCount: REQUIRED_QUESTION_COUNT,
       activeCount,
-      hasEnoughQuestions: activeCount > 0,
-      hasAdminTrial: adminTrial !== null,
+      hasEnoughQuestions,
+      hasAdminTrial,
       trialOutdated,
       adminTrial,
-      canPublish: activeCount > 0,
+      canPublish,
     };
   }
 
   async publish(adminId: number, setId: number) {
-    const set = await this.getSet(setId);
-    const activeCount = set.questions?.length ?? 0;
-    if (activeCount === 0) {
-      throw new BadRequestException('Bộ đề chưa có câu hỏi nào để xuất bản.');
+    const gate = await this.getPublishGate(setId);
+    if (!gate.hasEnoughQuestions) {
+      throw new BadRequestException(
+        `Bộ đề chưa đủ câu (hiện có ${gate.activeCount}/${REQUIRED_QUESTION_COUNT} câu). Cần đúng ${REQUIRED_QUESTION_COUNT} câu mới xuất bản được.`,
+      );
     }
+    if (gate.trialOutdated) {
+      throw new BadRequestException(
+        'Nội dung bộ đề đã đổi câu hỏi kể từ lần làm thử cuối. Vui lòng làm thử lại trước khi xuất bản.',
+      );
+    }
+    if (!gate.hasAdminTrial) {
+      throw new BadRequestException(
+        'Admin phải làm thử bộ đề (đạt ít nhất 1 lần) mới được xuất bản.',
+      );
+    }
+
     return this.prisma.questionSet.update({
       where: { id: setId },
       data: {
