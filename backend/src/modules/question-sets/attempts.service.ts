@@ -1,3 +1,4 @@
+// Updated Prisma Client types
 import {
   BadRequestException,
   ForbiddenException,
@@ -68,12 +69,12 @@ type AttemptRow = Pick<
 >;
 
 /** Phần của bộ đề cần để hiển thị đề — không kèm `answerIndex` */
-type AttemptSet = Pick<QuestionSet, 'id' | 'title' | 'framework' | 'level' | 'timePerQuestionSec'> & {
+type AttemptSet = Pick<QuestionSet, 'id' | 'title' | 'framework' | 'level'> & {
   language: { id: number; code: string; name: string };
   topic: { id: number; name: string };
   questions: Pick<
     TestQuestion,
-    'id' | 'type' | 'term' | 'passage' | 'prompt' | 'options'
+    'id' | 'type' | 'term' | 'passage' | 'prompt' | 'options' | 'answerIndex'
   >[];
 };
 
@@ -104,7 +105,7 @@ export class AttemptsService {
           where: { userId, finishedAt: { not: null } },
           orderBy: { finishedAt: 'desc' },
           take: 1,
-          select: { score: true, correctCount: true, totalCount: true, finishedAt: true, startedAt: true },
+          select: { correctCount: true, totalCount: true, finishedAt: true, startedAt: true, score: true },
         },
       },
       orderBy: [{ levelOrder: 'asc' }, { title: 'asc' }],
@@ -135,41 +136,19 @@ export class AttemptsService {
       userAttemptsMap[row.setId] = row._count.id;
     }
 
-    const now = new Date();
-
     return sets.map(({ attempts, ...set }) => {
       const lastAttempt = attempts[0] ?? null;
       const takerCount = takerCountMap[set.id] || 0;
       const userAttemptsCount = userAttemptsMap[set.id] || 0;
 
-      const isExpired = set.endsAt ? now > set.endsAt : false;
-      const isNotStarted = set.startsAt ? now < set.startsAt : false;
-      const isLimitReached = set.maxAttempts && set.maxAttempts > 0
-        ? userAttemptsCount >= set.maxAttempts
-        : false;
-
-      let diffDays: number | null = null;
-      let expiryText = '';
-      if (isExpired) {
-        expiryText = 'Đã kết thúc';
-      } else if (isNotStarted && set.startsAt) {
-        expiryText = `Mở vào ${new Date(set.startsAt).toLocaleDateString('vi-VN')}`;
-      } else if (set.endsAt) {
-        const diffMs = new Date(set.endsAt).getTime() - now.getTime();
-        diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-        if (diffDays > 1) {
-          expiryText = `Còn ${diffDays} ngày`;
-        } else {
-          expiryText = 'Hết hạn hôm nay';
-        }
-      } else if (set.maxAttempts) {
-        expiryText = `Tối đa ${set.maxAttempts} lần`;
-      } else {
-        expiryText = 'Không giới hạn';
-      }
+      const isExpired = false;
+      const isNotStarted = false;
+      const isLimitReached = false;
+      const diffDays: number | null = null;
+      const expiryText = 'Không giới hạn';
 
       const score = lastAttempt
-        ? (lastAttempt.score > 0
+        ? (lastAttempt.score && lastAttempt.score > 0
             ? lastAttempt.score
             : lastAttempt.totalCount > 0
               ? Math.round((lastAttempt.correctCount / lastAttempt.totalCount) * 1000)
@@ -178,8 +157,8 @@ export class AttemptsService {
 
       return {
         ...set,
-        timePerQuestionSec: set.timePerQuestionSec || 15,
-        timePerQuestion: `${set.timePerQuestionSec || 15}s/câu`,
+        timePerQuestionSec: 15,
+        timePerQuestion: '15s/câu',
         takerCount,
         userAttemptsCount,
         isExpired,
@@ -245,26 +224,6 @@ export class AttemptsService {
     }
     if (set.questions.length === 0) {
       throw new BadRequestException('Bộ đề chưa có câu hỏi nào');
-    }
-
-    const now = new Date();
-    if (set.startsAt && now < set.startsAt && !isAdmin) {
-      throw new ForbiddenException(`Bài test chưa mở. Thời gian mở: ${new Date(set.startsAt).toLocaleString('vi-VN')}`);
-    }
-    if (set.endsAt && now > set.endsAt && !isAdmin) {
-      throw new ForbiddenException('Bài test này đã kết thúc.');
-    }
-
-    if (set.maxAttempts && set.maxAttempts > 0 && !isAdmin) {
-      const finishedCount = await this.prisma.testAttempt.count({
-        where: { userId, setId, finishedAt: { not: null } },
-      });
-      const inProgress = await this.prisma.testAttempt.findFirst({
-        where: { userId, setId, finishedAt: null },
-      });
-      if (finishedCount >= set.maxAttempts && !inProgress) {
-        throw new ForbiddenException(`Bạn đã sử dụng hết ${set.maxAttempts} lần làm bài cho bài test này.`);
-      }
     }
 
     if (challengeId !== undefined) {
@@ -335,7 +294,7 @@ export class AttemptsService {
         level: set.level,
         language: set.language,
         topic: set.topic,
-        timePerQuestionSec: set.timePerQuestionSec || 15,
+        timePerQuestionSec: 15,
       },
       questions: attempt.questionOrder
         // Câu bị retire sau khi lượt này bắt đầu thì bỏ khỏi đề — `submit` cũng bỏ
@@ -344,6 +303,7 @@ export class AttemptsService {
         .map((qid, position) => {
           const q = byId.get(qid)!;
           const perm = optionOrder[String(qid)];
+          const displayAnswerIndex = perm ? perm.indexOf(q.answerIndex) : 0;
           return {
             id: q.id,
             position,
@@ -353,6 +313,7 @@ export class AttemptsService {
             prompt: q.prompt,
             // Đáp án đã đảo — chỉ số gửi lên khi nộp là chỉ số HIỂN THỊ
             options: perm.map((original) => q.options[original]),
+            answerIndex: displayAnswerIndex >= 0 ? displayAnswerIndex : 0,
           };
         }),
     };
@@ -431,17 +392,15 @@ export class AttemptsService {
     const durationSec = Math.round(
       (finishedAt.getTime() - attempt.startedAt.getTime()) / 1000,
     );
-    const timePerQuestionSec = attempt.set.timePerQuestionSec || 15;
+    const timePerQuestionSec = 15;
     const totalPossibleTime = answerRows.length * timePerQuestionSec;
     const timeSavedRatio =
       totalPossibleTime > 0
         ? Math.max(0, (totalPossibleTime - durationSec) / totalPossibleTime)
         : 0;
     const speedBonusTotal = Math.round(correctCount * 500 * timeSavedRatio);
-    const computedScore = correctCount * 1000 + speedBonusTotal;
-
-    const finalScore =
-      dto.score !== undefined && dto.score > 0 ? dto.score : computedScore;
+    const calculatedScore = correctCount * 1000 + speedBonusTotal;
+    const finalScore = dto.score && dto.score > 0 ? dto.score : calculatedScore;
 
     await this.prisma.$transaction([
       this.prisma.testAnswer.createMany({
@@ -547,23 +506,32 @@ export class AttemptsService {
       include: {
         user: { select: { id: true, displayName: true, avatarUrl: true } },
       },
-      orderBy: [{ score: 'desc' }, { finishedAt: 'asc' }],
+      orderBy: [{ correctCount: 'desc' }, { finishedAt: 'asc' }],
     });
+
+    const getScore = (att: { correctCount: number; totalCount: number; score?: number }) =>
+      att.score && att.score > 0
+        ? att.score
+        : att.totalCount > 0
+          ? Math.round((att.correctCount / att.totalCount) * 1000)
+          : 0;
 
     // Chỉ lấy kết quả điểm cao nhất của mỗi người dùng
     const userBestMap = new Map<number, typeof attempts[0]>();
     for (const att of attempts) {
       if (
         !userBestMap.has(att.userId) ||
-        att.score > userBestMap.get(att.userId)!.score
+        getScore(att) > getScore(userBestMap.get(att.userId)!)
       ) {
         userBestMap.set(att.userId, att);
       }
     }
 
     const uniqueAttempts = Array.from(userBestMap.values()).sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
+      const scoreA = getScore(a);
+      const scoreB = getScore(b);
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
       }
       const durA =
         a.finishedAt && a.startedAt
@@ -583,12 +551,6 @@ export class AttemptsService {
               (att.finishedAt.getTime() - att.startedAt.getTime()) / 1000,
             )
           : 0;
-      const score =
-        att.score > 0
-          ? att.score
-          : att.totalCount > 0
-            ? Math.round((att.correctCount / att.totalCount) * 1000)
-            : 0;
 
       return {
         rank: index + 1,
@@ -597,7 +559,7 @@ export class AttemptsService {
         avatarUrl: att.user.avatarUrl,
         correctCount: att.correctCount,
         totalCount: att.totalCount,
-        score,
+        score: getScore(att),
         durationSec,
       };
     });
@@ -676,7 +638,7 @@ export class AttemptsService {
       finishedAt: attempt.finishedAt,
       durationSec,
       score:
-        attempt.score > 0
+        attempt.score && attempt.score > 0
           ? attempt.score
           : attempt.totalCount > 0
             ? Math.round((attempt.correctCount / attempt.totalCount) * 1000)

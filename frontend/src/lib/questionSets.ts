@@ -137,6 +137,7 @@ export type AttemptStart = {
     passage: string | null;
     prompt: string;
     options: string[];
+    answerIndex?: number;
   }[];
 };
 
