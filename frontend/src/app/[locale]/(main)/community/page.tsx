@@ -24,13 +24,27 @@ import {
   UserPlus,
   ArrowRight,
   Languages,
+  Plus,
+  Eye,
+  Globe,
+  Lock,
+  Volume2,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
 import { ReportDialog, useToast } from "@/components/features/TrustDialogs";
+import {
+  CreateGroupModal,
+  GroupDetailModal,
+  GroupItem,
+} from "@/components/features/GroupModals";
+import { ChallengeBoard } from "@/components/features/ChallengeBoard";
+import { EventTestCard, TestSetItem } from "@/components/features/EventTestCard";
+import { LearnerSet } from "@/lib/questionSets";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
+import { useSearchParams } from "next/navigation";
 
 type FeedPost = {
   id: number;
@@ -65,6 +79,7 @@ type DailyWord = {
   phonetic: string;
   definition: string;
   example: string;
+  audioUrl?: string | null;
   isSaved: boolean;
   languageId?: number;
 };
@@ -139,9 +154,9 @@ function postText(p: FeedPost, t: any): string {
 function timeAgo(iso: string, t: any): string {
   const diffMin = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (diffMin < 1) return t("community.time_just_now");
-  if (diffMin < 60) return t("community.time_minutes_ago", { count: diffMin });
+  if (diffMin < 60) return t("community.time_minutes_ago", { count: diffMin, m: diffMin });
   const h = Math.floor(diffMin / 60);
-  if (h < 24) return t("community.time_hours_ago", { count: h });
+  if (h < 24) return t("community.time_hours_ago", { count: h, h: h });
   return new Date(iso).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
 }
 
@@ -150,8 +165,191 @@ export default function CommunityPage() {
   const locale = useLocale();
   const { show: showToast, toast } = useToast();
 
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
   // Navigation tab state
-  const [activeTab, setActiveTab] = React.useState<"feed" | "groups" | "events">("feed");
+  const [activeTab, setActiveTab] = React.useState<
+    "feed" | "challenges" | "groups" | "events"
+  >("feed");
+
+  React.useEffect(() => {
+    if (tabParam === "events" || tabParam === "feed" || tabParam === "groups") {
+      setActiveTab(tabParam as any);
+    }
+  }, [tabParam]);
+
+  // Groups state
+  const [realGroups, setRealGroups] = React.useState<GroupItem[]>([]);
+  const [loadingGroups, setLoadingGroups] = React.useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = React.useState(false);
+  const [selectedGroupIdOrSlug, setSelectedGroupIdOrSlug] = React.useState<number | string | null>(null);
+
+  // Default sample test sets matching mockup design
+  const DEFAULT_EVENT_TESTS: TestSetItem[] = [
+    {
+      id: 1,
+      title: "Bão tố Từ vựng: Thời tiết",
+      languageCode: "en",
+      languageName: "English",
+      countryCode: "GB",
+      framework: "CEFR",
+      level: "B1",
+      questionCount: 8,
+      timePerQuestion: "15s/câu",
+      takerCount: 342,
+      status: "not_started",
+      expiryText: "Còn 2 ngày",
+    },
+    {
+      id: 2,
+      title: "Từ điển Văn phòng",
+      languageCode: "en",
+      languageName: "English",
+      countryCode: "GB",
+      framework: "CEFR",
+      level: "B2",
+      questionCount: 15,
+      timePerQuestion: "12s/câu",
+      takerCount: 518,
+      status: "completed",
+      score: 1320,
+      correctCount: 15,
+      totalCount: 15,
+      expiryText: "Đã kết thúc",
+    },
+    {
+      id: 3,
+      title: "Hiragana Cơ bản",
+      languageCode: "ja",
+      languageName: "Tiếng Nhật",
+      countryCode: "JP",
+      framework: "CEFR",
+      level: "A1",
+      questionCount: 10,
+      timePerQuestion: "20s/câu",
+      takerCount: 187,
+      status: "in_progress",
+      currentQuestion: 4,
+      totalCount: 10,
+      expiryText: "Còn 4 ngày",
+    },
+    {
+      id: 4,
+      title: "Bão tố Từ vựng: Ẩm thực & Thức ăn",
+      languageCode: "en",
+      languageName: "English",
+      countryCode: "GB",
+      framework: "CEFR",
+      level: "B1",
+      questionCount: 20,
+      timePerQuestion: "15s/câu",
+      takerCount: 420,
+      status: "not_started",
+      expiryText: "Còn 5 ngày",
+    },
+  ];
+
+  // Test sets state for Events tab
+  const [eventTests, setEventTests] = React.useState<TestSetItem[]>([]);
+
+  React.useEffect(() => {
+    // 1. Read custom quiz sets created by Admin in /admin/quizzes/create
+    const savedLocalStr = typeof window !== "undefined" ? localStorage.getItem("stududu_custom_quiz_sets") : null;
+    let localTestItems: TestSetItem[] = [];
+    if (savedLocalStr) {
+      try {
+        const parsed = JSON.parse(savedLocalStr);
+        if (Array.isArray(parsed)) {
+          localTestItems = parsed.map((item: any, idx: number) => ({
+            id: isNaN(Number(item.id)) ? 9000 + idx : Number(item.id),
+            title: item.title,
+            languageCode: item.language?.toLowerCase().includes("nhật") ? "ja" : "en",
+            languageName: item.language || "English",
+            countryCode: item.language?.toLowerCase().includes("nhật") ? "JP" : "GB",
+            framework: "CEFR",
+            level: item.level || "A1",
+            questionCount: item.wordCount || 15,
+            timePerQuestion: "15s/câu",
+            takerCount: 150 + idx * 25,
+            status: "not_started" as const,
+            expiryText: "Còn 3 ngày",
+          }));
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 2. Fetch published question sets from Backend API
+    api<LearnerSet[]>("/question-sets")
+      .then((sets) => {
+        const apiMapped: TestSetItem[] = Array.isArray(sets)
+          ? sets.map((s: any) => {
+              const hasAttempt = !!s.lastAttempt;
+              const isFinished = hasAttempt && !!s.lastAttempt?.finishedAt;
+              let status: "not_started" | "completed" | "in_progress" = "not_started";
+              if (isFinished) status = "completed";
+              else if (hasAttempt) status = "in_progress";
+              const totalCount = s.lastAttempt?.totalCount || s.questionCount || 10;
+              const correctCount = s.lastAttempt?.correctCount ?? 0;
+              const calculatedScore = totalCount > 0 ? Math.round((correctCount / totalCount) * 1000) : 0;
+              const attemptScore = s.lastAttempt?.score ?? s.score ?? calculatedScore;
+
+              return {
+                id: s.id,
+                title: s.title,
+                languageCode: s.language?.code || "en",
+                languageName: s.language?.name || "English",
+                framework: s.framework,
+                level: s.level,
+                questionCount: s.questionCount || s._count?.questions || 10,
+                timePerQuestionSec: s.timePerQuestionSec || 15,
+                takerCount: s.takerCount ?? 0,
+                status,
+                score: isFinished ? attemptScore : undefined,
+                correctCount: isFinished ? correctCount : undefined,
+                totalCount,
+                currentQuestion: hasAttempt && !isFinished ? 1 : undefined,
+                diffDays: s.diffDays ?? null,
+                expiryText: s.expiryText,
+                isExpired: !!s.isExpired,
+                isLimitReached: !!s.isLimitReached,
+                isNotStarted: !!s.isNotStarted,
+              };
+            })
+          : [];
+
+        const combined = [...apiMapped];
+        for (const localItem of localTestItems) {
+          if (!combined.some((c) => c.title.toLowerCase() === localItem.title.toLowerCase() || c.id === localItem.id)) {
+            combined.push(localItem);
+          }
+        }
+        setEventTests(combined);
+      })
+      .catch(() => {
+        setEventTests(localTestItems);
+      });
+  }, []);
+
+  const fetchRealGroups = React.useCallback(async () => {
+    setLoadingGroups(true);
+    try {
+      const res = await api<{ data: GroupItem[] }>("/groups");
+      setRealGroups(res.data || []);
+    } catch (err) {
+      console.error("Error fetching groups:", err);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (activeTab === "groups") {
+      fetchRealGroups();
+    }
+  }, [activeTab, fetchRealGroups]);
 
   // Feed posts state
   const [posts, setPosts] = React.useState<FeedPost[]>([]);
@@ -189,7 +387,7 @@ export default function CommunityPage() {
     try {
       const res = await api<{ translation: string }>("/translate", {
         method: "POST",
-        body: { text: textToTranslate, target: locale === "en" ? "en" : "vi", source: "auto" },
+        body: { text: textToTranslate, target: locale || "en", source: "auto" },
       });
       setTranslatedPosts((prev) => ({ ...prev, [p.id]: res.translation }));
       setShowTranslation((prev) => ({ ...prev, [p.id]: true }));
@@ -205,6 +403,25 @@ export default function CommunityPage() {
   const [dailyWordsData, setDailyWordsData] = React.useState<DailyWordsResponse | null>(null);
   const [vocabIndex, setVocabIndex] = React.useState(0);
   const [savingVocab, setSavingVocab] = React.useState(false);
+  const [dailyTargetLang, setDailyTargetLang] = React.useState<string | null>(null);
+
+  const fetchDailyWords = React.useCallback(
+    (target?: string) => {
+      const query = new URLSearchParams();
+      if (locale) query.set("native", locale);
+      if (target) query.set("target", target);
+
+      api<DailyWordsResponse>(`/vocabulary/daily-words?${query.toString()}`)
+        .then((data) => {
+          setDailyWordsData(data);
+          if (data?.language?.code && !target) {
+            setDailyTargetLang(data.language.code);
+          }
+        })
+        .catch((err) => console.error("Error loading daily words:", err));
+    },
+    [locale]
+  );
 
   // Group join toggle state
   const [joinedGroups, setJoinedGroups] = React.useState<Record<string, boolean>>({});
@@ -240,10 +457,8 @@ export default function CommunityPage() {
       .catch(console.error);
 
     // Load Daily Vocabulary words
-    api<DailyWordsResponse>("/vocabulary/daily-words")
-      .then(setDailyWordsData)
-      .catch((err) => console.error("Error loading daily words:", err));
-  }, []);
+    fetchDailyWords();
+  }, [fetchDailyWords]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -444,10 +659,27 @@ export default function CommunityPage() {
     }
   };
 
-  // Daily Vocabulary Navigation & Save Handlers
+  // Daily Vocabulary Navigation, Audio & Save Handlers
   const currentWord = dailyWordsData && dailyWordsData.words.length > 0
     ? dailyWordsData.words[vocabIndex % dailyWordsData.words.length]
     : null;
+
+  const handlePlayAudio = (word: DailyWord, langCode = "en") => {
+    if (word.audioUrl) {
+      const audio = new Audio(word.audioUrl);
+      audio.play().catch(() => speakFallback(word.term, langCode));
+    } else {
+      speakFallback(word.term, langCode);
+    }
+  };
+
+  const speakFallback = (text: string, langCode: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = langCode;
+    window.speechSynthesis.speak(utterance);
+  };
 
   const handleNextVocab = () => {
     if (!dailyWordsData || dailyWordsData.words.length === 0) return;
@@ -930,109 +1162,162 @@ export default function CommunityPage() {
             </>
           )}
 
-          {/* GROUPS TAB VIEW (PREVIEW) */}
+          {/* CHALLENGES TAB — thi đấu trả lời bộ đề, BXH chỉ trong phạm vi thử thách */}
+          {activeTab === "challenges" && (
+            <div className="space-y-4">
+              <div className="bg-surface rounded-2xl border border-border shadow-sm p-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground font-display">
+                      {t("challenge.title")}
+                    </h2>
+                    <p className="text-xs text-muted">{t("challenge.subtitle")}</p>
+                  </div>
+                </div>
+              </div>
+              <ChallengeBoard />
+            </div>
+          )}
+
+          {/* GROUPS TAB VIEW */}
           {activeTab === "groups" && (
             <div className="space-y-4">
               <div className="bg-surface rounded-2xl border border-border shadow-sm p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <Users className="w-5 h-5" />
+                <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-foreground font-display">
+                        {t("community.groups_title") || "Nhóm ngôn ngữ & Học tập"}
+                      </h2>
+                      <p className="text-xs text-muted">
+                        Tham gia các câu lạc bộ hoặc tạo nhóm riêng để luyện tập cùng bạn học
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-foreground font-display">{t("community.groups_title") || "Nhóm ngôn ngữ"}</h2>
-                    <p className="text-xs text-muted">
-                      {t("community.groups_coming_soon")}
-                    </p>
-                  </div>
+
+                  <Button
+                    onClick={() => setShowCreateGroupModal(true)}
+                    className="sd-btn-gradient rounded-xl text-xs font-bold gap-2 shadow-xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Tạo nhóm mới</span>
+                  </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                  {getSuggestedGroups(t).map((g) => {
-                    const isJoined = !!joinedGroups[g.id];
-                    return (
-                      <div key={g.id} className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className={cn("text-xs font-bold px-2.5 py-1 rounded-lg", g.bgColor, g.textColor)}>
-                              [{g.langCode}] {g.name}
-                            </span>
-                            <span className="text-[11px] text-muted font-medium">
-                              {t("community.members_count", { count: g.members })}
-                            </span>
-                          </div>
-                          <p className="text-xs text-foreground/80 leading-relaxed mb-4">{g.description}</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant={isJoined ? "outline" : "default"}
-                          onClick={() => toggleGroupJoin(g.id, g.name)}
-                          className={cn("w-full rounded-xl text-xs font-semibold gap-1.5", isJoined && "bg-success/10 text-success border-success/30 hover:bg-success/20")}
+                {loadingGroups ? (
+                  <div className="py-12 text-center text-xs text-muted">
+                    Đang tải danh sách nhóm...
+                  </div>
+                ) : realGroups.length === 0 ? (
+                  <div className="py-12 text-center space-y-3 bg-muted/5 rounded-2xl border border-dashed border-border/70 p-6">
+                    <Users className="w-10 h-10 text-muted mx-auto" />
+                    <p className="text-xs font-semibold text-muted">Chưa có nhóm nào được tạo</p>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowCreateGroupModal(true)}
+                      className="sd-btn-gradient rounded-xl text-xs font-bold gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tạo nhóm đầu tiên</span>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    {realGroups.map((g) => {
+                      return (
+                        <div
+                          key={g.id}
+                          className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex flex-col justify-between hover:border-primary/40 transition-all group/card shadow-2xs cursor-pointer"
+                          onClick={() => setSelectedGroupIdOrSlug(g.id)}
                         >
-                          {isJoined ? (
-                            <>
-                              <Check className="w-3.5 h-3.5" />
-                              {t("community.joined_group")}
-                            </>
-                          ) : (
-                            <>
-                              <UserPlus className="w-3.5 h-3.5" />
-                              {t("community.join_group")}
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary flex items-center gap-1.5">
+                                {g.privacy === "private" ? (
+                                  <Lock className="w-3 h-3 text-pink-500" />
+                                ) : (
+                                  <Globe className="w-3 h-3 text-primary" />
+                                )}
+                                {g.name}
+                              </span>
+                              <span className="text-[11px] text-muted font-medium">
+                                {g.memberCount} thành viên
+                              </span>
+                            </div>
+                            <p className="text-xs text-foreground/80 leading-relaxed mb-4 line-clamp-2">
+                              {g.description || "Chưa có mô tả nhóm."}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
+                            <span className="text-[11px] text-muted flex items-center gap-1">
+                              Tạo bởi: <strong className="text-foreground">{g.creator.displayName}</strong>
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedGroupIdOrSlug(g.id);
+                                }}
+                                className="rounded-xl text-xs font-semibold gap-1"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Thông tin</span>
+                              </Button>
+
+                              <Link
+                                href={`/groups/${g.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-primary bg-primary text-primary-foreground hover:opacity-90 text-xs font-bold transition-all shadow-2xs"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Xem nhóm</span>
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* EVENTS TAB VIEW (PREVIEW) */}
+          {/* EVENTS TAB VIEW — Danh sách bài test từ Admin */}
           {activeTab === "events" && (
             <div className="space-y-4">
               <div className="bg-surface rounded-2xl border border-border shadow-sm p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600">
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-foreground font-display">{t("community.events_title") || "Sự kiện & Bài thi thử sức"}</h2>
+                    <h2 className="text-lg font-bold text-foreground font-display">
+                      {t("community.events_title") || "Events & Exam Competitions"}
+                    </h2>
                     <p className="text-xs text-muted">
-                      {t("community.events_coming_soon")}
+                      {t("community.events_coming_soon") ||
+                        "Events is where Admins will host exams and competitions for users to practice together."}
                     </p>
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-3 mt-6">
-                  <div className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary">{t("community.status_upcoming")}</span>
-                        <span className="text-xs text-muted">{t("community.event1_time")}</span>
-                      </div>
-                      <h4 className="text-sm font-bold text-foreground">{t("community.event1_title")}</h4>
-                      <p className="text-xs text-muted mt-0.5">{t("community.event1_desc")}</p>
-                    </div>
-                    <Button size="sm" className="rounded-xl text-xs flex-shrink-0" onClick={() => showToast(t("community.event_toast_notice"))}>
-                      {t("community.event1_btn")}
-                    </Button>
-                  </div>
-
-                  <div className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-pink-100 text-pink-600">JLPT N3</span>
-                        <span className="text-xs text-muted">{t("community.event2_time")}</span>
-                      </div>
-                      <h4 className="text-sm font-bold text-foreground">{t("community.event2_title")}</h4>
-                      <p className="text-xs text-muted mt-0.5">{t("community.event2_desc")}</p>
-                    </div>
-                    <Button size="sm" variant="outline" className="rounded-xl text-xs flex-shrink-0" onClick={() => showToast(t("community.event_toast_notice"))}>
-                      {t("community.event2_btn")}
-                    </Button>
-                  </div>
-                </div>
+              {/* Grid / List of test set cards matching mockup */}
+              <div className="space-y-4">
+                {eventTests.map((item) => (
+                  <EventTestCard key={item.id} item={item} />
+                ))}
               </div>
             </div>
           )}
@@ -1049,6 +1334,11 @@ export default function CommunityPage() {
                 <span className="tracking-wide uppercase text-[11px]">
                   {t("community.daily_vocab_title")}
                 </span>
+                {dailyWordsData?.language && (
+                  <span className="text-[10px] font-extrabold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-md ml-1">
+                    {dailyWordsData.language.name || dailyWordsData.language.code}
+                  </span>
+                )}
               </div>
               {dailyWordsData && dailyWordsData.words.length > 0 && (
                 <span className="text-xs font-semibold text-muted bg-muted/20 px-2 py-0.5 rounded-full">
@@ -1059,16 +1349,26 @@ export default function CommunityPage() {
 
             {currentWord ? (
               <div className="bg-gradient-to-br from-primary/5 via-pink-500/5 to-warning/5 rounded-xl p-4 border border-primary/10">
-                {/* Word Term */}
-                <h3 className="text-2xl font-bold font-display text-foreground tracking-tight">
-                  {currentWord.term}
-                </h3>
-
-                {/* Part of speech & IPA Phonetic */}
-                <div className="flex items-center gap-2 mt-1 text-xs text-secondary font-semibold">
-                  <span>{currentWord.partOfSpeech}</span>
-                  {currentWord.phonetic && <span>· {currentWord.phonetic}</span>}
+                {/* Word Term & Audio Speaker Button */}
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-2xl font-bold font-display text-foreground tracking-tight">
+                    {currentWord.term}
+                  </h3>
+                  <button
+                    onClick={() => handlePlayAudio(currentWord, dailyWordsData?.language?.code || "en")}
+                    className="w-8 h-8 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                    title="Nghe phát âm chuẩn (Free Dictionary Audio)"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                  </button>
                 </div>
+
+                {/* IPA Phonetic */}
+                {currentWord.phonetic && (
+                  <div className="flex items-center gap-2 mt-1 text-xs text-secondary font-semibold">
+                    <span>{currentWord.phonetic}</span>
+                  </div>
+                )}
 
                 {/* Definition / Meaning */}
                 <p className="text-sm font-semibold text-foreground/90 mt-3 leading-snug">
@@ -1083,14 +1383,16 @@ export default function CommunityPage() {
                 )}
 
                 {/* Action controls */}
-                <div className="flex items-center justify-between gap-2 mt-4 pt-2">
-                  <button
+                <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-primary/10">
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={handlePrevVocab}
-                    className="p-2 rounded-xl border border-border bg-surface text-muted hover:text-foreground hover:bg-muted/10 transition-colors"
-                    title={t("community.prev_word") || "Từ trước"}
+                    title={t("community.prev_word")}
+                    className="w-9 h-9 p-0 rounded-xl shrink-0 flex items-center justify-center bg-surface/80 hover:bg-surface border-border/80 text-foreground transition-all shadow-xs"
                   >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
+                    <ChevronLeft className="w-4 h-4 text-foreground/80" />
+                  </Button>
 
                   <Button
                     size="sm"
@@ -1098,19 +1400,21 @@ export default function CommunityPage() {
                     onClick={handleSaveCurrentVocab}
                     disabled={savingVocab || currentWord.isSaved}
                     className={cn(
-                      "flex-1 rounded-xl text-xs font-semibold gap-1.5 shadow-xs",
-                      currentWord.isSaved && "bg-success/10 text-success border-success/30 hover:bg-success/20"
+                      "flex-1 h-9 rounded-xl text-xs font-semibold gap-1.5 px-3 min-w-0 shadow-xs transition-all",
+                      currentWord.isSaved
+                        ? "bg-success/10 text-success border-success/30 hover:bg-success/20"
+                        : "bg-primary text-white hover:bg-primary/90"
                     )}
                   >
                     {currentWord.isSaved ? (
                       <>
-                        <Check className="w-3.5 h-3.5" />
-                        {t("community.saved_word")}
+                        <Check className="w-4 h-4 shrink-0 text-success" />
+                        <span className="truncate">{t("community.saved_word")}</span>
                       </>
                     ) : (
                       <>
-                        <Bookmark className="w-3.5 h-3.5" />
-                        {t("community.save_word")}
+                        <Bookmark className="w-4 h-4 shrink-0 fill-current" />
+                        <span className="truncate">{t("community.save_word")}</span>
                       </>
                     )}
                   </Button>
@@ -1118,10 +1422,10 @@ export default function CommunityPage() {
                   <Button
                     size="sm"
                     onClick={handleNextVocab}
-                    className="sd-btn-gradient rounded-xl text-xs font-semibold gap-1"
+                    title={t("community.next_word")}
+                    className="w-9 h-9 p-0 rounded-xl shrink-0 flex items-center justify-center sd-btn-gradient text-white shadow-xs transition-all"
                   >
-                    <span>{t("community.next_word")}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -1132,45 +1436,6 @@ export default function CommunityPage() {
             )}
           </div>
 
-          {/* WIDGET 2: NHÓM NGÔN NGỮ GỢI Ý (Suggested Language Groups) */}
-          <div className="bg-surface rounded-2xl border border-border shadow-sm p-4">
-            <h3 className="text-xs font-bold text-foreground uppercase tracking-wide mb-3 flex items-center justify-between">
-              <span>{t("community.suggested_groups")}</span>
-            </h3>
-
-            <div className="space-y-3">
-              {getSuggestedGroups(t).map((g) => {
-                const isJoined = !!joinedGroups[g.id];
-                return (
-                  <div key={g.id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0", g.bgColor, g.textColor)}>
-                        {g.langCode}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-foreground truncate">{g.name}</h4>
-                        <p className="text-[10px] text-muted truncate">
-                          {t("community.members_count", { count: g.members })}
-                        </p>
-                      </div>
-                    </div>
-
-                    <Button
-                      size="sm"
-                      variant={isJoined ? "outline" : "secondary"}
-                      onClick={() => toggleGroupJoin(g.id, g.name)}
-                      className={cn(
-                        "rounded-xl text-[11px] h-7 px-3 flex-shrink-0 font-semibold",
-                        isJoined && "bg-success/10 text-success border-success/30 hover:bg-success/20"
-                      )}
-                    >
-                      {isJoined ? t("community.joined_group") : t("community.join_group")}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
 
         </aside>
 
@@ -1314,6 +1579,23 @@ export default function CommunityPage() {
           </div>
         </div>
       )}
+
+      {/* Create Group Modal */}
+      <CreateGroupModal
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
+        onSuccess={(newGroup) => {
+          fetchRealGroups();
+          setSelectedGroupIdOrSlug(newGroup.id);
+        }}
+      />
+
+      {/* Group Detail Modal */}
+      <GroupDetailModal
+        groupIdOrSlug={selectedGroupIdOrSlug}
+        onClose={() => setSelectedGroupIdOrSlug(null)}
+        onGroupUpdated={fetchRealGroups}
+      />
 
       {toast}
     </div>

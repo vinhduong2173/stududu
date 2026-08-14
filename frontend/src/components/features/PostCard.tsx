@@ -121,7 +121,7 @@ export function PostCard({
     try {
       const res = await api<{ translation: string }>("/translate", {
         method: "POST",
-        body: { text: textToTranslate, target: locale === "en" ? "en" : "vi", source: "auto" },
+        body: { text: textToTranslate, target: locale || "en", source: "auto" },
       });
       setTranslatedText(res.translation);
       setShowTranslation(true);

@@ -120,3 +120,42 @@ Quy tắc:
 - Tên file: chữ thường, gạch ngang, không dấu tiếng Việt, không khoảng trắng.
 - `AGENTS.md` và `CLAUDE.md` **bắt buộc nằm ở root repo** — Claude Code và Antigravity chỉ đọc ở đó, di chuyển đi là mất tác dụng.
 - Sửa/thêm tài liệu trong `docs/` mà làm thay đổi đường dẫn → cập nhật lại mục 11 của file này và phần "Tài liệu" trong `README.md`.
+
+
+
+
+
+# 13 Quy chuẩn Tách Component & Giữ Code Rõ Ràng
+Dự án này ưu tiên **mã nguồn ngắn gọn, mô-đun hóa cao, dễ đọc và dễ bảo trì** cho người mới bắt đầu. Tất cả AI Agent khi tạo hoặc chỉnh sửa code trong dự án NGHÊM CẤM viết các file dài lềnh đềnh và BẮT BUỘC tuân thủ các quy tắc dưới đây.
+---
+
+## 13.1. Giới Hạn Độ Dài Code (File Length Limits)
+- **UI Component File**: Tối đa **100 - 150 dòng code**. Nếu file vượt quá 150 dòng, BẮT BUỘC phải tìm cách tách nhỏ.
+- **Hàm / Function**: Tối đa **20 - 30 dòng**. Mỗi hàm chỉ thực hiện **1 nhiệm vụ duy nhất** (Single Responsibility).
+- **Hooks / Logic**: Tối đa **80 dòng**. Nếu logic phức tạp, chia nhỏ thành các helper functions hoặc sub-hooks.
+---
+
+## 13.2. Quy Tắc Chia Nhỏ Component (Component Splitting Rules)
+### 13.2.1. Rule A: Tách Biệt Logic và Giao Diện (Separation of Concerns)
+- **KHÔNG** viết logic gọi API, xử lý dữ liệu phức tạp chung với file render HTML/JSX.
+- **Logic & State** -> Đưa ra file Custom Hook riêng trong thư mục `/hooks` (Ví dụ: `useUserProfile.ts`, `useProductList.ts`).
+- **Giao diện (UI)** -> Chỉ nhận data/handlers qua `props` và render giao diện.
+### 13.2.2. Rule B: Quy Tắc Tách Sub-Components
+Hãy chia nhỏ trang chính (Page) thành 3 cấp độ:
+1. **Layout / Page (File chính)**: Chỉ đóng vai trò ráp các mảnh ghép lại với nhau (dưới 50 dòng).
+2. **Feature Components**: Các khối tính năng lớn (Ví dụ: `Header.tsx`, `Sidebar.tsx`, `ProductList.tsx`).
+3. **UI Base Components**: Các phần tử nhỏ tái sử dụng (Ví dụ: `Button.tsx`, `Input.tsx`, `Badge.tsx`, `Card.tsx`).
+*Ví dụ minh họa:*
+- ❌ **SAI (File `HomePage.tsx` 400 dòng)**: Chứa cả Header, Banner, List sản phẩm, Form đăng ký newsletter, Footer.
+- ✅ **ĐÚNG (File `HomePage.tsx` 30 dòng)**:
+  ```tsx
+  export default function HomePage() {
+    return (
+      <MainLayout>
+        <HeroBanner />
+        <FeaturedProducts />
+        <NewsletterForm />
+      </MainLayout>
+    );
+  }
+

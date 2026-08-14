@@ -26,6 +26,7 @@ sequenceDiagram
     participant FE as Frontend (CommunityPage)
     participant BE as Backend (VocabularyController)
     participant VS as VocabularyService
+    participant DS as DictionaryService (3rd-Party APIs)
     participant DB as Database (Prisma / PostgreSQL)
 
     %% 1. Fetch Daily Words
@@ -35,16 +36,33 @@ sequenceDiagram
     
     alt Không truyền targetLangCode
         VS->>DB: Query UserLanguage (role = 'learning')
-        DB-->>VS: Trả về ngôn ngữ học của User (e.g., 'fr', 'en', 'ja')
+        DB-->>VS: Trả về ngôn ngữ học của User (e.g., 'ja', 'fr', 'en')
     end
 
-    VS->>VS: Lấy bộ từ tinh tuyển (Curated Pool) theo ngôn ngữ
-    VS->>DB: Query WordLibrary (Lấy thêm từ nổi bật từ DB)
+    VS->>VS: Lấy bộ từ tinh tuyển mở rộng (20-35+ từ / ngôn ngữ)
+    opt Tiếng Anh ('en')
+        VS->>DS: fetchRandomWords('en') (Datamuse API)
+        DS-->>VS: Danh sách từ vựng tiếng Anh ngẫu nhiên
+    end
+    VS->>DB: Query WordLibrary (Lấy từ phổ biến từ DB)
     DB-->>VS: Danh sách từ phổ biến từ DB
+
+    loop Cho mỗi từ trong batch ngẫu nhiên (6 từ)
+        VS->>DS: lookup(term, lang)
+        alt Free Dictionary API thành công
+            DS-->>VS: Dữ liệu IPA, Audio, Ví dụ
+        else Tiếng Nhật ('ja') -> Jisho API
+            DS-->>VS: Dữ liệu Kanji, Furigana Kana
+        else Wiktionary Open API (fr, es, de, ko, zh, vi...)
+            DS-->>VS: Dữ liệu IPA & Giải nghĩa từ Wiktionary
+        end
+        VS->>DB: Upsert từ mới vào WordLibrary (Tự động nuôi dữ liệu DB)
+    end
+
     VS->>DB: Query UserSavedWord (Kiểm tra xem User đã lưu từ nào chưa)
     DB-->>VS: Danh sách từ đã lưu của User
 
-    VS-->>BE: Kết quả { language, total, words: [{ term, definition, isSaved, ... }] }
+    VS-->>BE: Kết quả { language, total, words: [{ term, definition, isSaved, audioUrl, ... }] }
     BE-->>FE: HTTP 200 OK (JSON Response)
     FE-->>User: Hiển thị Widget "TỪ VỰNG MỚI HÔM NAY" (Từ 1 / N)
 
@@ -83,31 +101,32 @@ getDailyWords(@CurrentUser() user: JwtPayload, @Query('target') target?: string)
 }
 ```
 
-### 3.2. Service Layer & Logic Xử lý
+### 3.2. Dictionary Service (Tích hợp 3rd-Party APIs)
+**File:** [dictionary.service.ts](file:///c:/Stududu-web/stududu-main/backend/src/modules/vocabulary/dictionary.service.ts)
+
+Hệ thống triển khai chuỗi tra cứu tự động đa tầng (Multi-Tier Lookup Fallback Chain):
+1. **Free Dictionary API** (`api.dictionaryapi.dev`): Tra cứu từ điển tiếng Anh và ngôn ngữ Châu Âu.
+2. **Datamuse API** (`api.datamuse.com`): Sinh từ vựng tiếng Anh ngẫu nhiên theo chủ đề (`fetchRandomWords`).
+3. **Jisho API** (`jisho.org/api/v1`): Tra cứu từ điển tiếng Nhật, bóc tách Kanji và Furigana/Kana (`lookupJisho`).
+4. **Wiktionary Open API** (`${lang}.wiktionary.org/w/api.php`): API mở từ Wikimedia cho tất cả các ngôn ngữ (`fr`, `es`, `de`, `ko`, `zh`, `vi`, `ja`).
+
+### 3.3. Service Layer & Logic Xử lý
 **File:** [vocabulary.service.ts](file:///c:/Stududu-web/stududu-main/backend/src/modules/vocabulary/vocabulary.service.ts)
 
-Hàm `getDailyWords(userId?: number, targetCode?: string)` thực hiện 4 bước:
+Hàm `getDailyWords(userId?: number, targetCode?: string)` thực hiện:
 
 1. **Xác định Ngôn ngữ Mục tiêu (Target Language Resolution)**:
-   - Ưu tiên 1: Lấy từ `targetCode` do client truyền lên (nếu có).
-   - Ưu tiên 2: Truy vấn bảng `UserLanguage` để lấy `language.code` mà người dùng khai báo `role = 'learning'`.
-   - Fallback: Mặc định là `'en'` (Tiếng Anh) nếu người dùng chưa khai báo ngôn ngữ học.
+   - Lấy `targetCode` truyền lên hoặc ngôn ngữ `role = 'learning'` của người dùng (fallback `'en'`).
 
-2. **Khởi tạo Nguồn Từ Vựng Tinh Tuyển (Curated Dictionary Pool)**:
-   Hệ thống duy trì bộ từ vựng mẫu chất lượng cao cho các ngôn ngữ chính (`en`, `fr`, `ja`, `ko`, `zh`, `es`, `de`). Mỗi từ gồm:
-   - `term`: Từ vựng gốc (e.g. *résilience*, *serendipity*, *木漏れ日*).
-   - `partOfSpeech`: Loại từ & Mã ngôn ngữ (e.g. *FR danh từ*, *EN noun*, *JA danh từ*).
-   - `phonetic`: Phiên âm chuẩn IPA (e.g. */re.zi.ljɑ̃s/*).
-   - `definition`: Giải nghĩa tiếng Việt ngắn gọn, dễ hiểu.
-   - `example`: Câu ví dụ ngữ cảnh chuẩn bản xứ.
+2. **Bộ Từ Vựng Tinh Tuyển Mở Rộng (Expanded Curated Pools)**:
+   - Hệ thống duy trì kho từ 20-35+ từ chọn lọc cho 8 ngôn ngữ chính (`en`, `fr`, `ja`, `ko`, `zh`, `es`, `de`, `vi`).
 
-3. **Kết hợp Từ vựng từ Thư viện Cộng đồng (Database Word Library)**:
-   - Truy vấn 10 từ có `saveCount` cao nhất trong bảng `WordLibrary` matching với `languageId`.
-   - Ghép thêm vào danh sách từ daily nếu từ đó chưa tồn tại trong bộ tinh tuyển.
+3. **Tra cứu & Tự Động Dịch (Dynamic Lookup & Auto-Translation)**:
+   - Mỗi từ trong batch 6 từ được tra cứu qua `DictionaryService` để lấy IPA/Pronunciation, Audio URL.
+   - Tự động dịch nghĩa câu ví dụ và định nghĩa sang ngôn ngữ mẹ đẻ của người dùng (`vi` hoặc `en`) qua `TranslateService`.
 
-4. **Kiểm tra Trạng thái Đã Lưu (User Saved Status Check)**:
-   - Truy vấn toàn bộ từ trong `UserSavedWord` của `userId`.
-   - So khớp và trả về thuộc tính `isSaved: true/false` cho từng từ.
+4. **Nuôi dữ liệu CSDL Tự Động (Automatic DB Upsert)**:
+   - Tự động lưu/cập nhật thông tin từ điển vào bảng `WordLibrary` trong CSDL PostgreSQL khi tra cứu thành công.
 
 ---
 
@@ -122,10 +141,11 @@ Hàm `getDailyWords(userId?: number, targetCode?: string)` thực hiện 4 bư�
 
 ### 4.2. Giao diện Card Widget
 Widget được đặt ở Cột phải (Right Rail) với thiết kế gradient nhẹ nhàng, nổi bật:
-- **Header**: Tiêu đề `📖 TỪ VỰNG MỚI HÔM NAY` kèm chỉ số tiến trình (e.g. `1 / 12`).
+- **Header**: Tiêu đề `📖 TỪ VỰNG MỚI HÔM NAY` kèm thẻ tag ngôn ngữ và chỉ số tiến trình (e.g. `1 / 6`).
 - **Nội dung từ vựng**:
   - `term`: Chữ in đậm nổi bật với font thương hiệu (`font-display text-2xl`).
-  - `partOfSpeech` & `phonetic`: Chữ nhỏ màu tím nổi bật (`text-secondary font-semibold`).
+  - Nút phát âm âm thanh `🔊`: Nghe giọng đọc phát âm từ điển chuẩn.
+  - `partOfSpeech` & `phonetic`: Phiên âm chuẩn IPA / Kana / Romaji (`text-secondary font-semibold`).
   - `definition`: Nghĩa tiếng Việt rõ ràng (`text-sm font-semibold text-foreground/90`).
   - `example`: Câu ví dụ in nghiêng đặt trong khung mờ (`bg-surface/60 border border-border/50`).
 - **Nút điều hướng & thao tác**:
@@ -142,36 +162,29 @@ Widget được đặt ở Cột phải (Right Rail) với thiết kế gradient
 `Authorization: Bearer <accessToken>`
 
 **Query Parameters:**
-- `target` *(optional)*: Mã ngôn ngữ (e.g. `en`, `fr`, `ja`).
+- `target` *(optional)*: Mã ngôn ngữ (e.g. `en`, `fr`, `ja`, `ko`, `zh`).
+- `native` *(optional)*: Ngôn ngữ mẹ đẻ (e.g. `vi`).
 
 **Sample Response Body (200 OK):**
 ```json
 {
   "language": {
-    "code": "fr",
-    "name": "Français"
+    "code": "ja",
+    "name": "日本語"
   },
+  "nativeLanguage": "vi",
   "total": 6,
   "words": [
     {
       "index": 1,
-      "term": "résilience",
-      "partOfSpeech": "FR danh từ",
-      "phonetic": "/re.zi.ljɑ̃s/",
-      "definition": "Sự kiên cường, khả năng phục hồi",
-      "example": "« Sa résilience face aux difficultés est admirable. »",
+      "term": "桜吹雪",
+      "partOfSpeech": "JA danh từ",
+      "phonetic": "/sa.ku.ra.fu.bu.ki/",
+      "definition": "Mưa hoa anh đào bay trong gió",
+      "example": "« 風が吹くと美しい桜吹雪が舞った。 »",
+      "audioUrl": null,
       "isSaved": false,
-      "languageId": 6
-    },
-    {
-      "index": 2,
-      "term": "flâner",
-      "partOfSpeech": "FR động từ",
-      "phonetic": "/fla.ne/",
-      "definition": "Đi dạo thong dong, thưởng ngoạn phố phường",
-      "example": "« J’aime flâner dans les rues de Paris. »",
-      "isSaved": true,
-      "languageId": 6
+      "languageId": 4
     }
   ]
 }
@@ -179,11 +192,16 @@ Widget được đặt ở Cột phải (Right Rail) với thiết kế gradient
 
 ---
 
-## 6. Khả năng Mở rộng trong Tương lai (Future Enhancements)
+## 6. Các Tính năng Đã Hoàn Thành & Hướng Phát Triển Tiếp Theo
 
-1. **Phát âm Audio (Text-to-Speech)**:
-   - Tích hợp Web Speech API hoặc Google TTS để thêm nút phát âm âm thanh giọng đọc chuẩn khi bấm vào biểu tượng loa.
-2. **Thuật toán Lặp lại Ngắt quãng (Spaced Repetition - SRS)**:
-   - Lưu vết lịch sử các từ người dùng đã chọn "Đã biết" để giảm tần suất xuất hiện và tăng tần suất các từ chưa biết.
-3. **Thống kê Chuỗi Học (Vocabulary Streak)**:
-   - Ghi nhận mốc điểm thưởng khi người dùng tương tác đủ N từ vựng mới mỗi ngày.
+1. **Đã Hoàn Thành (Done)**:
+   - ✅ Phủ sóng 3rd-Party APIs từ điển cho tất cả các ngôn ngữ (`en`, `ja`, `fr`, `es`, `de`, `ko`, `zh`, `vi`).
+   - ✅ Phát âm âm thanh audio phát âm chuẩn qua Free Dictionary & Web Speech API.
+   - ✅ Mở rộng bộ từ tinh tuyển 20-35+ từ mỗi ngôn ngữ.
+   - ✅ Tự động dịch định nghĩa & câu ví dụ sang tiếng Việt.
+   - ✅ Tự động nuôi dữ liệu CSDL `WordLibrary`.
+
+2. **Hướng Phát Triển Tiếp Theo (Next Steps)**:
+   - 🔄 Tích hợp thuật toán Lặp lại Ngắt quãng (Spaced Repetition - SRS).
+   - 🏆 Thống kê Chuỗi Học (Vocabulary Streak) & Thưởng điểm kinh nghiệm (XP).
+

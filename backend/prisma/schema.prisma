@@ -112,6 +112,32 @@ enum ScheduleStatus {
   expired
 }
 
+// ===== Bộ đề trắc nghiệm (docs/01-requirements/question-set-design.md) =====
+
+enum SetStatus {
+  draft
+  published
+  archived
+}
+
+enum QuestionType {
+  vocabulary
+  grammar
+  cloze
+  reading
+}
+
+enum QuestionStatus {
+  active
+  retired
+}
+
+// Không có csv_import — luồng CSV đã bị bỏ (question-set-ai-only-flow.md mục 6)
+enum QuestionSource {
+  manual
+  ai_generated
+}
+
 // ===== Models =====
 
 model User {
@@ -162,6 +188,11 @@ model User {
   notificationsSent     Notification[] @relation("NotificationSender")
   callsPlaced           CallSession[]  @relation("CallCaller")
   callsReceived         CallSession[]  @relation("CallCallee")
+  createdGroups         Group[]            @relation("GroupCreator")
+  groupMemberships      GroupMember[]
+  joinRequestsSent      GroupJoinRequest[] @relation("JoinRequestUser")
+  joinRequestsReviewed  GroupJoinRequest[] @relation("JoinRequestReviewer")
+  testAttempts          TestAttempt[]
 
   @@map("users")
 }
@@ -175,6 +206,8 @@ model Language {
 
   userLanguages UserLanguage[]
   wordLibrary   WordLibrary[]
+  groups        Group[]
+  questionSets  QuestionSet[]
 
   @@map("languages")
 }
@@ -200,6 +233,7 @@ model Topic {
   hidden Boolean @default(false) // US-21: ẩn khỏi hồ sơ & bộ lọc
 
   userInterests UserInterest[]
+  groups        Group[]
 
   @@map("topics")
 }
@@ -443,9 +477,12 @@ model ActivityPost {
   contentRef String?          @map("content_ref") // word_public: wordLibraryId · milestone: số giờ mốc
   content    String? // user_post: nội dung chia sẻ tự do
   imageUrl   String?          @map("image_url")
+  groupId    Int?             @map("group_id")
+  status     String           @default("approved") // 'approved' | 'pending' | 'rejected'
   createdAt  DateTime         @default(now()) @map("created_at")
 
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group    Group?        @relation(fields: [groupId], references: [id], onDelete: Cascade)
   likes    PostLike[]
   comments PostComment[]
 
@@ -529,6 +566,140 @@ model Notification {
   @@map("notifications")
 }
 
+// ===== Bộ đề trắc nghiệm — Admin soạn, học viên làm (question-set-design.md) =====
+
+// Chủ đề TỪ VỰNG — cố tình tách khỏi `Topic` (sở thích để ghép người nói chuyện).
+// Dùng chung sẽ khiến Admin ẩn chủ đề cho matching (US-21) làm mất luôn bộ đề.
+model VocabTopic {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  hidden Boolean @default(false)
+
+  sets QuestionSet[]
+
+  @@map("vocab_topics")
+}
+
+model QuestionSet {
+  id              Int       @id @default(autoincrement())
+  languageId      Int       @map("language_id")
+  topicId         Int       @map("topic_id")
+  framework       String // CEFR | HSK | JLPT | TOPIK
+  level           String // A1..C2
+  levelOrder      Int       @map("level_order") // 1..6 — so sánh/lên bậc
+  title           String
+  description     String?
+  contentLanguage String    @default("vi") @map("content_language")
+  timePerQuestionSec Int    @default(15) @map("time_per_question_sec")
+  maxAttempts     Int?      @map("max_attempts")
+  startsAt        DateTime? @map("starts_at")
+  endsAt          DateTime? @map("ends_at")
+  status          SetStatus @default(draft)
+  questionCount   Int       @default(0) @map("question_count")
+  createdById     Int       @map("created_by_id")
+  updatedById     Int?      @map("updated_by_id")
+  publishedAt     DateTime? @map("published_at")
+  lastGeneratedAt DateTime? @map("last_generated_at") // BR-52: chặn gọi AI quá 1 lần/phút
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  language   Language             @relation(fields: [languageId], references: [id])
+  topic      VocabTopic           @relation(fields: [topicId], references: [id])
+  questions  TestQuestion[]
+  attempts   TestAttempt[]
+  challenges CommunityChallenge[]
+
+  @@unique([languageId, topicId, level])
+  @@index([status, languageId, levelOrder])
+  @@map("question_sets")
+}
+
+model TestQuestion {
+  id          Int            @id @default(autoincrement())
+  setId       Int            @map("set_id")
+  orderIndex  Int            @map("order_index")
+  type        QuestionType
+  term        String?
+  passage     String?
+  prompt      String
+  options     String[]
+  answerIndex Int            @map("answer_index")
+  explanation String?
+  status      QuestionStatus @default(active)
+  source      QuestionSource @default(manual)
+  sourceMeta  Json?          @map("source_meta") // BR-49/BR-57: chỉ khi source = ai_generated
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  set     QuestionSet  @relation(fields: [setId], references: [id], onDelete: Cascade)
+  answers TestAnswer[]
+
+  @@index([setId, status])
+  @@map("test_questions")
+}
+
+model TestAttempt {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  setId        Int       @map("set_id")
+  challengeId  Int?      @map("challenge_id") // khác null = lượt làm trong thử thách community
+  totalCount   Int       @default(20) @map("total_count")
+  correctCount Int       @default(0) @map("correct_count")
+  score        Int       @default(0) // Điểm Tốc độ & Chính xác Kahoot thời gian thực
+  // Thứ tự câu + hoán vị đáp án của riêng lượt này (mục 7: đảo mỗi lần làm).
+  // Phải lưu để chấm ngược được chỉ số client gửi lên về chỉ số gốc.
+  questionOrder Int[]    @default([]) @map("question_order")
+  optionOrder   Json?    @map("option_order") // { "<questionId>": [vị trí hiển thị -> index gốc] }
+  startedAt    DateTime  @default(now()) @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  set       QuestionSet         @relation(fields: [setId], references: [id])
+  challenge CommunityChallenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  answers   TestAnswer[]
+
+  // Mỗi người chỉ tính MỘT lượt trong một thử thách (NULL không bị ràng buộc ở Postgres,
+  // nên luyện tập tự do vẫn lưu được nhiều lượt như quyết định 28/07)
+  @@unique([userId, challengeId])
+  @@index([userId, startedAt])
+  @@index([userId, setId])
+  @@index([challengeId, correctCount])
+  @@map("test_attempts")
+}
+
+model TestAnswer {
+  id          Int     @id @default(autoincrement())
+  attemptId   Int     @map("attempt_id")
+  questionId  Int     @map("question_id")
+  chosenIndex Int?    @map("chosen_index") // index GỐC (đã map ngược từ vị trí hiển thị)
+  isCorrect   Boolean @map("is_correct")
+
+  attempt  TestAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question TestQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@map("test_answers")
+}
+
+// Thử thách community — một bộ đề mở trong một khoảng thời gian, có bảng xếp hạng.
+// BXH chỉ tồn tại trong phạm vi thử thách: KHÔNG có điểm tích luỹ trên hồ sơ,
+// không có rank toàn hệ thống — BR-13 (no-credit) vẫn nguyên vẹn.
+model CommunityChallenge {
+  id          Int      @id @default(autoincrement())
+  setId       Int      @map("set_id")
+  title       String
+  description String?
+  startsAt    DateTime @map("starts_at")
+  endsAt      DateTime @map("ends_at")
+  createdById Int      @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  set      QuestionSet   @relation(fields: [setId], references: [id])
+  attempts TestAttempt[]
+
+  @@index([startsAt, endsAt])
+  @@map("community_challenges")
+}
+
 // Log kiểm duyệt = lịch sử vi phạm (đếm để xác định tái phạm — US-20)
 model ModerationAction {
   id           Int                  @id @default(autoincrement())
@@ -543,3 +714,92 @@ model ModerationAction {
 
   @@map("moderation_actions")
 }
+
+// ===== Community Groups =====
+
+enum GroupPrivacy {
+  public
+  private
+}
+
+enum GroupMemberRole {
+  owner
+  admin
+  member
+}
+
+enum GroupMemberStatus {
+  active
+  suspended
+}
+
+enum GroupJoinRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+model Group {
+  id                   Int          @id @default(autoincrement())
+  name                 String       @db.VarChar(100)
+  slug                 String       @unique @db.VarChar(120)
+  description          String?      @db.Text
+  avatarUrl            String?      @map("avatar_url")
+  coverUrl             String?      @map("cover_url")
+  privacy              GroupPrivacy @default(public)
+  postApprovalRequired Boolean      @default(false) @map("post_approval_required")
+
+  creatorId  Int  @map("creator_id")
+  languageId Int? @map("language_id")
+  topicId    Int? @map("topic_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  creator      User               @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  language     Language?          @relation(fields: [languageId], references: [id], onDelete: SetNull)
+  topic        Topic?             @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  members      GroupMember[]
+  joinRequests GroupJoinRequest[]
+  posts        ActivityPost[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id            Int               @id @default(autoincrement())
+  groupId       Int               @map("group_id")
+  userId        Int               @map("user_id")
+  role          GroupMemberRole   @default(member)
+  status        GroupMemberStatus @default(active)
+  bannedUntil   DateTime?         @map("banned_until")
+  mutedUntil    DateTime?         @map("muted_until")
+  isPreApproved Boolean           @default(false) @map("is_pre_approved")
+  joinedAt      DateTime          @default(now()) @map("joined_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+model GroupJoinRequest {
+  id         Int                    @id @default(autoincrement())
+  groupId    Int                    @map("group_id")
+  userId     Int                    @map("user_id")
+  status     GroupJoinRequestStatus @default(pending)
+  message    String?                @db.VarChar(255)
+  createdAt  DateTime               @default(now()) @map("created_at")
+  reviewedAt DateTime?              @map("reviewed_at")
+  reviewerId Int?                   @map("reviewer_id")
+
+  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User  @relation("JoinRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("JoinRequestReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@unique([groupId, userId, status])
+  @@map("group_join_requests")
+}
+

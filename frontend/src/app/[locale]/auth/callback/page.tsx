@@ -22,17 +22,25 @@ export default function AuthCallbackPage() {
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);
 
-    api<{ languages: unknown[]; role: string }>("/users/me", { token: accessToken })
+    api<{ languages: any[]; role: string }>("/users/me", { token: accessToken })
       .then((me) => {
+        const supportedLocales = ["en", "vi", "fr", "es", "zh"];
+        const nativeLangItem = me.languages?.find((l: any) => l.role === "native" || l.role === "fluent");
+        const userLangCode = nativeLangItem?.language?.code?.toLowerCase() || "";
+        const targetLocale = supportedLocales.includes(userLangCode) ? userLangCode : "en";
+
+        document.cookie = `NEXT_LOCALE=${targetLocale}; path=/; max-age=31536000`;
+
         if (me.role === "admin") {
-          router.push("/admin");
+          router.push("/admin", { locale: targetLocale });
         } else {
-          router.push(me.languages.length === 0 ? "/onboarding" : "/discover");
+          router.push(me.languages.length === 0 ? "/onboarding" : "/discover", { locale: targetLocale });
         }
       })
       .catch((err) => {
         console.error("Error fetching user profile after Google login:", err);
-        router.push("/login");
+        document.cookie = "NEXT_LOCALE=en; path=/; max-age=31536000";
+        router.push("/login", { locale: "en" });
       });
   }, [searchParams, router]);
 
@@ -42,7 +50,10 @@ export default function AuthCallbackPage() {
         <div className="rounded-2xl bg-error/10 p-6 text-center text-error max-w-md w-full border border-error/20">
           <p className="font-semibold">{error}</p>
           <button
-            onClick={() => router.push("/login")}
+            onClick={() => {
+              document.cookie = "NEXT_LOCALE=en; path=/; max-age=31536000";
+              router.push("/login", { locale: "en" });
+            }}
             className="mt-4 rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity"
           >
             Quay lại trang đăng nhập

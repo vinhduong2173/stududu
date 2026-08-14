@@ -7,12 +7,14 @@ import { api } from "@/lib/api";
 import { disconnectSocket, getSocket } from "@/lib/socket";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/features/TrustDialogs";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/features/LanguageSwitcher";
 import { TextSelectionPopup } from "@/components/features/TextSelectionPopup";
 import { Logo } from "@/components/ui/Logo";
 import { CallProvider } from "@/components/call/CallProvider";
+
+import { NotificationDropdown, getNotificationMessage } from "@/components/layout/NotificationDropdown";
 
 /** CallProvider bọc toàn bộ khu vực đã đăng nhập để chuông đổ được ở mọi trang,
  *  không chỉ khi đang mở Inbox (audio-call-design.md mục 3). */
@@ -26,9 +28,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
   const t = useTranslations();
+  const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
-  const [me, setMe] = React.useState<{ displayName: string; avatarUrl?: string | null; role?: string; nativeLang?: string | null } | null>(null);
+  const [me, setMe] = React.useState<any>(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<any[]>([]);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
@@ -37,7 +40,10 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     api<{ displayName: string; avatarUrl?: string | null; role?: string; nativeLang?: string | null }>("/users/me")
       .then(setMe)
-      .catch(() => router.push("/login"));
+      .catch(() => {
+        document.cookie = "NEXT_LOCALE=en; path=/; max-age=31536000";
+        router.push("/login", { locale: "en" });
+      });
 
     api<any[]>("/notifications")
       .then(setNotifications)
@@ -48,14 +54,15 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     if (!token) return;
     const socket = getSocket(token);
     const onNotification = (n: any) => {
+      const msg = getNotificationMessage(n, t);
       if (n.type === "schedule_reminder" && n.timeUtc) {
-        const local = new Date(n.timeUtc).toLocaleTimeString("vi-VN", {
+        const local = new Date(n.timeUtc).toLocaleTimeString(locale, {
           hour: "2-digit",
           minute: "2-digit",
         });
-        showToast(`⏰ ${n.message} (${local})`);
+        showToast(`⏰ ${msg} (${local})`);
       } else {
-        showToast(n.message);
+        showToast(msg);
       }
       setNotifications((prev) => [n, ...prev]);
     };
@@ -64,7 +71,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
       socket.off("notification", onNotification);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [t, locale]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -102,7 +109,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     if (diffMin < 60) return t("community.time_minutes_ago", { count: diffMin });
     const h = Math.floor(diffMin / 60);
     if (h < 24) return t("community.time_hours_ago", { count: h });
-    return new Date(iso).toLocaleDateString(pathname.startsWith("/en") ? "en-US" : "vi-VN", {
+    return new Date(iso).toLocaleDateString(locale, {
       day: "2-digit",
       month: "2-digit",
     });
@@ -112,7 +119,8 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     disconnectSocket();
-    router.push("/login");
+    document.cookie = "NEXT_LOCALE=en; path=/; max-age=31536000";
+    router.push("/login", { locale: "en" });
   };
 
   const navItems = [
@@ -149,83 +157,16 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-4">
           <LanguageSwitcher />
           
-          <div className="relative">
-            <button
-              onClick={() => {
-                setNotificationsOpen((v) => !v);
-                setMenuOpen(false);
-              }}
-              className="relative p-2 text-muted hover:text-primary transition-colors rounded-full hover:bg-muted/10 focus-visible:outline-none"
-            >
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-error text-[10px] font-bold text-white ring-2 ring-surface">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-            {notificationsOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setNotificationsOpen(false)} />
-                <div className="absolute right-0 top-12 z-20 w-80 rounded-2xl border border-border bg-surface shadow-xl py-3 animate-in fade-in zoom-in-95 duration-150 max-h-96 overflow-y-auto">
-                  <div className="flex items-center justify-between px-4 pb-2 border-b border-border mb-2">
-                    <span className="font-bold text-sm text-foreground">{t("notifications.title")}</span>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={handleMarkAllAsRead}
-                        className="text-xs text-primary font-semibold hover:underline"
-                      >
-                        {t("notifications.mark_all_read")}
-                      </button>
-                    )}
-                  </div>
-                  {notifications.length === 0 ? (
-                    <div className="px-4 py-6 text-center text-xs text-muted">
-                      {t("notifications.empty")}
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {notifications.map((n) => (
-                        <button
-                          key={n.id}
-                          onClick={() => handleNotificationClick(n)}
-                          className={cn(
-                            "w-full flex items-start gap-3 px-4 py-2.5 text-left text-xs transition-colors hover:bg-muted/10",
-                            !n.read && "bg-primary/5 font-medium"
-                          )}
-                        >
-                          <Avatar
-                            src={n.sender?.avatarUrl ?? undefined}
-                            fallback={n.sender?.displayName?.charAt(0) ?? "?"}
-                            size="sm"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-foreground leading-relaxed break-words">
-                              {n.type === "follow"
-                                ? t("notifications.follow_message", { name: n.sender?.displayName || "Ai đó" })
-                                : n.type === "new_post"
-                                ? t("notifications.new_post_message", { name: n.sender?.displayName || "Ai đó" })
-                                : n.type === "like"
-                                ? t("notifications.like_message", { name: n.sender?.displayName || "Ai đó" })
-                                : n.type === "match"
-                                ? t("notifications.match_message", { name: n.sender?.displayName || "Ai đó" })
-                                : n.message}
-                            </p>
-                            <span className="text-[10px] text-muted mt-1 block">
-                              {timeAgo(n.createdAt)}
-                            </span>
-                          </div>
-                          {!n.read && (
-                            <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+          <NotificationDropdown
+            notifications={notifications}
+            notificationsOpen={notificationsOpen}
+            setNotificationsOpen={setNotificationsOpen}
+            onCloseOtherMenus={() => setMenuOpen(false)}
+            onMarkAllAsRead={handleMarkAllAsRead}
+            onNotificationClick={handleNotificationClick}
+            t={t}
+            locale={locale}
+          />
 
           <div className="relative">
           <button onClick={() => { setMenuOpen((v) => !v); setNotificationsOpen(false); }} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
@@ -284,7 +225,12 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
       <main className="flex-1 overflow-auto bg-background relative">
         {children}
         <TextSelectionPopup
-          targetLang={me?.nativeLang ?? "vi"}
+          targetLang={
+            me?.languages?.find((l: any) => l.role === "native")?.language?.code ||
+            me?.nativeLang ||
+            locale ||
+            "en"
+          }
           onWordSaved={(item, dup) => showToast(dup ? t("vocabulary.save_exists", { term: item.word.term }) : t("vocabulary.save_success", { term: item.word.term }))}
         />
       </main>

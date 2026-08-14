@@ -37,7 +37,7 @@ export function getLanguageInfo(code?: string | null, name?: string | null): Lan
     const displayName =
       item.englishName === item.nativeName
         ? item.englishName
-        : `${item.englishName} (${item.nativeName})`;
+        : `${item.nativeName} (${item.englishName})`;
     return { code: normCode, displayName, ...item };
   }
 
@@ -51,7 +51,7 @@ export function getLanguageInfo(code?: string | null, name?: string | null): Lan
       const displayName =
         item.englishName === item.nativeName
           ? item.englishName
-          : `${item.englishName} (${item.nativeName})`;
+          : `${item.nativeName} (${item.englishName})`;
       return { code: c, displayName, ...item };
     }
   }

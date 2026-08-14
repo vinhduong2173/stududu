@@ -1,10 +1,53 @@
 "use client";
 
 import * as React from "react";
-import { BookOpen, X } from "lucide-react";
+import { BookOpen, X, Volume2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { WordSaveModal, type SavedWord } from "@/components/features/WordSaveModal";
+import { useLocale, useTranslations } from "next-intl";
+
+const speakWord = (text: string, langCode: string = "en-US") => {
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const code = langCode.toLowerCase();
+    utterance.lang = code.includes("vi")
+      ? "vi-VN"
+      : code.includes("fr")
+      ? "fr-FR"
+      : code.includes("zh")
+      ? "zh-CN"
+      : code.includes("ja")
+      ? "ja-JP"
+      : code.includes("ko")
+      ? "ko-KR"
+      : code.includes("es")
+      ? "es-ES"
+      : code.includes("de")
+      ? "de-DE"
+      : "en-US";
+    utterance.rate = 0.85;
+    window.speechSynthesis.speak(utterance);
+  }
+};
+
+const LANG_NAMES: Record<string, string> = {
+  en: "English",
+  fr: "Français",
+  es: "Español",
+  de: "Deutsch",
+  ja: "日本語",
+  ko: "한국어",
+  zh: "中文",
+  vi: "Tiếng Việt",
+};
+
+function getLangName(code?: string | null): string {
+  if (!code) return "English";
+  const c = code.toLowerCase();
+  return LANG_NAMES[c] || c.toUpperCase();
+}
 
 /**
  * TextSelectionPopup — Popup thông minh khi bôi đen từ.
@@ -40,12 +83,16 @@ type LookupResult = {
 type PopupPosition = { top: number; left: number; direction: "above" | "below" };
 
 export function TextSelectionPopup({
-  targetLang = "vi",
+  targetLang,
   onWordSaved,
 }: {
   targetLang?: string;
   onWordSaved?: (item: SavedWord, duplicated: boolean) => void;
 }) {
+  const locale = useLocale();
+  const t = useTranslations("vocabulary");
+  const effectiveTargetLang = targetLang || locale || "en";
+
   const [selectedText, setSelectedText] = React.useState("");
   const [position, setPosition] = React.useState<PopupPosition | null>(null);
   const [result, setResult] = React.useState<LookupResult | null>(null);
@@ -63,10 +110,53 @@ export function TextSelectionPopup({
     result?.dictionary?.phonetic ??
     result?.library?.phonetic ??
     null;
-  const definition =
-    result?.dictionary?.definition ?? result?.library?.definition ?? null;
+  const rawDefinition =
+    result?.dictionary?.definition ??
+    result?.library?.definition ??
+    result?.translation ??
+    null;
   const example =
     result?.dictionary?.example ?? result?.library?.example ?? null;
+
+  const [translatedDef, setTranslatedDef] = React.useState<string | null>(null);
+
+  // Auto-translate definition to user's native language if definition is in English
+  React.useEffect(() => {
+    if (!rawDefinition) {
+      setTranslatedDef(null);
+      return;
+    }
+
+    const isPureEnglish = /^[a-zA-Z0-9\s.,;:'"()\-«»]+$/.test(rawDefinition.trim());
+    if (isPureEnglish && locale && !locale.startsWith("en")) {
+      api<{ translation: string }>("/translate", {
+        method: "POST",
+        body: { text: rawDefinition, target: locale, source: "auto" },
+      })
+        .then((res) => {
+          if (res?.translation) {
+            setTranslatedDef(res.translation);
+          } else {
+            setTranslatedDef(rawDefinition);
+          }
+        })
+        .catch(() => setTranslatedDef(rawDefinition));
+    } else {
+      setTranslatedDef(rawDefinition);
+    }
+  }, [rawDefinition, locale]);
+
+  const definition = translatedDef ?? rawDefinition;
+
+  const handlePlayAudio = () => {
+    const audioUrl = (result?.dictionary as any)?.audioUrl || (result?.library as any)?.audioUrl;
+    if (audioUrl) {
+      const audio = new Audio(audioUrl);
+      audio.play().catch(() => speakWord(selectedText, result?.detectedLang || "en"));
+    } else {
+      speakWord(selectedText, result?.detectedLang || "en");
+    }
+  };
 
   const handleSave = async () => {
     if (!result || saving) return;
@@ -170,7 +260,7 @@ export function TextSelectionPopup({
 
         // Gọi API
         api<LookupResult>(
-          `/vocabulary/lookup?term=${encodeURIComponent(text)}&target=${encodeURIComponent(targetLang)}`
+          `/vocabulary/lookup?term=${encodeURIComponent(text)}&target=${encodeURIComponent(effectiveTargetLang)}`
         )
           .then((data) => {
             if (!controller.signal.aborted) {
@@ -197,7 +287,7 @@ export function TextSelectionPopup({
       document.removeEventListener("mouseup", handleMouseUp);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [targetLang, close]);
+  }, [effectiveTargetLang, close]);
 
   // Đóng khi scroll xa
   React.useEffect(() => {
@@ -253,14 +343,17 @@ export function TextSelectionPopup({
               <h3 className="text-base font-bold text-foreground break-all leading-tight">
                 {selectedText}
               </h3>
+              <button
+                type="button"
+                onClick={handlePlayAudio}
+                className="w-7 h-7 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                title={t("btn_audio_tooltip")}
+              >
+                <Volume2 className="w-4 h-4" />
+              </button>
               {phonetic && (
                 <span className="text-xs font-extrabold rounded-lg px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 shrink-0">
                   {phonetic}
-                </span>
-              )}
-              {partOfSpeech && (
-                <span className="text-[10px] font-bold rounded-full px-2 py-0.5 bg-muted/20 text-muted shrink-0">
-                  {partOfSpeech}
                 </span>
               )}
             </div>
@@ -287,33 +380,23 @@ export function TextSelectionPopup({
             </div>
           ) : result ? (
             <>
-              {/* Bản dịch */}
-              {result.translation && (
-                <div className="flex items-start gap-2 bg-primary/5 rounded-xl px-3 py-2.5">
-                  <span className="text-sm font-semibold text-primary shrink-0">Dịch:</span>
-                  <span className="text-sm text-foreground font-medium leading-relaxed">
-                    {result.translation}
-                  </span>
-                </div>
-              )}
-
-              {/* Định nghĩa */}
+              {/* Định nghĩa (Native Language) */}
               {definition && (
                 <div>
-                  <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
-                    📝 Định nghĩa
+                  <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <span>📖</span> {t("definition_heading")}
                   </p>
-                  <p className="text-sm text-foreground leading-relaxed">
+                  <p className="text-sm font-medium text-foreground leading-relaxed">
                     {definition}
                   </p>
                 </div>
               )}
 
-              {/* Ví dụ */}
+              {/* Ví dụ (Original Target Language) */}
               {example && (
                 <div>
-                  <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
-                    💡 Ví dụ
+                  <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <span>💡</span> {t("example_heading")}
                   </p>
                   <p className="text-sm text-foreground/80 italic leading-relaxed">
                     &ldquo;{example}&rdquo;
@@ -322,27 +405,24 @@ export function TextSelectionPopup({
               )}
 
               {/* Nếu không có gì */}
-              {!result.translation && !definition && !example && (
+              {!definition && !example && (
                 <p className="text-sm text-muted py-2">
-                  Không tìm thấy thông tin cho từ này.
+                  {t("no_info")}
                 </p>
               )}
 
-              {/* Library badge */}
-              {result.library && (
+              {/* Language name badge */}
+              {(result.library?.languageName || result.detectedLang) && (
                 <div className="flex items-center gap-1.5 pt-0.5">
-                  <span className="text-[10px] font-bold rounded-full px-2 py-0.5 bg-success/10 text-success">
-                    🌐 {result.library.saveCount} người đã lưu
-                  </span>
-                  <span className="text-[10px] text-muted">
-                    • {result.library.languageName}
+                  <span className="text-[10px] text-muted font-medium">
+                    • {result.library?.languageName || getLangName(result.detectedLang)}
                   </span>
                 </div>
               )}
             </>
           ) : (
             <p className="text-sm text-error py-2">
-              Không thể tra từ lúc này. Thử lại sau.
+              {t("lookup_error")}
             </p>
           )}
         </div>
@@ -361,7 +441,7 @@ export function TextSelectionPopup({
             )}
           >
             <BookOpen className="w-4 h-4" />
-            {saving ? "Đang lưu..." : "Lưu vào Sổ từ vựng"}
+            {saving ? t("saving_btn") : t("save_to_notebook_btn")}
           </button>
         </div>
       </div>

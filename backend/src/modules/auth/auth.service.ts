@@ -34,10 +34,18 @@ export class AuthService {
   ) {}
 
   // US-01 — đăng ký
-  async register(dto: RegisterDto): Promise<{ user: PublicUser; tokens: AuthTokens }> {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+  async register(
+    dto: RegisterDto,
+  ): Promise<{ user: PublicUser; tokens: AuthTokens }> {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
     if (existing) {
-      throw new ConflictException(this.i18n.t('translation.auth.emailExists', { lang: I18nContext.current()?.lang }));
+      throw new ConflictException(
+        this.i18n.t('translation.auth.emailExists', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
@@ -49,9 +57,13 @@ export class AuthService {
     return { user: this.toPublic(user), tokens: await this.issueTokens(user) };
   }
 
-  async googleLogin(profile: GoogleProfile): Promise<{ user: PublicUser; tokens: AuthTokens }> {
+  async googleLogin(
+    profile: GoogleProfile,
+  ): Promise<{ user: PublicUser; tokens: AuthTokens }> {
     if (!profile || !profile.googleId || !profile.email) {
-      throw new UnauthorizedException('Không thể lấy đủ thông tin (email/Google ID) từ tài khoản Google.');
+      throw new UnauthorizedException(
+        'Không thể lấy đủ thông tin (email/Google ID) từ tài khoản Google.',
+      );
     }
 
     // Check if user already exists with this Google ID
@@ -91,12 +103,23 @@ export class AuthService {
     return { user: this.toPublic(user), tokens: await this.issueTokens(user) };
   }
 
-  async googleLoginToken(idToken: string): Promise<{ user: PublicUser; tokens: AuthTokens }> {
-    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`).catch(() => null);
+  async googleLoginToken(
+    idToken: string,
+  ): Promise<{ user: PublicUser; tokens: AuthTokens }> {
+    const res = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`,
+    ).catch(() => null);
     if (!res || !res.ok) {
-      throw new UnauthorizedException('Google ID Token không hợp lệ hoặc đã hết hạn.');
+      throw new UnauthorizedException(
+        'Google ID Token không hợp lệ hoặc đã hết hạn.',
+      );
     }
-    const payload = (await res.json()) as { sub?: string; email?: string; name?: string; picture?: string };
+    const payload = (await res.json()) as {
+      sub?: string;
+      email?: string;
+      name?: string;
+      picture?: string;
+    };
     if (!payload.email || !payload.sub) {
       throw new UnauthorizedException('Không thể lấy email từ Google Token.');
     }
@@ -113,7 +136,11 @@ export class AuthService {
   // US-02 — kiểm tra email/pass cho LocalStrategy
   async validateUser(email: string, pass: string): Promise<User | null> {
     const user = await this.prisma.user.findUnique({ where: { email } });
-    if (user && user.passwordHash && (await bcrypt.compare(pass, user.passwordHash))) {
+    if (
+      user &&
+      user.passwordHash &&
+      (await bcrypt.compare(pass, user.passwordHash))
+    ) {
       await this.assertNotSuspended(user);
       return user;
     }
@@ -137,10 +164,16 @@ export class AuthService {
         secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
     } catch {
-      throw new UnauthorizedException(this.i18n.t('translation.auth.invalidRefreshToken', { lang: I18nContext.current()?.lang }));
+      throw new UnauthorizedException(
+        this.i18n.t('translation.auth.invalidRefreshToken', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
     if (!user) throw new UnauthorizedException();
     await this.assertNotSuspended(user);
 
@@ -151,7 +184,11 @@ export class AuthService {
   // AC3: thông báo cho người dùng cả LÝ DO (từ log kiểm duyệt) + THỜI HẠN.
   private async assertNotSuspended(user: User): Promise<void> {
     if (user.status === UserStatus.deleted) {
-      throw new ForbiddenException(this.i18n.t('translation.auth.accountBanned', { lang: I18nContext.current()?.lang }));
+      throw new ForbiddenException(
+        this.i18n.t('translation.auth.accountBanned', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
     if (user.status === UserStatus.suspended) {
       if (user.suspendedUntil && user.suspendedUntil <= new Date()) {
@@ -177,8 +214,14 @@ export class AuthService {
             hour: '2-digit',
             minute: '2-digit',
           })
-        : (lang === 'en' ? 'further notice' : 'khi có thông báo mới');
-      const reasonStr = lastAction ? (lang === 'en' ? ` — reason: ${lastAction.reason}` : ` — lý do: ${lastAction.reason}`) : '';
+        : lang === 'en'
+          ? 'further notice'
+          : 'khi có thông báo mới';
+      const reasonStr = lastAction
+        ? lang === 'en'
+          ? ` — reason: ${lastAction.reason}`
+          : ` — lý do: ${lastAction.reason}`
+        : '';
       throw new ForbiddenException(
         this.i18n.t('translation.auth.accountSuspended', {
           lang,

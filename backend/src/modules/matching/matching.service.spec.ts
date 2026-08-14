@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { LanguageRole, UserStatus } from '@prisma/client';
+import { I18nService } from 'nestjs-i18n';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   MatchingService,
@@ -77,10 +78,15 @@ async function buildService(candidates: unknown[]) {
     match: { findMany: jest.fn().mockResolvedValue([]) },
   };
 
+  const i18nMock = {
+    t: jest.fn((key: string) => key),
+  };
+
   const moduleRef = await Test.createTestingModule({
     providers: [
       MatchingService,
       { provide: PrismaService, useValue: prismaMock },
+      { provide: I18nService, useValue: i18nMock },
     ],
   }).compile();
 
@@ -125,8 +131,8 @@ describe('MatchingService.getSuggestions (FS-08)', () => {
     for (const item of result.items) {
       expect(
         item.user.languages.some(
-          (l: { role: string; languageId: number }) =>
-            l.role === 'native' && l.languageId === EN,
+          (l: { role: string; languageId?: number; language?: { id: number } }) =>
+            l.role === 'native' && (l.languageId === EN || l.language?.id === EN),
         ),
       ).toBe(true);
     }

@@ -14,6 +14,15 @@ export const TRANSLATE_LANGS = [
   'ko',
   'zh',
   'fr',
+  'es',
+  'de',
+  'it',
+  'ru',
+  'th',
+  'id',
+  'pt',
+  'ar',
+  'hi',
 ] as const;
 
 export class TranslateDto {

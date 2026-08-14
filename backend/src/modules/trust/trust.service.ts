@@ -12,8 +12,7 @@ export class TrustService {
     private readonly i18n: I18nService,
   ) {}
 
-  // US-17 — report người dùng; FS-24/25 — report nội dung (post / word_library)
-  report(reporterId: number, dto: CreateReportDto) {
+  async report(reporterId: number, dto: CreateReportDto) {
     if (reporterId === dto.reportedId) {
       throw new BadRequestException(
         this.i18n.t('translation.trust.noSelfReport', {
@@ -21,7 +20,8 @@ export class TrustService {
         }),
       );
     }
-    return this.prisma.report.create({
+
+    const report = await this.prisma.report.create({
       data: {
         reporterId,
         reportedId: dto.reportedId,
@@ -30,6 +30,46 @@ export class TrustService {
         targetId: dto.targetId,
       },
     });
+
+    if (dto.targetType === 'post' && dto.targetId) {
+      try {
+        const post = await this.prisma.activityPost.findUnique({
+          where: { id: dto.targetId },
+          include: { group: true },
+        });
+
+        if (post && post.groupId && post.group) {
+          const admins = await this.prisma.groupMember.findMany({
+            where: {
+              groupId: post.groupId,
+              status: 'active',
+              role: { in: ['owner', 'admin'] },
+            },
+            select: { userId: true },
+          });
+
+          const adminUserIds = Array.from(
+            new Set([post.group.creatorId, ...admins.map((a) => a.userId)]),
+          ).filter((id) => id !== reporterId);
+
+          if (adminUserIds.length > 0) {
+            await this.prisma.notification.createMany({
+              data: adminUserIds.map((userId) => ({
+                userId,
+                senderId: reporterId,
+                type: 'group_post_report',
+                message: `[Báo cáo Nhóm] Có báo cáo mới về bài viết trong nhóm "${post.group?.name}": "${dto.reason}"`,
+                referenceId: post.groupId,
+              })),
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to notify group admins of report:', err);
+      }
+    }
+
+    return report;
   }
 
   // US-18 — block
