@@ -47,7 +47,7 @@ export default function DiscoverPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-8">
+    <div className="max-w-7xl mx-auto p-4 md:px-8 md:py-6">
       <DiscoverHeader
         t={d.t}
         tab={d.tab}
@@ -58,7 +58,7 @@ export default function DiscoverPage() {
 
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar filter (desktop) */}
-        <aside className="hidden md:block w-64 shrink-0 space-y-5">
+        <aside className="hidden md:block w-64 shrink-0 space-y-5 sticky top-4">
           <DiscoverFilterPanel {...filterProps} />
           <div className="rounded-2xl p-4 text-white bg-gradient-to-br from-primary to-secondary">
             <div className="text-xl mb-2">💡</div>

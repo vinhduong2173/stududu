@@ -11,7 +11,7 @@ export default function VocabularyPage() {
   const v = useVocabulary();
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 md:py-8 pb-24 space-y-6">
+    <div className="mx-auto max-w-5xl px-4 py-4 md:py-6 pb-16 space-y-6">
       {/* HEADER SECTION */}
       <VocabularyHeader
         t={v.t}

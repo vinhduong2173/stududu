@@ -3,10 +3,10 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package lockfiles
+# Copy package files
 COPY package.json package-lock.json* pnpm-lock.yaml* ./
 
-# Install dependencies using npm
+# Install dependencies
 RUN npm ci
 
 # 2. Build the application
@@ -15,9 +15,16 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Environment variables for build time
+# Build-time environment variables for Next.js client-side (NEXT_PUBLIC_*)
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SOCKET_URL
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ARG NEXT_PUBLIC_FORCE_TURN
+
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV NEXT_PUBLIC_FORCE_TURN=$NEXT_PUBLIC_FORCE_TURN
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
@@ -31,13 +38,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# Security: Create non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy public assets and standalone output
+# Copy public assets and static standalone output
 COPY --from=builder /app/public ./public
-
-# Copy standalone build and static files with correct permissions
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
@@ -46,3 +52,4 @@ USER nextjs
 EXPOSE 3000
 
 CMD ["node", "server.js"]
+

@@ -787,26 +787,12 @@ export default function CommunityPage() {
   );
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-24">
-      {/* Header Section */}
-      <div className="mb-6">
-        <div className="sd-eyebrow mb-1">
-          <Trophy className="w-3.5 h-3.5 text-primary" />
-          <span>{t("community.eyebrow") || "CỘNG ĐỒNG STUDUDU"}</span>
-        </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground font-display flex items-center gap-2.5">
-          {t("community.title")}
-        </h1>
-        <p className="text-muted text-sm mt-1">
-          {t("community.page_subtitle") || "Chia sẻ hành trình, tìm bạn luyện tập và tham gia sự kiện."}
-        </p>
-      </div>
-
+    <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 pb-16">
       {/* 3 Column Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_360px] gap-6 xl:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_360px] gap-5 xl:gap-6 items-start">
         
         {/* LEFT COLUMN: Sidebar Navigation */}
-        <aside className="bg-surface rounded-2xl border border-border shadow-sm p-2 sticky top-20">
+        <aside className="bg-surface rounded-2xl border border-border shadow-sm p-2 sticky top-4">
           <nav className="space-y-1">
             <button
               onClick={() => setActiveTab("feed")}
@@ -850,7 +836,21 @@ export default function CommunityPage() {
         </aside>
 
         {/* MIDDLE COLUMN: Main Content Area */}
-        <main className="space-y-6">
+        <main className="space-y-5">
+          {/* Header Section inside middle column */}
+          <div className="px-1 py-1 mb-1">
+            <div className="sd-eyebrow mb-1">
+              <Trophy className="w-3.5 h-3.5 text-primary" />
+              <span>{t("community.eyebrow") || "CỘNG ĐỒNG STUDUDU"}</span>
+            </div>
+            <h1 className="text-xl md:text-2xl font-bold text-foreground font-display flex items-center gap-2.5">
+              {t("community.title")}
+            </h1>
+            <p className="text-muted text-xs md:text-sm mt-1">
+              {t("community.page_subtitle") || "Chia sẻ hành trình, tìm bạn luyện tập và tham gia sự kiện."}
+            </p>
+          </div>
+
           {activeTab === "feed" && (
             <>
               {/* Post Composer Card */}
@@ -1324,7 +1324,7 @@ export default function CommunityPage() {
         </main>
 
         {/* RIGHT COLUMN: Right Rail Widgets */}
-        <aside className="space-y-6 sticky top-20">
+        <aside className="space-y-6 sticky top-4">
           
           {/* WIDGET 1: TỪ VỰNG MỚI HÔM NAY (Daily New Vocabulary) */}
           <div className="bg-surface rounded-2xl border border-border shadow-sm p-4 overflow-hidden relative">

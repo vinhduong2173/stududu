@@ -17,7 +17,7 @@ export function VocabularyHeader({
   learningCount,
 }: VocabularyHeaderProps) {
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface p-6 rounded-3xl border border-border shadow-sm">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface p-6 rounded-3xl shadow-sm">
       <div>
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary mb-1">
           <BookOpen className="w-4 h-4" /> {t("header_badge")}

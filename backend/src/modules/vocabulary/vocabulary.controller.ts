@@ -94,4 +94,13 @@ export class VocabularyController {
   ) {
     return this.vocabularyService.getDailyWords(user.sub, target, native);
   }
+
+  // Lấy danh sách đáp án nhiễu (distractors) ngẫu nhiên cho Quiz từ vựng
+  @Get('distractors')
+  getDistractors(
+    @Query('native') native?: string,
+    @Query('target') target?: string,
+  ) {
+    return this.vocabularyService.getDistractors(native, target);
+  }
 }

@@ -134,7 +134,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Desktop Top Nav */}
-      <header className="hidden md:flex h-16 items-center justify-between border-b border-border bg-surface px-8 shadow-sm">
+      <header className="hidden md:flex h-16 items-center justify-between bg-surface px-8 shadow-sm">
         <Logo size="md" href="/discover" />
         <nav className="flex gap-8">
           {navItems.map((item) => {

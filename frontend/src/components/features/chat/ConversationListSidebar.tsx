@@ -38,7 +38,7 @@ export function ConversationListSidebar({
         selectedId ? "hidden md:flex" : "flex",
       )}
     >
-      <div className="p-4 border-b border-border">
+      <div className="p-4">
         <h1 className="font-display text-xl font-extrabold tracking-tight text-foreground mb-3">
           {t("chat.title")}
         </h1>

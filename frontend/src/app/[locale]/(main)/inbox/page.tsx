@@ -28,7 +28,7 @@ function InboxContent() {
   const c = useChatInbox();
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex bg-background max-w-7xl mx-auto border-x border-border overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] w-full flex bg-background overflow-hidden">
       <ConversationListSidebar
         t={c.t}
         me={c.me}
