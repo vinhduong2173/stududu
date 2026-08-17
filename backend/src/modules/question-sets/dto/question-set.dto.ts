@@ -19,11 +19,13 @@ import {
 import { QuestionType, SetStatus } from '@prisma/client';
 
 export class CreateQuestionSetDto {
+  @IsOptional()
   @IsInt()
-  languageId!: number;
+  languageId?: number;
 
+  @IsOptional()
   @IsInt()
-  topicId!: number;
+  topicId?: number;
 
   @IsString()
   @IsNotEmpty({ message: 'Khung trình độ không được để trống' })

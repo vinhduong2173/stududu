@@ -118,17 +118,31 @@ export class QuestionSetsService {
   }
 
   async createSet(adminId: number, dto: CreateQuestionSetDto) {
-    await this.getVocabTopicOrThrow(dto.topicId);
-    const language = await this.prisma.language.findUnique({
-      where: { id: dto.languageId },
-    });
-    if (!language) throw new NotFoundException('Không tìm thấy ngôn ngữ');
+    let topicId = dto.topicId;
+    let topic = topicId ? await this.prisma.vocabTopic.findUnique({ where: { id: topicId } }) : null;
+    if (!topic) {
+      const firstTopic = await this.prisma.vocabTopic.findFirst({ where: { hidden: false } }) || await this.prisma.vocabTopic.findFirst();
+      if (firstTopic) {
+        topicId = firstTopic.id;
+      } else {
+        const createdTopic = await this.prisma.vocabTopic.create({ data: { name: 'Tổng hợp' } });
+        topicId = createdTopic.id;
+      }
+    }
+
+    let languageId = dto.languageId;
+    let language = languageId ? await this.prisma.language.findUnique({ where: { id: languageId } }) : null;
+    if (!language) {
+      const firstLang = await this.prisma.language.findFirst();
+      if (!firstLang) throw new NotFoundException('Không tìm thấy ngôn ngữ nào trong hệ thống');
+      languageId = firstLang.id;
+    }
 
     try {
       return await this.prisma.questionSet.create({
         data: {
-          languageId: dto.languageId,
-          topicId: dto.topicId,
+          languageId,
+          topicId,
           framework: dto.framework,
           level: dto.level,
           levelOrder: levelOrderOf(dto.level),
