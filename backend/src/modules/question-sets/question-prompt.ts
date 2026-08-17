@@ -6,7 +6,7 @@
  * Đổi nội dung prompt thì PHẢI tăng PROMPT_VERSION — `sourceMeta.promptVersion`
  * là thứ duy nhất truy vết được câu hỏi lỗi thuộc phiên bản prompt nào (BR-49).
  */
-export const PROMPT_VERSION = 'v2';
+export const PROMPT_VERSION = 'v3';
 
 export interface QuestionPromptVars {
   targetLanguage: string;
@@ -28,9 +28,11 @@ export function buildQuestionPrompt(vars: QuestionPromptVars): string {
     note,
   } = vars;
 
+  const hasText = Boolean(extractedText && extractedText.trim().length >= 50);
+
   return `Bạn là người biên soạn câu hỏi trắc nghiệm tiếng ${targetLanguage} cho người học trình độ ${framework} ${level}.
 
-Từ đoạn văn bản sau, hãy sinh ra ${questionCount} câu hỏi trắc nghiệm (4 đáp án, đúng 1 đáp án đúng).
+Hãy đọc và phân tích toàn bộ nội dung từ ${hasText ? 'đoạn văn bản' : 'tài liệu/hình ảnh đính kèm'} bên dưới, sinh ra ${questionCount} câu hỏi trắc nghiệm (4 đáp án, đúng 1 đáp án đúng).
 
 QUY TẮC BẮT BUỘC:
 1. Độ khó phải đúng trình độ ${level} — không dùng từ vựng/ngữ pháp vượt quá cấp độ này.
@@ -48,12 +50,9 @@ QUY TẮC BẮT BUỘC:
    - \`type\` = "grammar" → \`term\` và \`passage\` để null.
 8. Mỗi câu một \`prompt\` khác nhau, tối đa 1000 ký tự — không lặp lại nguyên văn câu đã sinh.
 9. Viết \`explanation\` ngắn gọn giải thích vì sao đáp án đúng, bằng tiếng Việt.
-10. Nếu đoạn văn bản không đủ nội dung để sinh đủ ${questionCount} câu chất lượng, sinh ít hơn — KHÔNG bịa nội dung ngoài đoạn văn bản.
+10. Nếu tài liệu không đủ nội dung để sinh đủ ${questionCount} câu chất lượng, sinh ít hơn — KHÔNG bịa nội dung ngoài tài liệu.
 ${note ? `11. Yêu cầu thêm từ người biên soạn: ${note}\n` : ''}
-Đoạn văn bản:
-"""
-${extractedText}
-"""
+${hasText ? `Nội dung tài liệu:\n"""\n${extractedText}\n"""` : 'Vui lòng nhận diện chữ và phân tích hình ảnh/trang PDF đính kèm để tạo câu hỏi.'}`;
 
 Trả về JSON đúng schema, KHÔNG kèm lời dẫn hay markdown code fence:
 {

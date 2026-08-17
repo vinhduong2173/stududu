@@ -30,6 +30,8 @@ export interface GenerateInput {
   level: string;
   questionCount: number;
   extractedText: string;
+  fileBuffer?: Buffer;
+  fileMimeType?: string;
   note?: string;
 }
 
@@ -129,12 +131,23 @@ export class AiQuestionGeneratorService {
     const model = this.config.get<string>('GEMINI_MODEL') || DEFAULT_MODEL;
     const prompt = buildQuestionPrompt(input);
 
+    const contents: any[] = [];
+    if (input.fileBuffer && input.fileMimeType) {
+      contents.push({
+        inlineData: {
+          data: input.fileBuffer.toString('base64'),
+          mimeType: input.fileMimeType === 'application/octet-stream' ? 'application/pdf' : input.fileMimeType,
+        },
+      });
+    }
+    contents.push(prompt);
+
     let lastError: unknown;
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await client.models.generateContent({
           model,
-          contents: prompt,
+          contents,
           config: {
             responseMimeType: 'application/json',
             responseSchema: QUESTION_RESPONSE_SCHEMA,

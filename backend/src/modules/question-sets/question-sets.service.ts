@@ -255,6 +255,8 @@ export class QuestionSetsService {
         level: set.level,
         questionCount: options.questionCount ?? REQUIRED_QUESTION_COUNT,
         extractedText: extracted.text,
+        fileBuffer: file.buffer,
+        fileMimeType: file.mimetype,
         note: options.note,
       },
       { fileName: file.originalname, fileType: file.mimetype },

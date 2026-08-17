@@ -96,10 +96,15 @@ export class FileExtractorService {
     const raw = await this.readByType(file, type);
     const cleaned = raw.replace(/\s+/g, ' ').trim();
 
-    if (cleaned.length === 0) {
-      throw new BadRequestException(this.noTextMessage(type));
-    }
     if (cleaned.length < MIN_CHARS) {
+      if (type === 'pdf') {
+        this.logger.log('PDF text is empty or too short (scanned image PDF). Falling back to Multimodal Gemini Vision.');
+        return {
+          text: cleaned,
+          charCount: cleaned.length,
+          truncated: false,
+        };
+      }
       throw new BadRequestException(
         `Nội dung đọc được quá ngắn (${cleaned.length} ký tự), cần tối thiểu ${MIN_CHARS} ký tự ` +
           'để sinh được câu hỏi có chất lượng. Hãy dùng tài liệu dài hơn.',
