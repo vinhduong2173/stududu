@@ -27,6 +27,8 @@ export default function CreateQuizPage() {
   });
 
   const [file, setFile] = React.useState<File | null>(null);
+  const [isCustomCount, setIsCustomCount] = React.useState(false);
+  const [customCountInput, setCustomCountInput] = React.useState(15);
   const [statusStep, setStatusStep] = React.useState<
     "idle" | "creating" | "generating" | "importing" | "publishing" | "done"
   >("idle");
@@ -45,7 +47,7 @@ export default function CreateQuizPage() {
     }
 
     try {
-      // Step 1: Create Set shell (Defaulting languageId: 1, topicId: 1 behind the scenes)
+      // Step 1: Create Set shell
       setStatusStep("creating");
       const createdSet = await api<{ id: number }>("/question-sets/user-create", {
         method: "POST",
@@ -68,7 +70,9 @@ export default function CreateQuizPage() {
         const blob = new Blob([form.note], { type: "text/plain" });
         formData.append("file", blob, "lesson-note.txt");
       }
-      formData.append("questionCount", String(form.questionCount));
+      
+      const finalQuestionCount = isCustomCount ? customCountInput : form.questionCount;
+      formData.append("questionCount", String(finalQuestionCount));
       if (form.note) formData.append("note", form.note);
 
       const dryRun = await apiUpload<{
@@ -155,19 +159,44 @@ export default function CreateQuizPage() {
               </select>
             </label>
 
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-bold text-foreground">{t("question_count_select_label")}</span>
+            <label className="block space-y-1.5">
+              <span className="block text-xs font-bold text-foreground">{t("question_count_select_label")}</span>
               <select
                 className={INPUT_CLASS}
-                value={form.questionCount}
-                onChange={(e) => setForm({ ...form, questionCount: Number(e.target.value) })}
+                value={isCustomCount ? -1 : form.questionCount}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (val === -1) {
+                    setIsCustomCount(true);
+                  } else {
+                    setIsCustomCount(false);
+                    setForm({ ...form, questionCount: val });
+                  }
+                }}
                 disabled={isProcessing}
               >
+                <option value={0}>{t("q_count_auto")}</option>
                 <option value={5}>{t("q_count_5")}</option>
                 <option value={10}>{t("q_count_10")}</option>
                 <option value={15}>{t("q_count_15")}</option>
                 <option value={20}>{t("q_count_20")}</option>
+                <option value={30}>{t("q_count_30")}</option>
+                <option value={50}>{t("q_count_50")}</option>
+                <option value={-1}>{t("q_count_custom")}</option>
               </select>
+
+              {isCustomCount && (
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  className={cn(INPUT_CLASS, "mt-2 font-bold text-primary")}
+                  placeholder={t("custom_q_count_placeholder")}
+                  value={customCountInput}
+                  onChange={(e) => setCustomCountInput(Math.max(1, Math.min(100, Number(e.target.value))))}
+                  disabled={isProcessing}
+                />
+              )}
             </label>
           </div>
 

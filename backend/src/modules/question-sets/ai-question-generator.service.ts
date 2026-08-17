@@ -11,7 +11,7 @@ import { buildQuestionPrompt, PROMPT_VERSION } from './question-prompt';
  * Model mặc định — Gemini có gói miễn phí, xem `question-set-ai-generation-addendum.md`
  * mục 2b về lý do đổi khỏi Claude Haiku. Đổi qua biến GEMINI_MODEL trong .env.
  */
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'gemini-flash-latest';
 
 /** Một câu hỏi thô AI trả về — CHƯA qua validate (xem question-validator.service.ts) */
 export interface RawGeneratedQuestion {
