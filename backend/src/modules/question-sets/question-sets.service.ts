@@ -223,7 +223,7 @@ export class QuestionSetsService {
       );
     }
 
-    const extracted = await this.extractor.extract(file.buffer, file.mimetype);
+    const extracted = await this.extractor.extract(file.buffer, file.mimetype, file.originalname);
 
     // Đặt mốc TRƯỚC khi gọi AI: BR-52 chặn bấm nhầm liên tiếp, mà lần bấm thứ hai
     // thường rơi vào lúc lần đầu còn đang chạy. Đặt sau khi gọi xong thì hai
