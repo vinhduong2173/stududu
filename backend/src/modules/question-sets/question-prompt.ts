@@ -52,7 +52,7 @@ QUY TẮC BẮT BUỘC:
 9. Viết \`explanation\` ngắn gọn giải thích vì sao đáp án đúng, bằng tiếng Việt.
 10. Nếu tài liệu không đủ nội dung để sinh đủ ${questionCount} câu chất lượng, sinh ít hơn — KHÔNG bịa nội dung ngoài tài liệu.
 ${note ? `11. Yêu cầu thêm từ người biên soạn: ${note}\n` : ''}
-${hasText ? `Nội dung tài liệu:\n"""\n${extractedText}\n"""` : 'Vui lòng nhận diện chữ và phân tích hình ảnh/trang PDF đính kèm để tạo câu hỏi.'}`;
+${hasText ? `Nội dung tài liệu:\n"""\n${extractedText}\n"""` : 'Vui lòng nhận diện chữ và phân tích hình ảnh/trang PDF đính kèm để tạo câu hỏi.'}
 
 Trả về JSON đúng schema, KHÔNG kèm lời dẫn hay markdown code fence:
 {

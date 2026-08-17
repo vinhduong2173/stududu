@@ -118,7 +118,7 @@ export class QuestionSetsService {
   }
 
   async createSet(adminId: number, dto: CreateQuestionSetDto) {
-    let topicId = dto.topicId;
+    let topicId: number = dto.topicId ?? 0;
     let topic = topicId ? await this.prisma.vocabTopic.findUnique({ where: { id: topicId } }) : null;
     if (!topic) {
       const firstTopic = await this.prisma.vocabTopic.findFirst({ where: { hidden: false } }) || await this.prisma.vocabTopic.findFirst();
@@ -130,7 +130,7 @@ export class QuestionSetsService {
       }
     }
 
-    let languageId = dto.languageId;
+    let languageId: number = dto.languageId ?? 0;
     let language = languageId ? await this.prisma.language.findUnique({ where: { id: languageId } }) : null;
     if (!language) {
       const firstLang = await this.prisma.language.findFirst();
