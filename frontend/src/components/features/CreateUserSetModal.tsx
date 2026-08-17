@@ -4,7 +4,7 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { Sparkles, Upload, X, FileText, Loader2, CheckCircle2, Hash } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { api, ApiError } from "@/lib/api";
+import { api, apiUpload, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { CEFR_LEVELS } from "@/lib/questionSets";
 
@@ -73,13 +73,10 @@ export function CreateUserSetModal({
       formData.append("questionCount", String(form.questionCount));
       if (form.note) formData.append("note", form.note);
 
-      const dryRun = await api<{
+      const dryRun = await apiUpload<{
         rows: { valid: boolean; question: any }[];
         sourceMeta: any;
-      }>(`/question-sets/${createdSet.id}/user-generate`, {
-        method: "POST",
-        body: formData,
-      });
+      }>(`/question-sets/${createdSet.id}/user-generate`, formData);
 
       const validQuestions = dryRun.rows.filter((r) => r.valid && r.question).map((r) => r.question);
       if (validQuestions.length === 0) {

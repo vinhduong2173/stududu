@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Sparkles, Upload, ArrowLeft, Loader2, CheckCircle2, FileText, Hash } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { api, ApiError } from "@/lib/api";
+import { api, apiUpload, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { CEFR_LEVELS } from "@/lib/questionSets";
 import { Link } from "@/i18n/routing";
@@ -71,13 +71,10 @@ export default function CreateQuizPage() {
       formData.append("questionCount", String(form.questionCount));
       if (form.note) formData.append("note", form.note);
 
-      const dryRun = await api<{
+      const dryRun = await apiUpload<{
         rows: { valid: boolean; question: any }[];
         sourceMeta: any;
-      }>(`/question-sets/${createdSet.id}/user-generate`, {
-        method: "POST",
-        body: formData,
-      });
+      }>(`/question-sets/${createdSet.id}/user-generate`, formData);
 
       const validQuestions = dryRun.rows.filter((r) => r.valid && r.question).map((r) => r.question);
       if (validQuestions.length === 0) {
