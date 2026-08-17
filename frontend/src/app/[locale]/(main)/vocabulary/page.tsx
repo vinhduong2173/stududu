@@ -11,8 +11,6 @@ import { CreateUserSetModal } from "@/components/features/CreateUserSetModal";
 
 export default function VocabularyPage() {
   const v = useVocabulary();
-  const router = useRouter();
-  const [showAiModal, setShowAiModal] = React.useState(false);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 md:py-8 pb-24 space-y-6">
@@ -22,7 +20,6 @@ export default function VocabularyPage() {
         totalCount={v.totalCount}
         masteredCount={v.masteredCount}
         learningCount={v.learningCount}
-        onOpenAiModal={() => setShowAiModal(true)}
       />
 
       {/* MAIN TABS SWITCHER */}
@@ -76,16 +73,6 @@ export default function VocabularyPage() {
           selectedWordId={v.selectedWordId}
           getDefinitionForTargetLang={v.getDefinitionForTargetLang}
           handleDeleteWord={v.handleDeleteWord}
-        />
-      )}
-
-      {showAiModal && (
-        <CreateUserSetModal
-          onClose={() => setShowAiModal(false)}
-          onCreated={(newSetId) => {
-            setShowAiModal(false);
-            router.push(`/quiz/${newSetId}`);
-          }}
         />
       )}
 

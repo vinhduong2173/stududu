@@ -58,13 +58,13 @@ export default function QuizListPage() {
           <p className="mt-1 text-sm text-muted">{t("subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => setShowAiModal(true)}
+          <Link
+            href="/quiz/create"
             className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary via-purple-600 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 transition-all hover:opacity-95 hover:scale-[1.02] active:scale-[0.98]"
           >
             <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
             <span>Tạo đề AI</span>
-          </button>
+          </Link>
           {quota && !quota.exempt && (
             <div
               className={cn(
