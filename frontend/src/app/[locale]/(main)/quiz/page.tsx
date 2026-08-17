@@ -14,7 +14,6 @@ import {
   LearnerSet,
   VocabTopic,
 } from "@/lib/questionSets";
-import { CreateUserSetModal } from "@/components/features/CreateUserSetModal";
 
 export default function QuizListPage() {
   const t = useTranslations("quiz");
@@ -26,7 +25,6 @@ export default function QuizListPage() {
   const [topicId, setTopicId] = React.useState<number | "all">("all");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [showAiModal, setShowAiModal] = React.useState(false);
 
   React.useEffect(() => {
     Promise.all([
@@ -198,14 +196,6 @@ export default function QuizListPage() {
             ))}
           </div>
         </section>
-      {showAiModal && (
-        <CreateUserSetModal
-          onClose={() => setShowAiModal(false)}
-          onCreated={(newSetId) => {
-            setShowAiModal(false);
-            router.push(`/quiz/${newSetId}`);
-          }}
-        />
       )}
     </div>
   );
