@@ -98,6 +98,7 @@ export class QuestionSetsService {
     languageId?: number;
     topicId?: number;
     level?: string;
+    createdById?: number;
   }) {
     return this.prisma.questionSet.findMany({
       where: {
@@ -105,6 +106,7 @@ export class QuestionSetsService {
         ...(filter.languageId ? { languageId: filter.languageId } : {}),
         ...(filter.topicId ? { topicId: filter.topicId } : {}),
         ...(filter.level ? { level: filter.level } : {}),
+        ...(filter.createdById ? { createdById: filter.createdById } : {}),
       },
       include: {
         language: { select: { id: true, code: true, name: true } },
@@ -556,6 +558,28 @@ export class QuestionSetsService {
         status: SetStatus.published,
         publishedAt: new Date(),
         updatedById: adminId,
+      },
+    });
+  }
+
+  async userPublishSet(userId: number, setId: number) {
+    const set = await this.prisma.questionSet.findUnique({
+      where: { id: setId },
+      include: { questions: { where: { status: 'active' } } },
+    });
+    if (!set) throw new NotFoundException('Không tìm thấy bộ đề');
+    if (set.createdById !== userId) {
+      throw new BadRequestException('Bạn không phải người tạo bộ đề này');
+    }
+    if (set.questions.length === 0) {
+      throw new BadRequestException('Bộ đề chưa có câu hỏi nào');
+    }
+    return this.prisma.questionSet.update({
+      where: { id: setId },
+      data: {
+        status: SetStatus.published,
+        publishedAt: new Date(),
+        updatedById: userId,
       },
     });
   }

@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { GraduationCap, History, Loader2, Trophy } from "lucide-react";
+import { GraduationCap, History, Loader2, Sparkles, Trophy } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
 import { api, ApiError } from "@/lib/api";
@@ -13,9 +14,11 @@ import {
   LearnerSet,
   VocabTopic,
 } from "@/lib/questionSets";
+import { CreateUserSetModal } from "@/components/features/CreateUserSetModal";
 
 export default function QuizListPage() {
   const t = useTranslations("quiz");
+  const router = useRouter();
   const [sets, setSets] = React.useState<LearnerSet[]>([]);
   const [quota, setQuota] = React.useState<DailyQuota | null>(null);
   const [topics, setTopics] = React.useState<VocabTopic[]>([]);
@@ -23,6 +26,7 @@ export default function QuizListPage() {
   const [topicId, setTopicId] = React.useState<number | "all">("all");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [showAiModal, setShowAiModal] = React.useState(false);
 
   React.useEffect(() => {
     Promise.all([
@@ -46,30 +50,39 @@ export default function QuizListPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
             <GraduationCap className="h-6 w-6 text-primary" /> {t("title")}
           </h1>
           <p className="mt-1 text-sm text-muted">{t("subtitle")}</p>
         </div>
-        {quota && !quota.exempt && (
-          <div
-            className={cn(
-              "rounded-2xl border px-4 py-2 text-sm",
-              quota.remaining > 0
-                ? "border-border bg-surface text-foreground"
-                : "border-amber-200 bg-amber-50 text-amber-800",
-            )}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setShowAiModal(true)}
+            className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary via-purple-600 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 transition-all hover:opacity-95 hover:scale-[1.02] active:scale-[0.98]"
           >
-            <p className="font-semibold">
-              {t("quota", { used: quota.used, limit: quota.limit })}
-            </p>
-            {quota.remaining === 0 && (
-              <p className="text-xs">{t("quota_exhausted")}</p>
-            )}
-          </div>
-        )}
+            <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+            <span>Tạo đề AI</span>
+          </button>
+          {quota && !quota.exempt && (
+            <div
+              className={cn(
+                "rounded-2xl border px-4 py-2 text-sm",
+                quota.remaining > 0
+                  ? "border-border bg-surface text-foreground"
+                  : "border-amber-200 bg-amber-50 text-amber-800",
+              )}
+            >
+              <p className="font-semibold">
+                {t("quota", { used: quota.used, limit: quota.limit })}
+              </p>
+              {quota.remaining === 0 && (
+                <p className="text-xs">{t("quota_exhausted")}</p>
+              )}
+            </div>
+          )}
+        </div>
       </header>
 
       {error && (
@@ -185,6 +198,14 @@ export default function QuizListPage() {
             ))}
           </div>
         </section>
+      {showAiModal && (
+        <CreateUserSetModal
+          onClose={() => setShowAiModal(false)}
+          onCreated={(newSetId) => {
+            setShowAiModal(false);
+            router.push(`/quiz/${newSetId}`);
+          }}
+        />
       )}
     </div>
   );
