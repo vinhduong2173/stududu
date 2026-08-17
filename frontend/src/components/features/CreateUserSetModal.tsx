@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, Upload, X, FileText, Loader2, CheckCircle2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Sparkles, Upload, X, FileText, Loader2, CheckCircle2, Hash } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { CEFR_LEVELS, LanguageRef, VocabTopic } from "@/lib/questionSets";
+import { CEFR_LEVELS } from "@/lib/questionSets";
 
 const INPUT_CLASS =
   "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-primary";
@@ -17,13 +18,8 @@ export function CreateUserSetModal({
   onClose: () => void;
   onCreated: (newSetId: number) => void;
 }) {
-  const [languages, setLanguages] = React.useState<LanguageRef[]>([]);
-  const [topics, setTopics] = React.useState<VocabTopic[]>([]);
-  const [loadingInit, setLoadingInit] = React.useState(true);
-
+  const t = useTranslations("quiz");
   const [form, setForm] = React.useState({
-    languageId: 0,
-    topicId: 0,
     framework: "CEFR",
     level: "A1",
     title: "",
@@ -38,36 +34,15 @@ export function CreateUserSetModal({
   >("idle");
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    Promise.all([
-      api<LanguageRef[]>("/question-sets/topics").then(() => api<LanguageRef[]>("/admin/languages")).catch(() => [
-        { id: 1, code: "vi", name: "Tiếng Việt" },
-        { id: 2, code: "en", name: "English" },
-        { id: 3, code: "zh", name: "中文" },
-        { id: 4, code: "ja", name: "日本語" },
-        { id: 5, code: "ko", name: "한국어" },
-      ]),
-      api<VocabTopic[]>("/question-sets/topics"),
-    ])
-      .then(([langs, tps]) => {
-        setLanguages(langs);
-        setTopics(tps);
-        if (langs.length > 0) setForm((f) => ({ ...f, languageId: langs[0].id }));
-        if (tps.length > 0) setForm((f) => ({ ...f, topicId: tps[0].id }));
-      })
-      .catch((e: ApiError) => setError(e.message))
-      .finally(() => setLoadingInit(false));
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!form.title.trim()) {
-      setError("Vui lòng nhập tiêu đề bài thi");
+      setError(t("err_missing_title"));
       return;
     }
     if (!file && !form.note.trim()) {
-      setError("Vui lòng tải lên file tài liệu hoặc nhập nội dung bài học để AI sinh câu hỏi");
+      setError(t("err_missing_content"));
       return;
     }
 
@@ -77,8 +52,8 @@ export function CreateUserSetModal({
       const createdSet = await api<{ id: number }>("/question-sets/user-create", {
         method: "POST",
         body: {
-          languageId: form.languageId,
-          topicId: form.topicId,
+          languageId: 1,
+          topicId: 1,
           framework: form.framework,
           level: form.level,
           title: form.title,
@@ -92,7 +67,6 @@ export function CreateUserSetModal({
       if (file) {
         formData.append("file", file);
       } else {
-        // Create virtual txt file from note
         const blob = new Blob([form.note], { type: "text/plain" });
         formData.append("file", blob, "lesson-note.txt");
       }
@@ -109,7 +83,7 @@ export function CreateUserSetModal({
 
       const validQuestions = dryRun.rows.filter((r) => r.valid && r.question).map((r) => r.question);
       if (validQuestions.length === 0) {
-        throw new Error("AI không sinh được câu hỏi nào từ nội dung tài liệu này. Vui lòng kiểm tra lại tài liệu.");
+        throw new Error(t("err_ai_empty"));
       }
 
       // Step 3: Import Questions
@@ -154,8 +128,8 @@ export function CreateUserSetModal({
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-foreground">Tạo đề thi bằng AI (Gemini)</h2>
-              <p className="text-xs text-muted">Tự động sinh bộ câu hỏi trắc nghiệm từ tài liệu</p>
+              <h2 className="text-lg font-bold text-foreground">{t("create_ai_title")}</h2>
+              <p className="text-xs text-muted">{t("create_ai_subtitle")}</p>
             </div>
           </div>
           <button type="button" onClick={onClose} disabled={isProcessing} className="text-muted hover:text-foreground">
@@ -163,124 +137,100 @@ export function CreateUserSetModal({
           </button>
         </div>
 
-        {loadingInit ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-muted">Ngôn ngữ</span>
-                <select
-                  className={INPUT_CLASS}
-                  value={form.languageId}
-                  onChange={(e) => setForm({ ...form, languageId: Number(e.target.value) })}
-                  disabled={isProcessing}
-                >
-                  {languages.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-muted">Chủ đề từ vựng</span>
-                <select
-                  className={INPUT_CLASS}
-                  value={form.topicId}
-                  onChange={(e) => setForm({ ...form, topicId: Number(e.target.value) })}
-                  disabled={isProcessing}
-                >
-                  {topics.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-muted">Trình độ</span>
-                <select
-                  className={INPUT_CLASS}
-                  value={form.level}
-                  onChange={(e) => setForm({ ...form, level: e.target.value })}
-                  disabled={isProcessing}
-                >
-                  {CEFR_LEVELS.map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-muted">Số lượng câu hỏi</span>
-                <select
-                  className={INPUT_CLASS}
-                  value={form.questionCount}
-                  onChange={(e) => setForm({ ...form, questionCount: Number(e.target.value) })}
-                  disabled={isProcessing}
-                >
-                  <option value={5}>5 câu (Ôn nhanh)</option>
-                  <option value={10}>10 câu (Tiêu chuẩn)</option>
-                  <option value={15}>15 câu (Chi tiết)</option>
-                  <option value={20}>20 câu (Bộ đề đầy đủ)</option>
-                </select>
-              </label>
-            </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold text-muted">{t("level_cefr_label")}</span>
+            <select
+              className={INPUT_CLASS}
+              value={form.level}
+              onChange={(e) => setForm({ ...form, level: e.target.value })}
+              disabled={isProcessing}
+            >
+              {CEFR_LEVELS.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold text-muted">{t("question_count_select_label")}</span>
+            <select
+              className={INPUT_CLASS}
+              value={form.questionCount}
+              onChange={(e) => setForm({ ...form, questionCount: Number(e.target.value) })}
+              disabled={isProcessing}
+            >
+              <option value={5}>{t("q_count_5")}</option>
+              <option value={10}>{t("q_count_10")}</option>
+              <option value={15}>{t("q_count_15")}</option>
+              <option value={20}>{t("q_count_20")}</option>
+            </select>
+          </label>
+        </div>
 
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-muted">Tiêu đề bộ đề thi *</span>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-muted">{t("title_input_label")}</span>
+          <input
+            className={INPUT_CLASS}
+            placeholder={t("title_input_placeholder")}
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            disabled={isProcessing}
+            required
+          />
+        </label>
+
+        <label className="block">
+          <div className="flex items-center gap-1 mb-1">
+            <Hash className="h-3 w-3 text-primary" />
+            <span className="text-xs font-semibold text-muted">{t("desc_input_label")}</span>
+          </div>
+          <textarea
+            className={cn(INPUT_CLASS, "min-h-16 text-xs")}
+            placeholder={t("desc_input_placeholder")}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            disabled={isProcessing}
+          />
+        </label>
+
+        <div className="space-y-2 rounded-2xl border border-dashed border-border bg-background p-4">
+          <span className="block text-xs font-semibold text-foreground">{t("content_source_label")}</span>
+          
+          <div className="flex items-center gap-3">
+            <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium text-foreground hover:bg-muted/10">
+              <Upload className="h-4 w-4 text-primary" />
+              {file ? file.name : t("upload_file_btn")}
               <input
-                className={INPUT_CLASS}
-                placeholder="Ví dụ: Ôn tập từ vựng chủ đề Du lịch · A1"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                type="file"
+                accept=".pdf,.docx,.txt"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 disabled={isProcessing}
-                required
               />
             </label>
+            {file && (
+              <button
+                type="button"
+                onClick={() => setFile(null)}
+                className="text-xs text-rose-500 hover:underline"
+              >
+                {t("delete_file_btn")}
+              </button>
+            )}
+          </div>
 
-            <div className="space-y-2 rounded-2xl border border-dashed border-border bg-background p-4">
-              <span className="block text-xs font-semibold text-foreground">Nguồn nội dung tạo câu hỏi *</span>
-              
-              <div className="flex items-center gap-3">
-                <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium text-foreground hover:bg-muted/10">
-                  <Upload className="h-4 w-4 text-primary" />
-                  {file ? file.name : "Tải file tài liệu (.pdf, .docx, .txt)"}
-                  <input
-                    type="file"
-                    accept=".pdf,.docx,.txt"
-                    className="hidden"
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                    disabled={isProcessing}
-                  />
-                </label>
-                {file && (
-                  <button
-                    type="button"
-                    onClick={() => setFile(null)}
-                    className="text-xs text-rose-500 hover:underline"
-                  >
-                    Xóa file
-                  </button>
-                )}
-              </div>
+          <span className="block text-center text-xs text-muted">{t("or_paste_text")}</span>
 
-              <span className="block text-center text-xs text-muted">Hoặc</span>
-
-              <textarea
-                className={cn(INPUT_CLASS, "min-h-20 text-xs")}
-                placeholder="Dán nội dung từ vựng hoặc bài học cần Gemini AI tạo câu hỏi trắc nghiệm..."
-                value={form.note}
-                onChange={(e) => setForm({ ...form, note: e.target.value })}
-                disabled={isProcessing}
-              />
-            </div>
-          </>
-        )}
+          <textarea
+            className={cn(INPUT_CLASS, "min-h-20 text-xs")}
+            placeholder={t("paste_text_placeholder")}
+            value={form.note}
+            onChange={(e) => setForm({ ...form, note: e.target.value })}
+            disabled={isProcessing}
+          />
+        </div>
 
         {error && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
@@ -292,10 +242,10 @@ export function CreateUserSetModal({
           <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3 text-xs font-medium text-primary">
             <Loader2 className="h-4 w-4 animate-spin shrink-0" />
             <span>
-              {statusStep === "creating" && "Đang khởi tạo khung bài thi..."}
-              {statusStep === "generating" && "Gemini AI đang đọc nội dung và sinh câu hỏi trắc nghiệm..."}
-              {statusStep === "importing" && "Đang lưu câu hỏi vào hệ thống..."}
-              {statusStep === "publishing" && "Đang xuất bản bài thi..."}
+              {statusStep === "creating" && t("step_creating_msg")}
+              {statusStep === "generating" && t("step_generating_msg")}
+              {statusStep === "importing" && t("step_importing_msg")}
+              {statusStep === "publishing" && t("step_publishing_msg")}
             </span>
           </div>
         )}
@@ -303,17 +253,17 @@ export function CreateUserSetModal({
         {statusStep === "done" && (
           <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-700">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>Tạo bài thi AI thành công! Đang chuyển hướng...</span>
+            <span>{t("step_done_msg")}</span>
           </div>
         )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={isProcessing}>
-            Hủy
+            {t("btn_cancel")}
           </Button>
-          <Button type="submit" size="sm" disabled={isProcessing || loadingInit}>
+          <Button type="submit" size="sm" disabled={isProcessing}>
             <Sparkles className="mr-1.5 h-4 w-4" />
-            {isProcessing ? "Đang xử lý..." : "Sinh bài thi bằng AI"}
+            {isProcessing ? t("btn_processing") : t("btn_generate_ai")}
           </Button>
         </div>
       </form>
