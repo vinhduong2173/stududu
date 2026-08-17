@@ -292,7 +292,6 @@ async function main() {
         intent: m.intent,
         city: m.city,
         country: m.country,
-        isPro: m.isPro,
         role: UserRole.member,
       },
       create: {
@@ -304,7 +303,6 @@ async function main() {
         intent: m.intent,
         city: m.city,
         country: m.country,
-        isPro: m.isPro,
         role: UserRole.member,
       },
     });
