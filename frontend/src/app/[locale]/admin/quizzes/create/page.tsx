@@ -982,9 +982,8 @@ export default function QuizCreatePage() {
                       body: { questions: questionsToImport },
                     });
 
-                    // 5. Admin trial attempt & Publish set so users can see it immediately
+                    // 5. Publish set so users can see it immediately
                     try {
-                      await api(`/admin/question-sets/${createdSet.id}/attempt`, { method: "POST" });
                       await api(`/admin/question-sets/${createdSet.id}/publish`, { method: "POST" });
                     } catch {
                       // fallback

@@ -537,7 +537,7 @@ export class QuestionSetsService {
 
     const hasEnoughQuestions = activeCount === REQUIRED_QUESTION_COUNT;
     const hasAdminTrial = adminTrial !== null;
-    const canPublish = hasEnoughQuestions && hasAdminTrial;
+    const canPublish = hasEnoughQuestions;
 
     return {
       requiredCount: REQUIRED_QUESTION_COUNT,
@@ -555,16 +555,6 @@ export class QuestionSetsService {
     if (!gate.hasEnoughQuestions) {
       throw new BadRequestException(
         `Bộ đề chưa đủ câu (hiện có ${gate.activeCount}/${REQUIRED_QUESTION_COUNT} câu). Cần đúng ${REQUIRED_QUESTION_COUNT} câu mới xuất bản được.`,
-      );
-    }
-    if (gate.trialOutdated) {
-      throw new BadRequestException(
-        'Nội dung bộ đề đã đổi câu hỏi kể từ lần làm thử cuối. Vui lòng làm thử lại trước khi xuất bản.',
-      );
-    }
-    if (!gate.hasAdminTrial) {
-      throw new BadRequestException(
-        'Admin phải làm thử bộ đề (đạt ít nhất 1 lần) mới được xuất bản.',
       );
     }
 

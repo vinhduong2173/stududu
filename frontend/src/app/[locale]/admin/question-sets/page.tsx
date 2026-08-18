@@ -80,15 +80,12 @@ export default function AdminQuestionSetsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Bộ đề trắc nghiệm</h1>
           <p className="mt-1 text-sm text-muted">
-            Mỗi bộ đúng {REQUIRED_QUESTION_COUNT} câu. Chỉ publish được khi đủ câu và
-            bạn đã làm thử ít nhất một lần.
+            Mỗi bộ đúng {REQUIRED_QUESTION_COUNT} câu. Phát hành ngay khi có đủ số lượng câu hỏi.
           </p>
           <p className="mt-2 text-sm text-muted">
-            Luồng: <strong className="text-foreground">1.</strong> Tạo bộ đề (chỉ
-            là vỏ, chưa có câu hỏi) →{" "}
-            <strong className="text-foreground">2.</strong> Mở bộ đề, tải tài liệu
-            lên để AI sinh câu hỏi →{" "}
-            <strong className="text-foreground">3.</strong> Làm thử → publish.
+            Luồng: <strong className="text-foreground">1.</strong> Tạo bộ đề →{" "}
+            <strong className="text-foreground">2.</strong> Mở bộ đề, thêm hoặc AI sinh câu hỏi →{" "}
+            <strong className="text-foreground">3.</strong> Phát hành (Publish).
           </p>
         </div>
         {/* Modal lấy giá trị mặc định từ languages[0]/topics[0]; mở khi chưa tải xong

@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+.env.*
+.git
+.gitignore
+README.md
+stududu_db_latest_20260814.sql
+test
+coverage
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*

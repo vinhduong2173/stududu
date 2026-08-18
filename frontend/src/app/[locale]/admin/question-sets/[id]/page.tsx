@@ -241,17 +241,17 @@ export default function AdminQuestionSetEditorPage() {
             <div>
               <h2 className="text-base font-bold text-foreground">Điều kiện xuất bản (Publish Gate)</h2>
               <p className="text-xs text-muted">
-                Bộ đề cần đạt đủ 2 điều kiện dưới đây mới có thể xuất bản cho người học.
+                Bộ đề cần đạt đủ số câu hỏi để có thể xuất bản cho người học. Admin có thể xem thử hoặc xuất bản ngay.
               </p>
             </div>
             {gate.hasEnoughQuestions && (
               <Button
-                variant={gate.hasAdminTrial ? "outline" : "default"}
+                variant="outline"
                 size="sm"
                 onClick={() => setShowTrial(true)}
               >
                 <PlayCircle className="mr-2 h-4 w-4" />
-                {gate.hasAdminTrial ? "Làm thử lại" : "Làm thử bộ đề ngay"}
+                {gate.hasAdminTrial ? "Làm thử lại (Tùy chọn)" : "Làm thử bộ đề (Tùy chọn)"}
               </Button>
             )}
           </div>
@@ -263,14 +263,12 @@ export default function AdminQuestionSetEditorPage() {
               detail={`Hiện có ${gate.activeCount}/${REQUIRED_QUESTION_COUNT} câu.`}
             />
             <GateItem
-              done={gate.hasAdminTrial}
-              label="Admin đã làm thử bộ đề"
+              done={true}
+              label="Sẵn sàng xuất bản"
               detail={
                 gate.hasAdminTrial
-                  ? `Lần làm gần nhất: ${gate.adminTrial?.correctCount}/${gate.adminTrial?.totalCount} câu đúng.`
-                  : gate.trialOutdated
-                  ? "Nội dung câu hỏi đã thay đổi kể từ lần làm thử trước. Vui lòng làm thử lại!"
-                  : "Cần Admin làm thử 1 lần trước khi phát hành."
+                  ? `Đã làm thử (${gate.adminTrial?.correctCount}/${gate.adminTrial?.totalCount} câu đúng). Đủ điều kiện xuất bản.`
+                  : "Có thể phát hành ngay cho người học mà không bắt buộc làm thử."
               }
             />
           </div>

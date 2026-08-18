@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, MatchStatus, InteractionAction, MessageType } from '@prisma/client';
+import { PrismaClient, UserRole, MatchStatus, InteractionAction, MessageType, LanguageRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -263,7 +263,7 @@ async function main() {
 
   // Seed Admin Account
   const adminEmail = 'admin@stududu.com';
-  await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {
       passwordHash: defaultPassword,
@@ -316,8 +316,8 @@ async function main() {
       await prisma.userLanguage.deleteMany({ where: { userId: user.id } });
       await prisma.userLanguage.createMany({
         data: [
-          { userId: user.id, languageId: nativeL.id, role: 'native' },
-          { userId: user.id, languageId: learnL.id, role: 'learning', level: m.learnLevel },
+          { userId: user.id, languageId: nativeL.id, role: LanguageRole.native },
+          { userId: user.id, languageId: learnL.id, role: LanguageRole.learning, level: m.learnLevel },
         ],
       });
     }
