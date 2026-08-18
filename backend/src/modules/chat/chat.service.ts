@@ -112,6 +112,38 @@ export class ChatService {
     });
   }
 
+  async getTotalUnreadCount(userId: number): Promise<number> {
+    const conversations = await this.prisma.conversation.findMany({
+      where: {
+        match: { OR: [{ memberId: userId }, { candidateId: userId }] },
+      },
+      select: { id: true },
+    });
+    if (conversations.length === 0) return 0;
+    const conversationIds = conversations.map((c) => c.id);
+    return this.prisma.message.count({
+      where: {
+        conversationId: { in: conversationIds },
+        senderId: { not: userId },
+        readAt: null,
+      },
+    });
+  }
+
+  async getPartnerId(
+    conversationId: number,
+    currentUserId: number,
+  ): Promise<number | null> {
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: { match: { select: { memberId: true, candidateId: true } } },
+    });
+    if (!conv) return null;
+    return conv.match.memberId === currentUserId
+      ? conv.match.candidateId
+      : conv.match.memberId;
+  }
+
   // US-14 — lưu tin nhắn: text | image (data URL) | schedule (lời mời hẹn giờ)
   async createMessage(
     userId: number,

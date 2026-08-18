@@ -8,6 +8,7 @@ import {
   LanguageRole,
   MatchStatus,
   Prisma,
+  UserRole,
   UserStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -68,6 +69,7 @@ export class MatchingService {
     const where: Prisma.UserWhereInput = {
       id: { notIn: [userId, ...excludedIds] },
       status: UserStatus.active,
+      role: { not: UserRole.admin },
       AND: [
         {
           languages: {
@@ -123,6 +125,7 @@ export class MatchingService {
     const where: Prisma.UserWhereInput = {
       id: { notIn: [userId, ...excludedIds] },
       status: UserStatus.active,
+      role: { not: UserRole.admin },
     };
 
     const [members, total, likedMap] = await Promise.all([

@@ -442,4 +442,48 @@ export const CURATED_WORDS: Record<string, CuratedWord[]> = {
       example: '« Genieße den gegenwärtigen Augenblick. »',
     },
   ],
+  vi: [
+    {
+      term: 'thanh bình',
+      partOfSpeech: 'VI tính từ',
+      phonetic: '/tʰaŋ ɓiŋ/',
+      definition: 'Yên ả, không có chiến tranh xáo trộn, mang lại cảm giác an yên',
+      example: '« Cuộc sống thanh bình nơi làng quê yên ả. »',
+    },
+    {
+      term: 'bền bỉ',
+      partOfSpeech: 'VI tính từ',
+      phonetic: '/ɓen ɓi/',
+      definition: 'Kiên trì dẻo dai theo đuổi mục tiêu lâu dài',
+      example: '« Nỗ lực bền bỉ sẽ mang lại quả ngọt. »',
+    },
+    {
+      term: 'yêu kiều',
+      partOfSpeech: 'VI tính từ',
+      phonetic: '/iew kiew/',
+      definition: 'Vẻ đẹp duyên dáng, thướt tha và thanh tú',
+      example: '« Nét đẹp yêu kiều của người con gái Việt trong tà áo dài. »',
+    },
+    {
+      term: 'ấm áp',
+      partOfSpeech: 'VI tính từ',
+      phonetic: '/am ap/',
+      definition: 'Mang lại hơi ấm và cảm giác gần gũi, yêu thương',
+      example: '« Nụ cười ấm áp của bạn bè tiếp thêm niềm tin. »',
+    },
+    {
+      term: 'thảnh thơi',
+      partOfSpeech: 'VI tính từ',
+      phonetic: '/tʰaɲ tʰơi/',
+      definition: 'Tâm trí nhẹ nhõm, không bị vướng bận lo toan',
+      example: '« Cuối tuần thảnh thơi đọc sách và thưởng trà. »',
+    },
+    {
+      term: 'rực rỡ',
+      partOfSpeech: 'VI tính từ',
+      phonetic: '/zực zỡ/',
+      definition: 'Tỏa sáng lộng lẫy và rạng ngời',
+      example: '« Tương lai rực rỡ đang chờ đón bạn phía trước. »',
+    },
+  ],
 };

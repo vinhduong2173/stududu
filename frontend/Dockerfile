@@ -4,10 +4,10 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* pnpm-lock.yaml* ./
+COPY package.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies for the container environment
+RUN npm install
 
 # 2. Build the application
 FROM node:20-alpine AS builder

@@ -6,6 +6,8 @@ import { useRegister } from "@/hooks/useRegister";
 import { RegisterHeroColumn } from "@/components/features/auth/RegisterHeroColumn";
 import { RegisterFormFields } from "@/components/features/auth/RegisterFormFields";
 import { SocialRegisterButtons } from "@/components/features/auth/SocialRegisterButtons";
+import { Logo } from "@/components/ui/Logo";
+import { AlertCircle } from "lucide-react";
 
 export default function RegisterPage() {
   const r = useRegister();
@@ -20,16 +22,26 @@ export default function RegisterPage() {
       <RegisterHeroColumn t={r.t} />
 
       {/* Cột form đăng ký */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center p-6 md:p-8">
+      <div className="flex w-full lg:w-1/2 items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-md">
+          {/* Logo trên mobile */}
+          <div className="lg:hidden mb-6 flex justify-start">
+            <Logo size="sm" href="/" />
+          </div>
+
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground">{r.t("register.title")}</h1>
-            <p className="mt-1 text-muted text-sm">{r.t("register.subtitle")}</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold font-display tracking-tight text-foreground">
+              {r.t("register.title")}
+            </h1>
+            <p className="mt-1 text-muted text-xs sm:text-sm">
+              {r.t("register.subtitle")}
+            </p>
           </div>
 
           {r.error && (
-            <div className="mb-6 rounded-xl bg-error/10 p-4 text-sm text-error">
-              {r.error}
+            <div className="mb-6 rounded-xl bg-rose-50 border border-rose-200/80 p-3.5 text-xs sm:text-sm text-rose-700 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+              <span>{r.error}</span>
             </div>
           )}
 

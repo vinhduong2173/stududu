@@ -44,7 +44,12 @@ export function useDiscover() {
   const [onlineOnly, setOnlineOnly] = React.useState(false);
   const [levelFilter, setLevelFilter] = React.useState<LevelFilter>("all");
   const [sort, setSort] = React.useState<SortKey>("best");
-  const [mobileFilterOpen, setMobileFilterOpen] = React.useState(false);
+  const [filterModalOpen, setFilterModalOpen] = React.useState(false);
+
+  const activeFilterCount =
+    (levelFilter !== "all" ? 1 : 0) +
+    activeTopics.length +
+    (onlineOnly ? 1 : 0);
 
   const [modalOpen, setModalOpen] = React.useState(false);
   const [matchedUser, setMatchedUser] = React.useState<any>(null);
@@ -119,7 +124,7 @@ export function useDiscover() {
         setMatchedConversationId(result.conversation?.id);
         setModalOpen(true);
       } else {
-        showToast(`💜 ${t("discover.liked_toast", { name: candidate.user.displayName })}`);
+        showToast(t("discover.liked_toast", { name: candidate.user.displayName }));
       }
     } catch (err: any) {
       console.error(err);
@@ -136,7 +141,7 @@ export function useDiscover() {
 
     try {
       await api(`/matching/like/${targetId}`, { method: "DELETE" });
-      showToast(`💔 ${t("discover.card_unliked_toast", { name: candidate.user.displayName })}`);
+      showToast(t("discover.card_unliked_toast", { name: candidate.user.displayName }));
     } catch (err: any) {
       console.error(err);
       setSource((prev) => prev.map((c) => (c.user.id === targetId ? { ...c, liked: true, conversationId: candidate.conversationId } : c)));
@@ -209,8 +214,9 @@ export function useDiscover() {
     setLevelFilter,
     sort,
     setSort,
-    mobileFilterOpen,
-    setMobileFilterOpen,
+    filterModalOpen,
+    setFilterModalOpen,
+    activeFilterCount,
     modalOpen,
     setModalOpen,
     matchedUser,

@@ -94,24 +94,34 @@ export function useProfileEdit() {
   const addTeach = () => {
     if (!teachLangId) return;
     const langId = parseInt(teachLangId);
-    if (myLanguages.some((l) => l.languageId === langId && l.role !== "learning")) return;
+    if (myLanguages.some((l) => l.languageId === langId)) {
+      setError("Ngôn ngữ này đã có trong danh sách hồ sơ.");
+      return;
+    }
     setMyLanguages([
       ...myLanguages,
       { languageId: langId, role: teachRole, level: teachRole === "fluent" ? "C1" : undefined },
     ]);
     setTeachLangId("");
+    setError("");
   };
 
   const addLearn = () => {
     if (!learnLangId) return;
     const langId = parseInt(learnLangId);
-    if (myLanguages.some((l) => l.languageId === langId && l.role === "learning")) return;
+    if (myLanguages.some((l) => l.languageId === langId)) {
+      setError("Ngôn ngữ này đã có trong danh sách hồ sơ.");
+      return;
+    }
     setMyLanguages([...myLanguages, { languageId: langId, role: "learning", level: learnLevel }]);
     setLearnLangId("");
+    setError("");
   };
 
-  const removeLang = (langId: number, role: string) =>
+  const removeLang = (langId: number, role: string) => {
     setMyLanguages(myLanguages.filter((l) => !(l.languageId === langId && l.role === role)));
+    setError("");
+  };
 
   const toggleTopic = (id: number) =>
     setSelectedTopics((prev) =>
@@ -127,6 +137,12 @@ export function useProfileEdit() {
     const hasLearn = myLanguages.some((l) => l.role === "learning");
     if (!hasTeach || !hasLearn) {
       setError(t("lang_selection_error"));
+      return;
+    }
+
+    const langIds = myLanguages.map((l) => l.languageId);
+    if (new Set(langIds).size !== langIds.length) {
+      setError("Không thể chọn cùng một ngôn ngữ cho nhiều vai trò.");
       return;
     }
 

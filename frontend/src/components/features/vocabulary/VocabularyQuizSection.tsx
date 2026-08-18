@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/Button";
-import { RotateCw, Sparkles } from "lucide-react";
+import { RotateCw, Sparkles, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReviewMode } from "@/hooks/useVocabulary";
 import { SavedWord } from "@/components/features/WordSaveModal";
@@ -35,6 +35,8 @@ interface VocabularyQuizSectionProps {
   isAnswered: boolean;
   handleSelectOption: (option: string) => void;
   handleNextQuestion: () => void;
+  incorrectWords?: SavedWord[];
+  handleRetryMissed?: () => void;
 }
 
 export function VocabularyQuizSection({
@@ -63,6 +65,8 @@ export function VocabularyQuizSection({
   isAnswered,
   handleSelectOption,
   handleNextQuestion,
+  incorrectWords,
+  handleRetryMissed,
 }: VocabularyQuizSectionProps) {
   return (
     <div className="space-y-4">
@@ -72,10 +76,10 @@ export function VocabularyQuizSection({
           <button
             onClick={() => handleModeChange("learning_only")}
             className={cn(
-              "flex-1 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition-all text-center flex items-center justify-center gap-1.5",
+              "flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
               reviewMode === "learning_only"
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "text-muted hover:text-foreground hover:bg-muted/10",
+                ? "bg-primary !text-white text-white shadow-2xs"
+                : "text-muted hover:text-foreground hover:bg-surface-2",
             )}
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -84,10 +88,10 @@ export function VocabularyQuizSection({
           <button
             onClick={() => handleModeChange("all")}
             className={cn(
-              "flex-1 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition-all text-center flex items-center justify-center gap-1.5",
+              "flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
               reviewMode === "all"
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "text-muted hover:text-foreground hover:bg-muted/10",
+                ? "bg-primary !text-white text-white shadow-2xs"
+                : "text-muted hover:text-foreground hover:bg-surface-2",
             )}
           >
             <RotateCw className="w-3.5 h-3.5" />
@@ -111,6 +115,9 @@ export function VocabularyQuizSection({
           accuracyPercent={accuracyPercent}
           handleRestartQuiz={handleRestartQuiz}
           setActiveTab={setActiveTab}
+          incorrectWords={incorrectWords}
+          handleRetryMissed={handleRetryMissed}
+          getDefinitionForTargetLang={getDefinitionForTargetLang}
         />
       ) : deck.length > 0 && activeQuizWord ? (
         <QuizQuestionView
@@ -129,20 +136,26 @@ export function VocabularyQuizSection({
         />
       ) : (
         /* EMPTY DECK STATE */
-        <div className="min-h-[320px] rounded-3xl bg-surface border border-border shadow-sm p-8 flex flex-col items-center justify-center text-center space-y-4">
-          <div className="text-5xl">🎉</div>
-          <h3 className="text-xl font-extrabold text-foreground">
+        <div className="min-h-[320px] rounded-2xl bg-surface border border-border shadow-card p-8 md:p-12 flex flex-col items-center justify-center text-center space-y-3">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-2xs mb-2">
+            <Trophy className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-extrabold text-foreground font-display">
             {reviewMode === "learning_only"
               ? t("empty_learning_title")
               : t("empty_notebook_title")}
           </h3>
-          <p className="text-sm text-muted max-w-xs">
+          <p className="text-sm text-muted max-w-sm">
             {reviewMode === "learning_only"
               ? t("empty_learning_desc")
               : t("empty_notebook_desc")}
           </p>
           {reviewMode === "learning_only" && (
-            <Button onClick={() => handleModeChange("all")} variant="ghost">
+            <Button
+              onClick={() => handleModeChange("all")}
+              variant="outline"
+              className="rounded-xl h-10 px-5 font-bold border-border hover:bg-surface-2 cursor-pointer mt-2"
+            >
               {t("btn_review_all_full", { count: totalCount })}
             </Button>
           )}

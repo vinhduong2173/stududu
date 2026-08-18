@@ -18,11 +18,14 @@ import {
   User,
   Clock,
   Award,
+  Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { ageFromDob, cn } from "@/lib/utils";
 import { ReportDialog, BlockDialog, useToast } from "@/components/features/TrustDialogs";
 import { LanguagesCard } from "@/components/features/LanguagesCard";
+import { ProfileAvailabilityCard } from "@/components/features/profile/ProfileAvailabilityCard";
 import { MatchModal } from "@/components/features/MatchModal";
 import {
   EndorseModal,
@@ -230,7 +233,8 @@ export default function ProfilePage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <span>🏅</span> {t("trust_activity_other")}
+                <Award className="w-5 h-5 text-primary" />
+                <span>{t("trust_activity_other")}</span>
               </h2>
               {conversationId && (
                 <button
@@ -287,7 +291,8 @@ export default function ProfilePage() {
           {(activeTab === "posts" || activeTab === "about") && (
             <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
-                <span>📌</span> {t("intro")}
+                <User className="w-5 h-5 text-primary" />
+                <span>{t("intro")}</span>
               </h2>
               <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm italic bg-surface-2/60 p-4 rounded-2xl border border-border/50 mb-4">
                 {user.bio ? `"${user.bio}"` : t("no_intro_other")}
@@ -306,10 +311,18 @@ export default function ProfilePage() {
             <LanguagesCard languages={user.languages || []} />
           )}
 
+          {(activeTab === "posts" || activeTab === "about") && (
+            <ProfileAvailabilityCard
+              availableSlots={user.availableSlots}
+              timezone={user.timezone}
+            />
+          )}
+
           {(activeTab === "posts" || activeTab === "about") && user.interests && user.interests.length > 0 && (
             <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <span>⭐</span> {t("interests")}
+                <Sparkles className="w-5 h-5 text-primary" />
+                <span>{t("interests")}</span>
               </h2>
               <div className="flex flex-wrap gap-2">
                 {user.interests.map((i: any) => (
@@ -332,7 +345,8 @@ export default function ProfilePage() {
             <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <span>💬</span> {t("posts_title")}
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  <span>{t("posts_title")}</span>
                 </span>
                 <span className="text-xs text-muted font-normal">{t("posts_count", { count: userPosts.length })}</span>
               </h2>

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/Button";
-import { BookOpen, CalendarClock, Check, Globe, Phone, PhoneMissed, PhoneOff, Smile, Video, X } from "lucide-react";
+import { BookOpen, CalendarClock, Check, Globe, Phone, PhoneMissed, PhoneOff, Smile, Video, X, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/components/call/CallScreen";
 import type { CallMessagePayload } from "@/lib/webrtc/callContract";
@@ -131,10 +131,10 @@ export function MessageBubbleItem({
 
         <div
           className={cn(
-            "rounded-3xl p-4 shadow-sm text-sm relative",
+            "rounded-2xl px-4 py-2.5 text-sm relative shadow-2xs",
             mine
-              ? "bg-gradient-to-r from-primary to-primary-hover text-white rounded-br-none"
-              : "bg-surface border border-border text-foreground rounded-bl-none",
+              ? "bg-teal-600 text-white rounded-br-xs"
+              : "bg-surface border border-border text-foreground rounded-bl-xs",
           )}
         >
           {m.type === "text" && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
@@ -224,8 +224,9 @@ export function MessageBubbleItem({
 
           {/* Dịch inline */}
           {m.type === "text" && showTranslationFor[m.id] && (
-            <div className="mt-2 pt-2 border-t border-current/20 text-xs opacity-90 italic">
-              🌐 {translations[m.id]}
+            <div className="mt-2 pt-2 border-t border-current/20 text-xs opacity-90 italic flex items-center gap-1">
+              <Globe className="w-3 h-3 shrink-0" />
+              <span>{translations[m.id]}</span>
             </div>
           )}
 
@@ -238,7 +239,7 @@ export function MessageBubbleItem({
             <span>{formatBubbleTime(m.sentAt)}</span>
             {mine && (
               <span>
-                {m.pending ? "🕒" : m.readAt ? "✓✓" : "✓"}
+                {m.pending ? <Clock className="w-2.5 h-2.5 inline" /> : m.readAt ? "✓✓" : "✓"}
               </span>
             )}
           </div>

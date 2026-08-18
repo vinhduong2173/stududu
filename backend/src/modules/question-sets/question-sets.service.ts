@@ -34,17 +34,56 @@ export const REQUIRED_QUESTION_COUNT = 20;
 /** BR-52: 1 lần gọi AI generate / bộ đề / phút */
 const GENERATE_COOLDOWN_MS = 60_000;
 
-const CEFR_ORDER: Record<string, number> = {
+const LEVEL_ORDER: Record<string, number> = {
+  // CEFR
   A1: 1,
   A2: 2,
   B1: 3,
   B2: 4,
   C1: 5,
   C2: 6,
+  // JLPT (N5 is beginner, N1 is advanced)
+  N5: 1,
+  N4: 2,
+  N3: 3,
+  N2: 4,
+  N1: 5,
+  // HSK
+  HSK1: 1,
+  HSK2: 2,
+  HSK3: 3,
+  HSK4: 4,
+  HSK5: 5,
+  HSK6: 6,
+  'HSK 1': 1,
+  'HSK 2': 2,
+  'HSK 3': 3,
+  'HSK 4': 4,
+  'HSK 5': 5,
+  'HSK 6': 6,
+  // TOPIK
+  TOPIK1: 1,
+  TOPIK2: 2,
+  TOPIK3: 3,
+  TOPIK4: 4,
+  TOPIK5: 5,
+  TOPIK6: 6,
+  'TOPIK 1': 1,
+  'TOPIK 2': 2,
+  'TOPIK 3': 3,
+  'TOPIK 4': 4,
+  'TOPIK 5': 5,
+  'TOPIK 6': 6,
+  '1': 1,
+  '2': 2,
+  '3': 3,
+  '4': 4,
+  '5': 5,
+  '6': 6,
 };
 
 export function levelOrderOf(level: string): number {
-  return CEFR_ORDER[level.toUpperCase()] ?? 1;
+  return LEVEL_ORDER[level.toUpperCase().trim()] ?? 1;
 }
 
 @Injectable()

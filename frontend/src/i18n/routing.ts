@@ -3,10 +3,10 @@ import {createNavigation} from 'next-intl/navigation';
 
 export const routing = defineRouting({
   // A list of all locales that are supported
-  locales: ['en', 'vi', 'fr', 'es', 'zh', 'ja', 'de'],
+  locales: ['vi', 'en', 'fr', 'es', 'zh', 'ja', 'de'],
 
   // Used when no locale matches
-  defaultLocale: 'en',
+  defaultLocale: 'vi',
   
   // Do not include prefix for default locale if we want, but prefixing is better for consistency.
   // By default, next-intl always adds prefix. Let's keep the default behavior.

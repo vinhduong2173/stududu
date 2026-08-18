@@ -15,32 +15,59 @@ export class DailyVocabularyService {
 
   // Từ vựng mới hàng ngày (Daily Vocabulary) - Tự động xoay vòng từ theo ngày & tra cứu 3rd Party APIs
   async getDailyWords(userId?: number, targetCode?: string, nativeCode?: string) {
-    let targetLang = targetCode?.toLowerCase();
-    let nativeLang = nativeCode?.toLowerCase();
+    let targetLang = targetCode?.toLowerCase().trim();
+    let nativeLang = nativeCode?.toLowerCase().trim();
 
-    // Nếu không truyền targetCode và có userId -> lấy ngôn ngữ học (learning) của user
-    if (!targetLang && userId) {
+    // 1. Lấy thông tin ngôn ngữ của người dùng từ CSDL nếu có userId
+    const userLearningLangs: { code: string; name: string }[] = [];
+    let userNativeLang: string | null = null;
+
+    if (userId) {
       const userLangs = await this.prisma.userLanguage.findMany({
-        where: { userId, role: 'learning' },
+        where: { userId },
         include: { language: true },
+        orderBy: { id: 'asc' },
       });
-      if (userLangs.length > 0) {
-        targetLang = userLangs[0].language.code;
-      }
-    }
-    if (!targetLang) targetLang = 'en';
 
-    // Nếu không truyền nativeCode và có userId -> lấy ngôn ngữ bản địa (native) của user từ CSDL
-    if (!nativeLang && userId) {
-      const nativeLangRecord = await this.prisma.userLanguage.findFirst({
-        where: { userId, role: 'native' },
-        include: { language: true },
-      });
-      if (nativeLangRecord) {
-        nativeLang = nativeLangRecord.language.code;
+      for (const ul of userLangs) {
+        if (ul.role === 'learning' && ul.language?.code) {
+          userLearningLangs.push({
+            code: ul.language.code.toLowerCase(),
+            name: ul.language.name,
+          });
+        }
+        if ((ul.role === 'native' || ul.role === 'fluent') && ul.language?.code && !userNativeLang) {
+          userNativeLang = ul.language.code.toLowerCase();
+        }
       }
     }
-    if (!nativeLang) nativeLang = 'vi';
+
+    // 2. Xác định ngôn ngữ mục tiêu (Target Learning Language)
+    if (!targetLang) {
+      if (userLearningLangs.length > 0) {
+        targetLang = userLearningLangs[0].code;
+      } else {
+        targetLang = 'en';
+      }
+    }
+
+    // 3. Xác định tiếng mẹ đẻ để giải thích nghĩa (Native Language)
+    if (!nativeLang) {
+      if (userNativeLang) {
+        nativeLang = userNativeLang;
+      } else {
+        nativeLang = 'vi';
+      }
+    }
+
+    // Tránh trường hợp targetLang trùng với nativeLang (ví dụ user đang học tiếng Việt mà native cũng là tiếng Việt)
+    if (targetLang === nativeLang) {
+      if (targetLang === 'vi') {
+        nativeLang = 'en';
+      } else {
+        nativeLang = 'vi';
+      }
+    }
 
     const langRecord = await this.prisma.language.findUnique({
       where: { code: targetLang },
@@ -97,12 +124,15 @@ export class DailyVocabularyService {
     const seed = getDaySeed(todayStr, targetLang);
     const shuffledCandidates = shuffleWithSeed(candidateList, seed);
 
-    // Chọn ra 6 từ vựng duy nhất cho ngày hôm nay
-    const selectedBatch = shuffledCandidates.slice(0, 6);
+    // Chọn ra 5 từ vựng duy nhất cho ngày hôm nay (theo yêu cầu chuẩn 5 từ)
+    const selectedBatch = shuffledCandidates.slice(0, 5);
 
-    // Xử lý song song (Promise.all) tra cứu API & lưu DB cho 6 từ để tối ưu thời gian phản hồi
+    // Xử lý song song (Promise.all) tra cứu API & dịch nghĩa sang tiếng mẹ đẻ (nativeLang)
     await Promise.all(
       selectedBatch.map(async (item) => {
+        const isCuratedWord = !!item.definition;
+
+        // Tra cứu bổ sung từ điển 3rd party nếu thiếu thông tin
         if (!item.definition || !item.phonetic || !item.audioUrl) {
           try {
             const dictRes = await this.dictionaryService.lookup(item.term, targetLang);
@@ -124,23 +154,44 @@ export class DailyVocabularyService {
           }
         }
 
-        // Tự động dịch definition sang ngôn ngữ bản địa của user (nativeLang) nếu targetLang != nativeLang
-        if (item.definition && targetLang !== nativeLang) {
-          try {
-            const transRes = await this.translateService.translate({
-              text: item.definition,
-              target: nativeLang,
-              source: 'auto',
-            });
-            if (transRes?.translation) {
-              item.definition = transRes.translation;
+        // DỊCH NGHĨA SANG TIẾNG MẸ ĐẺ (nativeLang) CỦA NGƯỜI DÙNG:
+        if (item.definition) {
+          if (nativeLang === 'vi') {
+            // Người dùng có tiếng mẹ đẻ là Tiếng Việt:
+            // Nếu từ lấy từ API (tiếng Anh/Wiktionary), tự động dịch sang tiếng Việt
+            if (!isCuratedWord) {
+              try {
+                const transRes = await this.translateService.translate({
+                  text: item.definition,
+                  target: 'vi',
+                  source: 'auto',
+                });
+                if (transRes?.translation) {
+                  item.definition = transRes.translation;
+                }
+              } catch {
+                // Giữ nguyên fallback
+              }
             }
-          } catch {
-            // Fallback giữ nguyên definition
+            // Nếu là Curated Word (đã có nghĩa tiếng Việt chuẩn tinh tuyển), giữ nguyên 100%!
+          } else {
+            // Người dùng có tiếng mẹ đẻ khác tiếng Việt (e.g. en, ja, fr, de, es, ko, zh):
+            try {
+              const transRes = await this.translateService.translate({
+                text: item.definition,
+                target: nativeLang,
+                source: isCuratedWord ? 'vi' : 'auto',
+              });
+              if (transRes?.translation) {
+                item.definition = transRes.translation;
+              }
+            } catch {
+              // Giữ nguyên fallback
+            }
           }
         }
 
-        // Đảm bảo thông tin mặc định nếu API không trả về
+        // Đảm bảo thông tin mặc định nếu thiếu
         if (!item.partOfSpeech) item.partOfSpeech = `${targetLang.toUpperCase()} từ vựng`;
         if (!item.phonetic) item.phonetic = `/${item.term}/`;
         if (!item.definition) item.definition = `Từ vựng mới chủ đề ${targetLang.toUpperCase()}`;
@@ -180,7 +231,7 @@ export class DailyVocabularyService {
       }),
     );
 
-    // Tối ưu Query DB: Chỉ tìm các từ trong danh sách selectedBatch thay vì lấy toàn bộ từ của user
+    // Tối ưu Query DB: Kiểm tra danh sách từ đã lưu của User
     let savedSet = new Set<string>();
     if (userId) {
       const selectedTerms = selectedBatch.map((w) => w.term.toLowerCase());
@@ -202,6 +253,7 @@ export class DailyVocabularyService {
         name: langRecord?.name || targetLang.toUpperCase(),
       },
       nativeLanguage: nativeLang,
+      learningLanguages: userLearningLangs,
       total: selectedBatch.length,
       words: selectedBatch.map((w, index) => ({
         index: index + 1,

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
-import { Eye, Heart, MapPin } from "lucide-react";
+import { Eye, Heart, MapPin, Sparkles } from "lucide-react";
 import { getTopicTranslation } from "@/lib/i18nHelper";
 import { INTENTS, Topic, UserLanguageItem } from "@/hooks/useProfileEdit";
 
@@ -99,7 +99,10 @@ export function ProfilePreviewCard({
 
           {previewTopics.length > 0 && (
             <div className="mt-4 rounded-xl bg-primary/5 p-3">
-              <p className="text-xs font-semibold text-primary mb-1">✨ {t("shared_interests")}</p>
+              <p className="text-xs font-semibold text-primary mb-1 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{t("shared_interests")}</span>
+              </p>
               <p className="text-xs text-foreground leading-relaxed">
                 {previewTopics.map((tp) => getTopicTranslation(tp.name, tRoot)).join(", ")}
               </p>

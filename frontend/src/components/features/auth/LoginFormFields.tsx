@@ -62,7 +62,7 @@ export function LoginFormFields({
         </div>
       </div>
 
-      <Button type="submit" disabled={loading} className="sd-btn-gradient mt-2 h-14 text-base">
+      <Button type="submit" disabled={loading} className="sd-btn-gradient mt-2 h-12 text-sm font-bold rounded-full">
         {loading ? t("login.submitting") : t("login.submit")}
       </Button>
     </form>

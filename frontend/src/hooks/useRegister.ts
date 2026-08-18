@@ -154,8 +154,21 @@ export function useRegister() {
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-  const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(2026, i, 15);
+    let label = (i + 1).toString();
+    try {
+      const raw = new Intl.DateTimeFormat(locale, { month: "long" }).format(d);
+      label = raw.charAt(0).toUpperCase() + raw.slice(1);
+    } catch (e) {
+      // fallback
+    }
+    return {
+      value: (i + 1).toString(),
+      label,
+    };
+  });
 
   return {
     t,

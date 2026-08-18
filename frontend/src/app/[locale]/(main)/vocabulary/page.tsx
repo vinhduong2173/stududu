@@ -56,6 +56,8 @@ export default function VocabularyPage() {
           isAnswered={v.isAnswered}
           handleSelectOption={v.handleSelectOption}
           handleNextQuestion={v.handleNextQuestion}
+          incorrectWords={v.incorrectWords}
+          handleRetryMissed={v.handleRetryMissed}
         />
       )}
 
@@ -71,6 +73,8 @@ export default function VocabularyPage() {
           selectedWordId={v.selectedWordId}
           getDefinitionForTargetLang={v.getDefinitionForTargetLang}
           handleDeleteWord={v.handleDeleteWord}
+          undoItem={v.undoItem}
+          handleUndoDelete={v.handleUndoDelete}
         />
       )}
 

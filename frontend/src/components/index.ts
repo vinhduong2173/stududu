@@ -20,3 +20,4 @@ export * from "./features/TextSelectionPopup";
 export * from "./features/TranslationModal";
 export * from "./features/TrustDialogs";
 export * from "./features/WordSaveModal";
+export * from "./features/landing";

@@ -105,7 +105,7 @@ export default function GroupMembersPage() {
         method: "POST",
         body: { reason: finalReason },
       });
-      showToast("✅ Đã gửi báo cáo thành viên thành công");
+      showToast("Đã gửi báo cáo thành viên thành công");
       setReportTargetMember(null);
       setCustomReason("");
     } catch (err: any) {

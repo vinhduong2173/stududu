@@ -30,7 +30,7 @@ interface RegisterFormFieldsProps {
   loading: boolean;
   isPending: boolean;
   days: string[];
-  months: string[];
+  months: { value: string; label: string }[];
   years: string[];
 }
 
@@ -135,8 +135,8 @@ export function RegisterFormFields({
           >
             <option value="">{t("register.month")}</option>
             {months.map((m) => (
-              <option key={m} value={m}>
-                {t("register.month")} {m}
+              <option key={m.value} value={m.value}>
+                {m.label}
               </option>
             ))}
           </select>
@@ -201,7 +201,7 @@ export function RegisterFormFields({
         <span className="text-xs text-muted ml-1">{t("register.password_hint")}</span>
       </div>
 
-      <Button type="submit" disabled={loading || isPending} className="mt-2 text-base">
+      <Button type="submit" disabled={loading || isPending} className="sd-btn-gradient mt-2 h-12 text-sm font-bold rounded-full">
         {loading ? t("register.submitting") : t("register.submit")}
       </Button>
     </form>

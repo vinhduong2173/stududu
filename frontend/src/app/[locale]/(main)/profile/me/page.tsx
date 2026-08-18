@@ -10,11 +10,16 @@ import {
   User,
   MapPin,
   Clock,
+  Award,
+  Target,
+  Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { TIME_SLOTS, getTimezone } from "@/lib/timezones";
 import { cn } from "@/lib/utils";
 import { ChatStats, EndorsementBadges } from "@/components/features/Endorsements";
 import { LanguagesCard } from "@/components/features/LanguagesCard";
+import { ProfileAvailabilityCard } from "@/components/features/profile/ProfileAvailabilityCard";
 import { useTranslations } from "next-intl";
 import { getTopicTranslation, getIntentTranslation, getGenderTranslation } from "@/lib/i18nHelper";
 import { PostCard, FeedPost } from "@/components/features/PostCard";
@@ -89,7 +94,8 @@ export default function MyProfilePage() {
           {/* Trust Signals */}
           <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
             <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-              <span>🏅</span> {t("trust_activity")}
+              <Award className="w-5 h-5 text-primary" />
+              <span>{t("trust_activity")}</span>
             </h2>
             <div className="space-y-3">
               <EndorsementBadges userId={me.id} />
@@ -101,7 +107,8 @@ export default function MyProfilePage() {
           <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
             <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <span>📌</span> {t("intro")}
+                <User className="w-5 h-5 text-primary" />
+                <span>{t("intro")}</span>
               </span>
               <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
                 {t("edit_btn")}
@@ -115,7 +122,7 @@ export default function MyProfilePage() {
             <div className="space-y-3 text-sm text-foreground">
               {me.intent && (
                 <div className="flex items-center gap-3">
-                  <span className="text-base">🎯</span>
+                  <Target className="w-4 h-4 text-muted shrink-0" />
                   <div>
                     <span className="font-semibold text-muted text-xs block uppercase">{t("intent")}</span>
                     <span className="font-medium text-foreground">{getIntentTranslation(me.intent, tRoot)}</span>
@@ -148,7 +155,7 @@ export default function MyProfilePage() {
                 <div>
                   <span className="font-semibold text-muted text-xs block uppercase">{t("timezone_label_short")}</span>
                   <span className="font-medium text-foreground">
-                    {getTimezone(me.timezone).flag} {getTimezone(me.timezone).name}
+                    {getTimezone(me.timezone).name}
                   </span>
                 </div>
               </div>
@@ -159,33 +166,18 @@ export default function MyProfilePage() {
           <LanguagesCard languages={me.languages} editHref="/profile/me/edit" />
 
           {/* Availability Card */}
-          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
-            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <span>⏰</span> {t("availability")}
-              </span>
-              <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
-                {t("edit_btn")}
-              </Link>
-            </h2>
-            <div className="flex flex-wrap gap-2 items-center">
-              {(me.availableSlots ?? []).length === 0 ? (
-                <p className="text-xs text-muted">{t("no_availability")}</p>
-              ) : (
-                TIME_SLOTS.filter((s) => (me.availableSlots ?? []).includes(s.id)).map((s) => (
-                  <Chip key={s.id} variant="secondary" className="text-xs py-1 px-3 rounded-xl">
-                    ⏰ {s.label}
-                  </Chip>
-                ))
-              )}
-            </div>
-          </div>
+          <ProfileAvailabilityCard
+            availableSlots={me.availableSlots}
+            timezone={me.timezone}
+            editHref="/profile/me/edit"
+          />
 
           {/* Interests Card */}
           <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
             <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
               <span className="flex items-center gap-2">
-                <span>⭐</span> {t("interests")}
+                <Sparkles className="w-5 h-5 text-primary" />
+                <span>{t("interests")}</span>
               </span>
               <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
                 {t("edit_btn")}
@@ -233,7 +225,8 @@ export default function MyProfilePage() {
             <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <span>💬</span> {t("posts_title")}
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  <span>{t("posts_title")}</span>
                 </span>
                 <span className="text-xs text-muted font-normal">{t("posts_count", { count: myPosts.length })}</span>
               </h2>
