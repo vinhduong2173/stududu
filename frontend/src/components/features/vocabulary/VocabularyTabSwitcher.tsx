@@ -19,28 +19,30 @@ export function VocabularyTabSwitcher({
   totalCount,
 }: VocabularyTabSwitcherProps) {
   return (
-    <div className="flex items-center bg-surface p-1.5 rounded-2xl border border-border shadow-sm">
+    <div className="flex items-center bg-surface p-1.5 rounded-2xl border border-border shadow-2xs">
       <button
         onClick={() => setActiveTab("quiz")}
         className={cn(
-          "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2",
+          "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
           activeTab === "quiz"
-            ? "bg-primary text-primary-foreground shadow-md"
-            : "text-muted hover:text-foreground hover:bg-muted/10",
+            ? "bg-primary !text-white text-white shadow-2xs"
+            : "text-muted hover:text-foreground hover:bg-surface-2",
         )}
       >
-        <Brain className="w-4 h-4" /> 🎯 {t("tab_quiz")}
+        <Brain className="w-4 h-4" />
+        <span>{t("tab_quiz")}</span>
       </button>
       <button
         onClick={() => setActiveTab("notebook")}
         className={cn(
-          "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2",
+          "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
           activeTab === "notebook"
-            ? "bg-primary text-primary-foreground shadow-md"
-            : "text-muted hover:text-foreground hover:bg-muted/10",
+            ? "bg-primary !text-white text-white shadow-2xs"
+            : "text-muted hover:text-foreground hover:bg-surface-2",
         )}
       >
-        <BookOpen className="w-4 h-4" /> 📚 {t("tab_notebook", { count: totalCount })}
+        <BookOpen className="w-4 h-4" />
+        <span>{t("tab_notebook", { count: totalCount })}</span>
       </button>
     </div>
   );

@@ -97,9 +97,7 @@ export function EventTestCard({ item }: { item: TestSetItem }) {
   return (
     <div
       className={cn(
-        "bg-surface border border-border/80 rounded-2xl p-5 md:p-6 shadow-2xs hover:shadow-md transition-all relative overflow-hidden flex flex-col justify-between",
-        status === "completed" && "border-l-4 border-l-emerald-500",
-        status === "in_progress" && "border-l-4 border-l-blue-600",
+        "bg-surface border border-border rounded-2xl p-5 md:p-6 shadow-card hover:shadow-card-hover transition-all relative overflow-hidden flex flex-col justify-between",
         isBlocked && "opacity-80 bg-muted/10"
       )}
     >
@@ -111,19 +109,19 @@ export function EventTestCard({ item }: { item: TestSetItem }) {
           </h3>
 
           {status === "not_started" && !isBlocked && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 flex-shrink-0">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200/60 flex-shrink-0">
               {t("not_started")}
             </span>
           )}
 
           {status === "completed" && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 flex-shrink-0">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60 flex-shrink-0">
               {t("completed")}
             </span>
           )}
 
           {status === "in_progress" && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 flex-shrink-0">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200/60 flex-shrink-0">
               {t("in_progress")}
             </span>
           )}
@@ -137,8 +135,8 @@ export function EventTestCard({ item }: { item: TestSetItem }) {
 
         {/* Badges Row: Language & Level */}
         <div className="flex items-center gap-2 flex-wrap mb-3">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
-            <span className="text-[10px] font-extrabold uppercase bg-purple-200/80 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200 px-1.5 py-0.5 rounded">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200/60">
+            <span className="text-[10px] font-extrabold uppercase bg-teal-100 text-teal-900 px-1.5 py-0.5 rounded">
               {displayCountryCode}
             </span>
             <span>{languageName}</span>

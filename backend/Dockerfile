@@ -45,5 +45,5 @@ COPY --from=builder /app/prisma ./prisma
 # Khai báo port ứng dụng
 EXPOSE 3001
 
-# Khởi chạy trực tiếp server NestJS (Không chạy migration DB)
 CMD ["node", "dist/main.js"]
+

@@ -22,6 +22,12 @@ export class ChatController {
     return this.chatService.getConversations(user.sub);
   }
 
+  @Get('unread-count')
+  async getUnreadCount(@CurrentUser() user: JwtPayload) {
+    const count = await this.chatService.getTotalUnreadCount(user.sub);
+    return { count };
+  }
+
   @Get(':id/messages')
   getMessages(
     @CurrentUser() user: JwtPayload,

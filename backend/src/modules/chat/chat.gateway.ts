@@ -120,6 +120,19 @@ export class ChatGateway
     );
     // phát cho cả 2 phía trong room (kể cả người gửi — làm ack)
     this.server.to(this.room(body.conversationId)).emit('message:new', message);
+
+    // Phát thông báo tới room cá nhân của partner để hiện chấm đỏ thời gian thực
+    const partnerId = await this.chatService.getPartnerId(
+      body.conversationId,
+      client.data.user.sub,
+    );
+    if (partnerId) {
+      this.server.to(`user:${partnerId}`).emit('message:new', message);
+      this.server.to(`user:${partnerId}`).emit('chat:unread_notice', {
+        conversationId: body.conversationId,
+        message,
+      });
+    }
     return message;
   }
 

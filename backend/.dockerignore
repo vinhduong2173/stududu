@@ -5,9 +5,8 @@ dist
 .git
 .gitignore
 README.md
+*.log
 stududu_db_latest_20260814.sql
 test
 coverage
-npm-debug.log*
-pnpm-debug.log*
-yarn-debug.log*
+

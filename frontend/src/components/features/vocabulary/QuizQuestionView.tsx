@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/Button";
-import { HelpCircle, Volume2, Check, X, ChevronRight } from "lucide-react";
+import { HelpCircle, Volume2, Check, X, ChevronRight, Zap, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getLanguageDisplayName, speakWord } from "@/hooks/useVocabulary";
 import { SavedWord } from "@/components/features/WordSaveModal";
@@ -37,7 +37,7 @@ export function QuizQuestionView({
   handleNextQuestion,
 }: QuizQuestionViewProps) {
   return (
-    <div className="rounded-3xl bg-surface border-2 border-border shadow-lg p-6 md:p-8 space-y-6 relative overflow-hidden">
+    <div className="rounded-2xl bg-surface border border-border shadow-card p-6 md:p-8 space-y-6 relative overflow-hidden">
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs font-bold">
           <span className="text-muted flex items-center gap-1.5">
@@ -45,13 +45,10 @@ export function QuizQuestionView({
           </span>
 
           <div className="flex items-center gap-3">
-            <span className="text-primary font-black bg-primary/10 px-3 py-1 rounded-full text-xs">
-              ⚡ {t("points", { points: score * 10 })}
-            </span>
-
             {streak > 1 && (
-              <span className="bg-amber-500/15 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-full flex items-center gap-1 text-[11px] font-extrabold animate-pulse">
-                🔥 {t("streak", { streak })}
+              <span className="bg-amber-500/15 text-amber-700 dark:text-amber-300 px-3 py-1 rounded-full flex items-center gap-1 text-[11px] font-extrabold animate-pulse border border-amber-300/40">
+                <Flame className="w-3.5 h-3.5" />
+                <span>{t("streak", { streak })}</span>
               </span>
             )}
 
@@ -59,8 +56,8 @@ export function QuizQuestionView({
               className={cn(
                 "font-bold px-3 py-1 rounded-full text-[11px]",
                 activeQuizWord.status === "mastered"
-                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                  : "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-300/40"
+                  : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-300/40",
               )}
             >
               {activeQuizWord.status === "mastered" ? t("status_mastered_label") : t("status_learning_label")}
@@ -70,7 +67,7 @@ export function QuizQuestionView({
 
         <div className="h-2 w-full bg-muted/20 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-primary via-indigo-500 to-emerald-500 transition-all duration-300 rounded-full"
+            className="h-full bg-gradient-to-r from-primary via-teal-500 to-emerald-500 transition-all duration-300 rounded-full"
             style={{
               width: `${((currentIndex + 1) / deck.length) * 100}%`,
             }}
@@ -78,12 +75,12 @@ export function QuizQuestionView({
         </div>
       </div>
 
-      <div className="text-center py-5 bg-muted/5 rounded-2xl border border-border/60 p-4 space-y-2">
+      <div className="text-center py-5 bg-surface-2/70 rounded-2xl border border-border/70 p-4 space-y-2">
         <div className="text-xs font-bold uppercase tracking-wider text-muted">
           {getLanguageDisplayName(activeQuizWord)}
         </div>
         <div className="flex items-center justify-center gap-3">
-          <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-foreground font-display tracking-tight">
             {activeQuizWord.word.term}
           </h2>
           <button
@@ -94,7 +91,7 @@ export function QuizQuestionView({
                 activeQuizWord.word.language?.code || "en",
               )
             }
-            className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors active:scale-95"
+            className="p-2 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
             title={t("btn_audio_tooltip")}
           >
             <Volume2 className="w-5 h-5" />
@@ -120,24 +117,24 @@ export function QuizQuestionView({
           const isThisSelected = selectedOption === opt;
 
           let optionStyle =
-            "border-border bg-surface hover:border-primary/50 hover:bg-muted/10 text-foreground";
+            "border-border bg-surface hover:border-primary/50 hover:bg-surface-2/60 text-foreground cursor-pointer";
           let optionIcon = null;
 
           if (isAnswered) {
             if (isThisSelected && isThisCorrect) {
               optionStyle =
-                "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/30 font-bold";
+                "border-emerald-500 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 ring-2 ring-emerald-500/30 font-bold";
               optionIcon = <Check className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />;
             } else if (isThisSelected && !isThisCorrect) {
               optionStyle =
-                "border-rose-500 bg-rose-500/15 text-rose-700 dark:text-rose-300 ring-2 ring-rose-500/30 font-bold";
+                "border-rose-500 bg-rose-500/15 text-rose-800 dark:text-rose-300 ring-2 ring-rose-500/30 font-bold";
               optionIcon = <X className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />;
             } else if (!isThisSelected && isThisCorrect) {
               optionStyle =
-                "border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold";
+                "border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold";
               optionIcon = <Check className="w-5 h-5 text-emerald-500 shrink-0" />;
             } else {
-              optionStyle = "border-border/40 bg-surface/50 text-muted opacity-50";
+              optionStyle = "border-border/40 bg-surface/50 text-muted opacity-50 cursor-default";
             }
           }
 
@@ -150,7 +147,7 @@ export function QuizQuestionView({
               disabled={isAnswered}
               onClick={() => void handleSelectOption(opt)}
               className={cn(
-                "w-full p-4 rounded-2xl border-2 text-left text-sm transition-all duration-200 flex items-center justify-between gap-3 group active:scale-[0.99]",
+                "w-full p-4 rounded-2xl border text-left text-sm transition-all duration-200 flex items-center justify-between gap-3 group active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 shadow-2xs",
                 optionStyle,
               )}
             >
@@ -170,7 +167,7 @@ export function QuizQuestionView({
         <div className="pt-2 flex justify-end animate-in fade-in slide-in-from-bottom-2 duration-200">
           <Button
             onClick={handleNextQuestion}
-            className="rounded-2xl h-12 px-6 font-bold shadow-md bg-gradient-to-r from-primary to-indigo-600 text-white hover:opacity-95"
+            className="rounded-2xl h-12 px-6 font-bold shadow-md sd-btn-gradient text-white hover:opacity-95 cursor-pointer"
           >
             {currentIndex + 1 < deck.length ? t("btn_next_question") : t("btn_view_score")}{" "}
             <ChevronRight className="w-4 h-4 ml-1" />

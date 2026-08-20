@@ -95,7 +95,7 @@ export class VocabularyController {
     return this.vocabularyService.getDailyWords(user.sub, target, native);
   }
 
-  // Danh sách từ làm nhiễu (distractors) cho bài tập trắc nghiệm từ vựng
+  // Lấy danh sách đáp án nhiễu (distractors) ngẫu nhiên cho Quiz từ vựng
   @Get('distractors')
   getDistractors(
     @Query('native') native?: string,

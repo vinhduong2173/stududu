@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -107,6 +108,11 @@ export class AdminController {
     return this.adminService.updateLanguage(id, dto);
   }
 
+  @Delete('languages/:id')
+  deleteLanguage(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.deleteLanguage(id);
+  }
+
   @Post('topics')
   createTopic(@Body() dto: CreateTopicDto) {
     return this.adminService.createTopic(dto);
@@ -118,5 +124,30 @@ export class AdminController {
     @Body() dto: UpdateTopicDto,
   ) {
     return this.adminService.updateTopic(id, dto);
+  }
+
+  @Delete('topics/:id')
+  deleteTopic(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.deleteTopic(id);
+  }
+
+  @Get('words')
+  getSavedWords(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('languageId') languageId?: string,
+  ) {
+    return this.adminService.getSavedWords(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 10,
+      search,
+      languageId ? parseInt(languageId, 10) : undefined,
+    );
+  }
+
+  @Delete('words/:id')
+  deleteWord(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.deleteWord(id);
   }
 }

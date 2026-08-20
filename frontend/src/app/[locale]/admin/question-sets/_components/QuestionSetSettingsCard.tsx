@@ -90,7 +90,7 @@ export function QuestionSetSettingsCard({
 
         <div>
           <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5">
-            Thời gian cho mỗi câu hỏi ⏱️
+            Thời gian cho mỗi câu hỏi
           </label>
           <select
             value={editTimePerQuestionSec}
@@ -107,7 +107,7 @@ export function QuestionSetSettingsCard({
 
         <div>
           <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5">
-            Giới hạn số lần làm bài 🎯
+            Giới hạn số lần làm bài
           </label>
           <select
             value={editMaxAttempts}
@@ -125,7 +125,7 @@ export function QuestionSetSettingsCard({
 
         <div>
           <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5">
-            Ngày bắt đầu 📅 <span className="text-muted font-normal">(tùy chọn)</span>
+            Ngày bắt đầu <span className="text-muted font-normal">(tùy chọn)</span>
           </label>
           <input
             type="date"
@@ -137,7 +137,7 @@ export function QuestionSetSettingsCard({
 
         <div>
           <label className="block text-xs font-semibold text-foreground uppercase tracking-wider mb-1.5">
-            Ngày kết thúc ⏳ <span className="text-muted font-normal">(tùy chọn)</span>
+            Ngày kết thúc <span className="text-muted font-normal">(tùy chọn)</span>
           </label>
           <input
             type="date"

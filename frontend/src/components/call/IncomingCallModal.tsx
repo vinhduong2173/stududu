@@ -65,7 +65,7 @@ export function IncomingCallModal({
             aria-label={t("accept")}
             className="flex flex-col items-center gap-2 text-xs font-medium text-muted"
           >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success text-white shadow-lg transition-transform hover:scale-105 active:scale-95 animate-bounce">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success text-white shadow-lg transition-transform hover:scale-105 active:scale-95 animate-pulse">
               {kind === "video" ? <Video className="h-6 w-6" /> : <Phone className="h-6 w-6" />}
             </span>
             {t("accept")}

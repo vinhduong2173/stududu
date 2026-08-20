@@ -1,24 +1,29 @@
 # 1. Base image & Install dependencies
 FROM node:20-slim AS deps
-RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
-# Copy package lockfiles
-COPY package.json package-lock.json* pnpm-lock.yaml* ./
+# Copy package files
+COPY package.json ./
 
-# Install dependencies using npm install
+# Install dependencies
 RUN npm install
 
 # 2. Build the application
 FROM node:20-slim AS builder
-RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Environment variables for build time
+# Build-time environment variables for Next.js client-side (NEXT_PUBLIC_*)
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SOCKET_URL
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ARG NEXT_PUBLIC_FORCE_TURN
+
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV NEXT_PUBLIC_FORCE_TURN=$NEXT_PUBLIC_FORCE_TURN
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
@@ -32,13 +37,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Security: Create non-root user
+RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 -g nodejs nextjs
 
-# Copy public assets and standalone output
+# Copy public assets and static standalone output
 COPY --from=builder /app/public ./public
-
-# Copy standalone build and static files with correct permissions
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
@@ -47,3 +50,4 @@ USER nextjs
 EXPOSE 3000
 
 CMD ["node", "server.js"]
+

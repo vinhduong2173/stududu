@@ -3,6 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: stududu-backend
     env_file:
       - ./backend/.env
     ports:
@@ -17,7 +18,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:3001
+        NEXT_PUBLIC_API_URL: https://api.stududu.io.vn
+        NEXT_PUBLIC_SOCKET_URL: https://api.stududu.io.vn
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+    container_name: stududu-frontend
     ports:
       - "3000:3000"
     environment:

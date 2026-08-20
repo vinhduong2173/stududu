@@ -185,6 +185,9 @@ export function useVocabulary() {
   const [score, setScore] = React.useState<number>(0);
   const [quizCompleted, setQuizCompleted] = React.useState<boolean>(false);
   const [streak, setStreak] = React.useState<number>(0);
+  const [incorrectWords, setIncorrectWords] = React.useState<SavedWord[]>([]);
+  const [undoItem, setUndoItem] = React.useState<{ word: SavedWord; index: number } | null>(null);
+  const deleteTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const [listFilter, setListFilter] = React.useState<ListFilterType>("all");
   const [search, setSearch] = React.useState("");
@@ -293,6 +296,7 @@ export function useVocabulary() {
       setSelectedOption(null);
       setIsAnswered(false);
       setStreak(0);
+      setIncorrectWords([]);
     },
     [],
   );
@@ -439,6 +443,10 @@ export function useVocabulary() {
       }
     } else {
       setStreak(0);
+      setIncorrectWords((prev) => {
+        if (prev.some((w) => w.id === activeQuizWord.id)) return prev;
+        return [...prev, activeQuizWord];
+      });
     }
   };
 
@@ -446,22 +454,60 @@ export function useVocabulary() {
     initReviewDeck(reviewMode, words);
   };
 
-  const handleDeleteWord = async (id: number, term: string) => {
-    setWords((prev) => prev.filter((w) => w.id !== id));
+  const handleRetryMissed = () => {
+    if (incorrectWords.length === 0) return;
+    const shuffled = shuffleArray(incorrectWords);
+    setDeck(shuffled);
+    setCurrentIndex(0);
+    setScore(0);
+    setQuizCompleted(false);
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setStreak(0);
+    setIncorrectWords([]);
+  };
 
-    if (typeof window !== "undefined") {
-      try {
-        const current = getStoredWordStatuses();
-        delete current[id];
-        localStorage.setItem(LOCAL_STATUS_KEY, JSON.stringify(current));
-      } catch {}
+  const handleDeleteWord = (id: number, term: string) => {
+    const targetIdx = words.findIndex((w) => w.id === id);
+    const targetWord = words[targetIdx];
+    if (!targetWord) return;
+
+    if (deleteTimerRef.current) {
+      clearTimeout(deleteTimerRef.current);
     }
 
-    try {
-      await api(`/vocabulary/my-words/${id}`, { method: "DELETE" });
-      showToast(t("deleted_toast_message", { term }));
-    } catch (err) {
-      console.error(err);
+    setUndoItem({ word: targetWord, index: targetIdx });
+    setWords((prev) => prev.filter((w) => w.id !== id));
+
+    deleteTimerRef.current = setTimeout(async () => {
+      try {
+        await api(`/vocabulary/my-words/${id}`, { method: "DELETE" });
+        if (typeof window !== "undefined") {
+          const current = getStoredWordStatuses();
+          delete current[id];
+          localStorage.setItem(LOCAL_STATUS_KEY, JSON.stringify(current));
+        }
+      } catch (err) {
+        console.error("Delete failed:", err);
+      }
+      setUndoItem(null);
+      deleteTimerRef.current = null;
+    }, 5000);
+  };
+
+  const handleUndoDelete = () => {
+    if (deleteTimerRef.current) {
+      clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+    if (undoItem) {
+      setWords((prev) => {
+        const next = [...prev];
+        next.splice(undoItem.index, 0, undoItem.word);
+        return next;
+      });
+      showToast(t("undone_toast_message", { term: undoItem.word.word.term }));
+      setUndoItem(null);
     }
   };
 
@@ -486,10 +532,10 @@ export function useVocabulary() {
   const accuracyPercent = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
 
   const getRankBadge = (acc: number) => {
-    if (acc >= 90) return { title: t("rank_excellent"), color: "text-amber-500 bg-amber-500/10 border-amber-500/30" };
-    if (acc >= 70) return { title: t("rank_good"), color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/30" };
-    if (acc >= 50) return { title: t("rank_fair"), color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/30" };
-    return { title: t("rank_needs_work"), color: "text-rose-500 bg-rose-500/10 border-rose-500/30" };
+    if (acc >= 90) return { title: t("rank_excellent"), color: "text-amber-800 bg-amber-50 border-amber-200" };
+    if (acc >= 70) return { title: t("rank_good"), color: "text-emerald-800 bg-emerald-50 border-emerald-200" };
+    if (acc >= 50) return { title: t("rank_fair"), color: "text-teal-800 bg-teal-50 border-teal-200" };
+    return { title: t("rank_needs_work"), color: "text-rose-800 bg-rose-50 border-rose-200" };
   };
 
   const rankInfo = getRankBadge(accuracyPercent);
@@ -511,6 +557,10 @@ export function useVocabulary() {
     score,
     quizCompleted,
     streak,
+    incorrectWords,
+    handleRetryMissed,
+    undoItem,
+    handleUndoDelete,
     listFilter,
     setListFilter,
     search,

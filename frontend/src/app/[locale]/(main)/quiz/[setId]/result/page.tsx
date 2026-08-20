@@ -141,7 +141,7 @@ export default function QuizResultPage() {
               <h1 className="text-xl md:text-2xl font-bold text-foreground font-display">
                 {set.title}
               </h1>
-              <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+              <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200/60">
                 {set.framework} {set.level}
               </span>
             </div>
@@ -153,22 +153,22 @@ export default function QuizResultPage() {
 
         <Link
           href={`/quiz/${setId}`}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold bg-primary text-primary-foreground text-xs shadow-md hover:opacity-90 transition-all"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold bg-primary text-primary-foreground text-xs shadow-xs hover:opacity-90 transition-all"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>{t("retry_quiz")}</span>
         </Link>
       </div>
 
-      {/* 2-COLUMN MAIN LAYOUT: Left (Results & Review), Right (Kahoot Leaderboard) */}
+      {/* 2-COLUMN MAIN LAYOUT: Left (Results & Review), Right (Leaderboard) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT COLUMN (7 Cols): Summary Score & Question Review Form */}
         <div className="lg:col-span-7 space-y-6">
           {/* Summary Score Card */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500/10 via-surface to-purple-500/10 rounded-3xl border border-emerald-500/20 shadow-md p-6 md:p-8">
+          <div className="relative overflow-hidden bg-surface rounded-2xl border border-emerald-200 shadow-card p-6 md:p-8">
             <div className="flex flex-wrap items-center justify-between gap-6">
               <div className="space-y-1">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
                   <CheckCircle2 className="w-3.5 h-3.5" /> {t("excellent_completed")}
                 </span>
                 <div className="flex items-baseline gap-2 pt-1">
@@ -184,7 +184,7 @@ export default function QuizResultPage() {
 
               {/* Quick Stats Badges */}
               <div className="grid grid-cols-2 gap-3 shrink-0">
-                <div className="bg-surface/80 border border-border/80 rounded-2xl p-3 text-center min-w-[100px]">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center min-w-[96px]">
                   <p className="text-[10px] uppercase font-bold text-muted">{t("duration_label")}</p>
                   <p className="text-base font-extrabold text-foreground mt-0.5 flex items-center justify-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-primary" />
@@ -192,9 +192,9 @@ export default function QuizResultPage() {
                   </p>
                 </div>
 
-                <div className="bg-surface/80 border border-border/80 rounded-2xl p-3 text-center min-w-[100px]">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center min-w-[96px]">
                   <p className="text-[10px] uppercase font-bold text-muted">{t("rank_label")}</p>
-                  <p className="text-base font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 flex items-center justify-center gap-1">
+                  <p className="text-base font-extrabold text-amber-700 mt-0.5 flex items-center justify-center gap-1">
                     <Trophy className="w-3.5 h-3.5 text-amber-500" />
                     <span>{myRank ? `#${myRank}` : "Top 10+"}</span>
                   </p>
@@ -217,23 +217,23 @@ export default function QuizResultPage() {
                   <div
                     key={item.questionId}
                     className={cn(
-                      "bg-surface rounded-2xl border p-5 md:p-6 transition-all shadow-2xs space-y-4 relative overflow-hidden",
+                      "bg-surface rounded-2xl border p-5 md:p-6 transition-all shadow-card space-y-4 relative overflow-hidden",
                       isCorrect
-                        ? "border-emerald-500/40 border-l-4 border-l-emerald-500"
-                        : "border-rose-500/40 border-l-4 border-l-rose-500"
+                        ? "border-emerald-200 bg-emerald-50/20"
+                        : "border-rose-200 bg-rose-50/20"
                     )}
                   >
                     {/* Header: Question Index & Status */}
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-muted/40 text-muted-foreground">
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700">
                         {t("question_num", { n: idx + 1 })}
                       </span>
                       {isCorrect ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-lg">
+                        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
                           <CheckCircle2 className="w-4 h-4" /> {t("correct_badge")}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-rose-600 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-1 rounded-lg">
+                        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-rose-800 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
                           <XCircle className="w-4 h-4" /> {t("wrong_badge")}
                         </span>
                       )}
@@ -241,7 +241,7 @@ export default function QuizResultPage() {
 
                     {/* Term / Passage */}
                     {item.term && (
-                      <p className="text-xs font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/30 px-3 py-1.5 rounded-lg inline-block">
+                      <p className="text-xs font-semibold text-teal-800 bg-teal-50 border border-teal-200/70 px-3 py-1.5 rounded-lg inline-block">
                         {t("term_label", { term: item.term })}
                       </p>
                     )}
@@ -313,40 +313,40 @@ export default function QuizResultPage() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN (5 Cols): Kahoot-Style Top 10 Leaderboard */}
+        {/* RIGHT COLUMN (5 Cols): Top 10 Leaderboard */}
         <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-6">
-          <div className="bg-surface rounded-3xl border border-border shadow-md p-6 space-y-6 overflow-hidden">
+          <div className="bg-surface rounded-2xl border border-border shadow-card p-6 space-y-6 overflow-hidden">
             {/* Leaderboard Header */}
             <div className="flex items-center justify-between border-b border-border/60 pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center">
                   <Trophy className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base md:text-lg text-foreground font-display leading-tight">
+                  <h3 className="font-bold text-base md:text-lg text-foreground font-display leading-tight">
                     {t("leaderboard_title")}
                   </h3>
-                  <p className="text-[11px] font-semibold text-muted">
+                  <p className="text-[11px] font-medium text-muted">
                     {t("leaderboard_subtitle")}
                   </p>
                 </div>
               </div>
 
-              <span className="px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-300 text-xs font-bold flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 fill-current text-purple-500" /> Kahoot Rank
+              <span className="px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 fill-current text-teal-600" /> BXH Quiz
               </span>
             </div>
 
             {/* My Rank Highlight Banner */}
             {myRank && (
-              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl p-4 flex items-center justify-between shadow-md">
+              <div className="bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-xl p-4 flex items-center justify-between shadow-xs">
                 <div className="flex items-center gap-3">
-                  <span className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-lg">
+                  <span className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center font-bold text-lg">
                     #{myRank}
                   </span>
                   <div>
-                    <p className="text-xs font-bold uppercase opacity-80">{t("my_rank")}</p>
-                    <p className="text-sm font-extrabold">{score.toLocaleString()} PTS</p>
+                    <p className="text-xs font-semibold uppercase opacity-90">{t("my_rank")}</p>
+                    <p className="text-sm font-bold">{score.toLocaleString()} PTS</p>
                   </div>
                 </div>
                 <Award className="w-6 h-6 opacity-90" />
@@ -378,18 +378,18 @@ export default function QuizResultPage() {
                         {/* Rank Badge */}
                         <div className="shrink-0 flex items-center justify-center w-8 h-8">
                           {isGold && (
-                            <span className="w-8 h-8 rounded-full bg-amber-500 text-white font-extrabold text-xs flex items-center justify-center shadow-md">
-                              🥇
+                            <span className="w-7 h-7 rounded-full bg-amber-500 text-white font-extrabold text-xs flex items-center justify-center shadow-md font-mono">
+                              1
                             </span>
                           )}
                           {isSilver && (
-                            <span className="w-8 h-8 rounded-full bg-slate-400 text-white font-extrabold text-xs flex items-center justify-center shadow-md">
-                              🥈
+                            <span className="w-7 h-7 rounded-full bg-slate-400 text-white font-extrabold text-xs flex items-center justify-center shadow-md font-mono">
+                              2
                             </span>
                           )}
                           {isBronze && (
-                            <span className="w-8 h-8 rounded-full bg-orange-600 text-white font-extrabold text-xs flex items-center justify-center shadow-md">
-                              🥉
+                            <span className="w-7 h-7 rounded-full bg-amber-700 text-white font-extrabold text-xs flex items-center justify-center shadow-md font-mono">
+                              3
                             </span>
                           )}
                           {!isGold && !isSilver && !isBronze && (

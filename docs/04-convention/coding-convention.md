@@ -153,3 +153,8 @@ Code đúng User Story & thiết kế · pass test case · merge develop qua PR 
 Kiểm tra nhanh sau khi bật: thử `git push origin main` trực tiếp → phải bị **từ chối**. Nếu push được nghĩa là rule chưa ăn.
 
 > **Dọn dẹp nhánh cũ:** nhánh `frontend` hiện tại chia theo tầng kỹ thuật — trái quy ước mục 4.2. Sau khi đã hợp nhất phần cần thiết vào `develop`, nên xoá nhánh này để tránh cả team hiểu nhầm mô hình branch.
+
+
+
+
+

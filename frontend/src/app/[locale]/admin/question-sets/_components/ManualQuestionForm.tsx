@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { X } from "lucide-react";
+import { X, PencilLine } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -78,7 +78,10 @@ export function ManualQuestionForm({
         className="my-8 h-fit w-full max-w-xl space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-lg"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-foreground">✏️ Thêm câu thủ công</h2>
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <PencilLine className="w-5 h-5 text-primary" />
+            <span>Thêm câu thủ công</span>
+          </h2>
           <button type="button" onClick={onClose} className="text-muted hover:text-foreground">
             <X className="h-5 w-5" />
           </button>

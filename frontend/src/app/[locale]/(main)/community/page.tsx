@@ -29,6 +29,7 @@ import {
   Globe,
   Lock,
   Volume2,
+  Search,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -39,9 +40,12 @@ import {
   GroupDetailModal,
   GroupItem,
 } from "@/components/features/GroupModals";
+import { GroupListItem } from "@/components/features/GroupListItem";
 import { ChallengeBoard } from "@/components/features/ChallengeBoard";
 import { EventTestCard, TestSetItem } from "@/components/features/EventTestCard";
+import { DailyVocabCard } from "@/components/features/community/DailyVocabCard";
 import { LearnerSet } from "@/lib/questionSets";
+import { getLanguageInfo } from "@/lib/languages";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -86,6 +90,8 @@ type DailyWord = {
 
 type DailyWordsResponse = {
   language: { code: string; name: string };
+  nativeLanguage?: string;
+  learningLanguages?: { code: string; name: string }[];
   total: number;
   words: DailyWord[];
 };
@@ -181,9 +187,22 @@ export default function CommunityPage() {
 
   // Groups state
   const [realGroups, setRealGroups] = React.useState<GroupItem[]>([]);
+  const [groupSearchQuery, setGroupSearchQuery] = React.useState("");
   const [loadingGroups, setLoadingGroups] = React.useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = React.useState(false);
   const [selectedGroupIdOrSlug, setSelectedGroupIdOrSlug] = React.useState<number | string | null>(null);
+
+  const filteredGroups = React.useMemo(() => {
+    if (!groupSearchQuery.trim()) return realGroups;
+    const q = groupSearchQuery.trim().toLowerCase();
+    return realGroups.filter(
+      (g) =>
+        g.name.toLowerCase().includes(q) ||
+        (g.description && g.description.toLowerCase().includes(q)) ||
+        (g.language?.name && g.language.name.toLowerCase().includes(q)) ||
+        (g.creator?.displayName && g.creator.displayName.toLowerCase().includes(q))
+    );
+  }, [realGroups, groupSearchQuery]);
 
   // Default sample test sets matching mockup design
   const DEFAULT_EVENT_TESTS: TestSetItem[] = [
@@ -408,19 +427,19 @@ export default function CommunityPage() {
   const fetchDailyWords = React.useCallback(
     (target?: string) => {
       const query = new URLSearchParams();
-      if (locale) query.set("native", locale);
       if (target) query.set("target", target);
 
-      api<DailyWordsResponse>(`/vocabulary/daily-words?${query.toString()}`)
+      api<DailyWordsResponse>(`/vocabulary/daily-words${query.toString() ? `?${query.toString()}` : ""}`)
         .then((data) => {
           setDailyWordsData(data);
+          setVocabIndex(0);
           if (data?.language?.code && !target) {
             setDailyTargetLang(data.language.code);
           }
         })
         .catch((err) => console.error("Error loading daily words:", err));
     },
-    [locale]
+    []
   );
 
   // Group join toggle state
@@ -491,7 +510,7 @@ export default function CommunityPage() {
       ]);
       setDraft("");
       setImage(null);
-      showToast("✅ Đã đăng bài chia sẻ");
+      showToast("Đã đăng bài chia sẻ");
     } catch (err: any) {
       showToast(err.message || "Không đăng được bài");
     } finally {
@@ -511,7 +530,7 @@ export default function CommunityPage() {
       await api(`/community/posts/${postId}`, { method: "DELETE" });
       setPosts((prev) => prev.filter((p) => p.id !== postId));
       setDeletingPostId(null);
-      showToast("✅ Đã xóa bài viết");
+      showToast("Đã xóa bài viết");
     } catch (err: any) {
       showToast(err.message || "Không thể xóa bài viết");
     } finally {
@@ -550,7 +569,7 @@ export default function CommunityPage() {
       setEditingPost(null);
       setEditDraft("");
       setEditImage(null);
-      showToast("✅ Đã cập nhật bài viết");
+      showToast("Đã cập nhật bài viết");
     } catch (err: any) {
       showToast(err.message || "Không thể cập nhật bài viết");
     } finally {
@@ -636,7 +655,7 @@ export default function CommunityPage() {
             : p
         )
       );
-      showToast("✅ Đã xóa bình luận");
+      showToast("Đã xóa bình luận");
     } catch (err: any) {
       showToast(err.message || "Không thể xóa bình luận");
     }
@@ -707,7 +726,7 @@ export default function CommunityPage() {
           source: "manual",
         },
       });
-      showToast(`✅ ${t("vocabulary.save_success", { term: currentWord.term })}`);
+      showToast(t("vocabulary.save_success", { term: currentWord.term }));
       setDailyWordsData((prev) => {
         if (!prev) return prev;
         const updatedWords = [...prev.words];
@@ -725,7 +744,7 @@ export default function CommunityPage() {
     setJoinedGroups((prev) => {
       const nextState = !prev[groupId];
       if (nextState) {
-        showToast(`✅ Đã tham gia ${groupName}`);
+        showToast(`Đã tham gia ${groupName}`);
       } else {
         showToast(`Đã rời ${groupName}`);
       }
@@ -775,7 +794,7 @@ export default function CommunityPage() {
       <button
         onClick={() => toggleLikeComment(c)}
         className={cn(
-          "flex flex-col items-center justify-center p-1 text-muted hover:text-error transition-colors self-center",
+        "flex flex-col items-center justify-center p-1 text-muted hover:text-error transition-colors self-center",
           c.likedByMe && "text-error hover:text-error/80"
         )}
         title={c.likedByMe ? t("community.unlike") : t("community.like")}
@@ -787,34 +806,20 @@ export default function CommunityPage() {
   );
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-24">
-      {/* Header Section */}
-      <div className="mb-6">
-        <div className="sd-eyebrow mb-1">
-          <Trophy className="w-3.5 h-3.5 text-primary" />
-          <span>{t("community.eyebrow") || "CỘNG ĐỒNG STUDUDU"}</span>
-        </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground font-display flex items-center gap-2.5">
-          {t("community.title")}
-        </h1>
-        <p className="text-muted text-sm mt-1">
-          {t("community.page_subtitle") || "Chia sẻ hành trình, tìm bạn luyện tập và tham gia sự kiện."}
-        </p>
-      </div>
-
+    <div className="w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 pb-16">
       {/* 3 Column Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_360px] gap-6 xl:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_400px] xl:grid-cols-[260px_1fr_440px] 2xl:grid-cols-[280px_1fr_480px] gap-6 xl:gap-8 items-start">
         
         {/* LEFT COLUMN: Sidebar Navigation */}
-        <aside className="bg-surface rounded-2xl border border-border shadow-sm p-2 sticky top-20">
+        <aside className="bg-surface rounded-2xl border border-border/80 shadow-card p-2 sticky top-20">
           <nav className="space-y-1">
             <button
               onClick={() => setActiveTab("feed")}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left",
+                "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer",
                 activeTab === "feed"
-                  ? "bg-primary/10 text-primary shadow-xs font-bold"
-                  : "text-muted hover:text-foreground hover:bg-muted/10"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-muted hover:text-foreground hover:bg-surface-2"
               )}
             >
               <MessageSquare className="w-4 h-4" />
@@ -824,10 +829,10 @@ export default function CommunityPage() {
             <button
               onClick={() => setActiveTab("groups")}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left",
+                "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer",
                 activeTab === "groups"
-                  ? "bg-primary/10 text-primary shadow-xs font-bold"
-                  : "text-muted hover:text-foreground hover:bg-muted/10"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-muted hover:text-foreground hover:bg-surface-2"
               )}
             >
               <Users className="w-4 h-4" />
@@ -837,10 +842,10 @@ export default function CommunityPage() {
             <button
               onClick={() => setActiveTab("events")}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left",
+                "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer",
                 activeTab === "events"
-                  ? "bg-primary/10 text-primary shadow-xs font-bold"
-                  : "text-muted hover:text-foreground hover:bg-muted/10"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-muted hover:text-foreground hover:bg-surface-2"
               )}
             >
               <Calendar className="w-4 h-4" />
@@ -850,25 +855,35 @@ export default function CommunityPage() {
         </aside>
 
         {/* MIDDLE COLUMN: Main Content Area */}
-        <main className="space-y-6">
+        <main className="space-y-5">
+          {/* Header Section inside middle column */}
+          <div className="px-1 py-1 mb-1">
+            <h1 className="text-xl md:text-2xl font-bold text-foreground font-display flex items-center gap-2 tracking-tight">
+              {t("community.title")}
+            </h1>
+            <p className="text-muted text-xs md:text-sm mt-0.5">
+              {t("community.page_subtitle") || "Chia sẻ hành trình, tìm bạn luyện tập và tham gia sự kiện."}
+            </p>
+          </div>
+
           {activeTab === "feed" && (
             <>
               {/* Post Composer Card */}
-              <div className="bg-surface rounded-2xl border border-border shadow-sm p-4">
+              <div className="bg-surface rounded-2xl border border-border/80 shadow-card p-5">
                 <textarea
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   maxLength={500}
                   placeholder={t("community.post_placeholder")}
-                  className="w-full rounded-xl border border-border bg-muted/5 p-3 text-sm focus:outline-none focus:border-primary transition-all resize-none h-22"
+                  className="w-full rounded-xl border border-border/80 bg-surface-2/60 p-3.5 text-sm text-foreground placeholder:text-muted/70 focus:outline-none focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none h-24 shadow-xs"
                 />
 
                 {image && (
-                  <div className="relative mt-2 w-32 h-32 rounded-xl overflow-hidden border border-border bg-muted/5 group">
+                  <div className="relative mt-3 w-32 h-32 rounded-xl overflow-hidden border border-border/80 bg-muted/5 group shadow-xs">
                     <img src={image} alt="Preview" className="w-full h-full object-cover" />
                     <button
                       onClick={() => setImage(null)}
-                      className="absolute top-1 right-1 p-1 bg-foreground/80 hover:bg-foreground text-surface rounded-full transition-colors shadow-sm"
+                      className="absolute top-1 right-1 p-1 bg-foreground/80 hover:bg-foreground text-surface rounded-full transition-colors shadow-sm cursor-pointer"
                       type="button"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -881,38 +896,38 @@ export default function CommunityPage() {
                   <button
                     type="button"
                     onClick={() => handleAddTopicChip(t("community.tag_partner") || "Tìm đối tác")}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-violet-200/80 bg-violet-50 text-violet-700 hover:bg-violet-100/80 transition-colors cursor-pointer"
                   >
-                    <span>🔤</span>
+                    <Users className="w-3.5 h-3.5" />
                     <span>{t("community.tag_partner") || "Tìm đối tác"}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleAddTopicChip(t("community.tag_milestone") || "Khoe thành tích")}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-secondary/20 bg-secondary/5 text-secondary hover:bg-secondary/10 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-pink-200/80 bg-pink-50 text-pink-700 hover:bg-pink-100/80 transition-colors cursor-pointer"
                   >
-                    <span>🎉</span>
+                    <Trophy className="w-3.5 h-3.5" />
                     <span>{t("community.tag_milestone") || "Khoe thành tích"}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleAddTopicChip(t("community.tag_question") || "Hỏi luyện tập")}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-warning/30 bg-warning/5 text-warning hover:bg-warning/10 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-amber-200/80 bg-amber-50 text-amber-800 hover:bg-amber-100/80 transition-colors cursor-pointer"
                   >
-                    <span>❓</span>
+                    <HelpCircle className="w-3.5 h-3.5" />
                     <span>{t("community.tag_question") || "Hỏi luyện tập"}</span>
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/60">
                   <div className="flex items-center gap-2">
                     <label
-                      className="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted text-muted hover:text-primary transition-colors"
+                      className="cursor-pointer flex items-center justify-center w-8 h-8 rounded-full hover:bg-surface-2 text-muted hover:text-primary transition-colors"
                       title={t("community.add_image")}
                     >
-                      <ImageIcon className="w-5 h-5" />
+                      <ImageIcon className="w-4 h-4" />
                       <input
                         type="file"
                         accept="image/*"
@@ -921,9 +936,9 @@ export default function CommunityPage() {
                         disabled={posting}
                       />
                     </label>
-                    <span className="text-xs text-muted">{draft.length}/500</span>
+                    <span className="text-xs text-muted/80">{draft.length}/500</span>
                   </div>
-                  <Button size="sm" onClick={handlePost} disabled={(!draft.trim() && !image) || posting} className="rounded-full px-5">
+                  <Button size="sm" onClick={handlePost} disabled={(!draft.trim() && !image) || posting} className="rounded-full px-5 font-bold shadow-xs">
                     {posting ? t("common.loading") : t("community.post_button")}
                   </Button>
                 </div>
@@ -933,21 +948,24 @@ export default function CommunityPage() {
               {loading ? (
                 <div className="space-y-3">
                   {[...Array(4)].map((_, i) => (
-                    <div key={i} className="h-28 rounded-2xl bg-muted/10 animate-pulse" />
+                    <div key={i} className="h-28 rounded-2xl bg-surface border border-border/80 animate-pulse" />
                   ))}
                 </div>
               ) : posts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center bg-surface rounded-2xl border border-border p-6">
-                  <div className="text-5xl mb-3">🌱</div>
-                  <h3 className="text-lg font-bold text-foreground mb-1">{t("community.empty_feed")}</h3>
-                  <p className="text-muted text-xs max-w-xs">{t("community.empty_feed_hint")}</p>
+                <div className="bg-surface rounded-2xl border border-border/80 shadow-card p-12 text-center">
+                  <MessageSquare className="w-12 h-12 text-muted mx-auto mb-3 opacity-60" />
+                  <p className="text-foreground font-semibold text-sm">{t("community.empty_feed")}</p>
+                  <p className="text-xs text-muted mt-1">{t("community.empty_feed_hint")}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {posts.map((p) => (
-                    <div key={p.id} className="bg-surface rounded-2xl border border-border shadow-sm p-4 transition-all">
+                    <div
+                      key={p.id}
+                      className="bg-surface rounded-2xl border border-border/80 shadow-card p-5 transition-all hover:border-primary/20"
+                    >
                       <div className="flex items-start gap-3">
-                        <Link href={`/profile/${p.user.id}`}>
+                        <Link href={`/profile/${p.user.id}`} className="shrink-0">
                           <Avatar
                             src={p.user.avatarUrl ?? undefined}
                             fallback={p.user.displayName.charAt(0)}
@@ -955,133 +973,153 @@ export default function CommunityPage() {
                           />
                         </Link>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm text-foreground leading-relaxed flex-1 min-w-0">
-                              <Link href={`/profile/${p.user.id}`} className="font-bold hover:underline">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Link
+                                href={`/profile/${p.user.id}`}
+                                className="font-bold text-sm text-foreground hover:underline"
+                              >
                                 {p.user.displayName}
-                              </Link>{" "}
-                              {postText(p, t)}
-                            </p>
-
-                            {currentUser && p.user.id === currentUser.id && (
-                              <div className="relative flex-shrink-0">
-                                <button
-                                  onClick={() => toggleMenu(p.id)}
-                                  className="p-1 rounded-full text-muted hover:bg-muted/10 transition-colors"
-                                >
-                                  <MoreVertical className="w-4 h-4" />
-                                </button>
-
-                                {activeMenuPostId === p.id && (
-                                  <div className="absolute right-0 mt-1 w-32 bg-surface border border-border rounded-xl shadow-lg py-1 z-20">
-                                    <button
-                                      onClick={() => {
-                                        setEditingPost(p);
-                                        setEditDraft(p.content || "");
-                                        setEditImage(p.imageUrl || null);
-                                        setActiveMenuPostId(null);
-                                      }}
-                                      className="w-full text-left px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted/10 flex items-center gap-1.5 transition-colors"
-                                    >
-                                      <Edit className="w-3.5 h-3.5" />
-                                      {t("community.edit")}
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setDeletingPostId(p.id);
-                                        setActiveMenuPostId(null);
-                                      }}
-                                      className="w-full text-left px-3 py-2 text-xs font-semibold text-error hover:bg-error/5 flex items-center gap-1.5 transition-colors"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      {t("community.delete_post")}
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                              </Link>
+                              <span className="text-xs text-muted">{postText(p, t)}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted">{timeAgo(p.createdAt, t)}</span>
+                              {currentUser && currentUser.id === p.user.id && (
+                                <div className="relative">
+                                  <button
+                                    onClick={() => toggleMenu(p.id)}
+                                    className="p-1 rounded-full text-muted hover:text-foreground hover:bg-muted/10 transition-colors"
+                                  >
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
+                                  {activeMenuPostId === p.id && (
+                                    <>
+                                      <div
+                                        className="fixed inset-0 z-20"
+                                        onClick={() => setActiveMenuPostId(null)}
+                                      />
+                                      <div className="absolute right-0 top-6 z-30 bg-surface border border-border rounded-xl shadow-lg py-1 w-32 animate-fade-in">
+                                        <button
+                                          onClick={() => {
+                                            setActiveMenuPostId(null);
+                                            setEditingPost(p);
+                                            setEditDraft(p.content || "");
+                                            setEditImage(p.imageUrl || null);
+                                          }}
+                                          className="w-full text-left px-3 py-1.5 text-xs text-foreground hover:bg-muted/10 flex items-center gap-2"
+                                        >
+                                          <Edit className="w-3.5 h-3.5" />
+                                          {t("community.edit")}
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setActiveMenuPostId(null);
+                                            setDeletingPostId(p.id);
+                                          }}
+                                          className="w-full text-left px-3 py-1.5 text-xs text-error hover:bg-error/5 flex items-center gap-2 font-medium"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                          {t("community.delete")}
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
 
+                          {/* Post Text Content */}
                           {p.type === "user_post" && p.content && (
-                            <p className="text-sm text-foreground leading-relaxed mt-1.5 whitespace-pre-wrap break-words">
-                              {p.content}
-                            </p>
-                          )}
-
-                          {/* FB/X Style: See Translation Link right below post content */}
-                          <button
-                            onClick={() => handleTranslatePost(p)}
-                            disabled={translatingPostId === p.id}
-                            className="mt-1 text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 transition-colors"
-                          >
-                            <Languages className="w-3.5 h-3.5" />
-                            <span>
-                              {translatingPostId === p.id
-                                ? "..."
-                                : showTranslation[p.id]
-                                ? t("community.hide_translation") || "Ẩn bản dịch"
-                                : t("community.see_translation") || "Xem bản dịch"}
-                            </span>
-                          </button>
-
-                          {/* Inline Post Translation Box */}
-                          {showTranslation[p.id] && translatedPosts[p.id] && (
-                            <div className="mt-2 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs leading-relaxed text-foreground animate-fade-in">
-                              <div className="flex items-center justify-between text-[11px] font-bold text-primary mb-1">
-                                <span className="flex items-center gap-1.5">
-                                  <Languages className="w-3.5 h-3.5" />
-                                  {t("community.translation_title") || "Bản dịch tự động"}
+                            <div className="mt-2.5">
+                              <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">
+                                {p.content}
+                              </p>
+                              {showTranslation[p.id] && translatedPosts[p.id] && (
+                                <div className="mt-2 p-3 bg-muted/10 rounded-xl border border-border/60 text-xs text-foreground animate-fade-in">
+                                  <div className="flex items-center gap-1.5 text-[10px] text-muted font-bold mb-1 uppercase tracking-wider">
+                                    <Languages className="w-3 h-3 text-primary" />
+                                    <span>{t("community.translation_title")}</span>
+                                  </div>
+                                  <p className="whitespace-pre-wrap">{translatedPosts[p.id]}</p>
+                                </div>
+                              )}
+                              <button
+                                onClick={() => handleTranslatePost(p)}
+                                disabled={translatingPostId === p.id}
+                                className="inline-flex items-center gap-1 mt-1 text-[11px] text-primary hover:underline font-semibold"
+                              >
+                                <Languages className="w-3 h-3" />
+                                <span>
+                                  {translatingPostId === p.id
+                                    ? t("common.loading")
+                                    : showTranslation[p.id]
+                                    ? t("community.hide_translation")
+                                    : t("community.see_translation")}
                                 </span>
-                                <button
-                                  onClick={() => setShowTranslation((prev) => ({ ...prev, [p.id]: false }))}
-                                  className="text-muted hover:text-foreground text-[10px]"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                              <p className="whitespace-pre-wrap mt-0.5">{translatedPosts[p.id]}</p>
+                              </button>
                             </div>
                           )}
 
+                          {/* Post Image */}
                           {p.imageUrl && (
-                            <div className="mt-3 rounded-xl overflow-hidden border border-border/50 w-full max-w-2xl bg-muted/5 inline-block">
+                            <div className="mt-3 rounded-xl overflow-hidden border border-border/60 bg-muted/5 max-h-96">
                               <img
                                 src={p.imageUrl}
-                                alt="Đính kèm"
-                                className="w-full h-auto object-contain max-h-[500px]"
+                                alt="Post attachment"
+                                className="w-full h-auto object-cover max-h-96 hover:scale-[1.01] transition-transform"
                               />
                             </div>
                           )}
 
-                          <div className="flex items-center gap-3 mt-3 flex-wrap">
-                            <span className="text-xs text-muted">{timeAgo(p.createdAt, t)}</span>
+                          {/* Word preview card */}
+                          {p.type === "word_public" && p.word && (
+                            <div className="mt-3 p-3.5 bg-surface-2 rounded-xl border border-border/80 flex items-center justify-between">
+                              <div>
+                                <p className="font-bold text-sm text-foreground">{p.word.term}</p>
+                                <p className="text-xs text-muted">{p.word.language.name}</p>
+                              </div>
+                              <Link
+                                href={`/vocabulary?search=${encodeURIComponent(p.word.term)}`}
+                                className="text-xs text-primary font-bold hover:underline"
+                              >
+                                Xem từ vựng →
+                              </Link>
+                            </div>
+                          )}
+
+                          {/* Post Actions: Like, Comment, Report */}
+                          <div className="flex items-center gap-4 mt-3 pt-2 text-xs text-muted">
                             <button
                               onClick={() => toggleLike(p)}
                               className={cn(
-                                "flex items-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1 border transition-all",
-                                p.likedByMe
-                                  ? "border-error/40 bg-error/5 text-error"
-                                  : "border-border text-muted hover:border-error/40 hover:text-error"
+                                "flex items-center gap-1.5 hover:text-error transition-colors",
+                                p.likedByMe && "text-error font-bold"
                               )}
                             >
-                              <Heart className={cn("w-3.5 h-3.5", p.likedByMe && "fill-error")} />
-                              {p.likeCount > 0 ? p.likeCount : t("community.like")}
+                              <Heart className={cn("w-4 h-4", p.likedByMe && "fill-error")} />
+                              <span>{p.likeCount > 0 ? p.likeCount : t("community.like")}</span>
                             </button>
+
                             <button
                               onClick={() => handleToggleComments(p.id)}
                               className={cn(
-                                "flex items-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1 border transition-all",
-                                expandedPostId === p.id
-                                  ? "border-primary/40 bg-primary/5 text-primary"
-                                  : "border-border text-muted hover:border-primary/40 hover:text-primary"
+                                "flex items-center gap-1.5 hover:text-foreground transition-colors",
+                                expandedPostId === p.id && "text-primary font-bold"
                               )}
                             >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                              {p.commentCount > 0 ? p.commentCount : t("community.comment_placeholder").replace("...", "")}
+                              <MessageSquare className="w-4 h-4" />
+                              <span>
+                                {p.commentCount > 0
+                                  ? `${p.commentCount} ${t("community.comment_placeholder").toLowerCase().replace("...", "")}`
+                                  : t("community.comment_placeholder").toLowerCase().replace("...", "")}
+                              </span>
                             </button>
+
                             <button
                               onClick={() => setReportTarget(p)}
-                              className="flex items-center gap-1 text-xs font-semibold rounded-full px-2.5 py-1 border border-border text-muted hover:border-warning hover:text-warning transition-all"
+                              className="flex items-center gap-1.5 hover:text-error transition-colors ml-auto text-muted/60 hover:text-muted"
                               title={t("community.report")}
                             >
                               <Flag className="w-3.5 h-3.5" />
@@ -1185,111 +1223,89 @@ export default function CommunityPage() {
           {/* GROUPS TAB VIEW */}
           {activeTab === "groups" && (
             <div className="space-y-4">
-              <div className="bg-surface rounded-2xl border border-border shadow-sm p-6">
-                <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-foreground font-display">
-                        {t("community.groups_title") || "Nhóm ngôn ngữ & Học tập"}
-                      </h2>
-                      <p className="text-xs text-muted">
-                        Tham gia các câu lạc bộ hoặc tạo nhóm riêng để luyện tập cùng bạn học
-                      </p>
-                    </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground font-display">
+                      {t("community.groups_title") || "Nhóm ngôn ngữ & Học tập"}
+                    </h2>
+                    <p className="text-xs text-muted">
+                      Tham gia các câu lạc bộ hoặc tạo nhóm riêng để luyện tập cùng bạn học
+                    </p>
+                  </div>
+                </div>
+
+                {/* Search Bar & Create Button */}
+                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm nhóm..."
+                      value={groupSearchQuery}
+                      onChange={(e) => setGroupSearchQuery(e.target.value)}
+                      className="w-full h-10 rounded-full border border-border bg-surface pl-9.5 pr-3 text-xs sm:text-sm font-medium text-foreground placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-2xs"
+                    />
                   </div>
 
                   <Button
                     onClick={() => setShowCreateGroupModal(true)}
-                    className="sd-btn-gradient rounded-xl text-xs font-bold gap-2 shadow-xs"
+                    className="sd-btn-gradient rounded-full text-xs sm:text-sm font-bold gap-1.5 shadow-xs shrink-0 h-10 px-4"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Tạo nhóm mới</span>
                   </Button>
                 </div>
+              </div>
 
-                {loadingGroups ? (
-                  <div className="py-12 text-center text-xs text-muted">
-                    Đang tải danh sách nhóm...
-                  </div>
-                ) : realGroups.length === 0 ? (
+              {loadingGroups ? (
+                <div className="py-12 text-center text-xs text-muted">
+                  Đang tải danh sách nhóm...
+                </div>
+              ) : filteredGroups.length === 0 ? (
+                realGroups.length === 0 ? (
                   <div className="py-12 text-center space-y-3 bg-muted/5 rounded-2xl border border-dashed border-border/70 p-6">
                     <Users className="w-10 h-10 text-muted mx-auto" />
                     <p className="text-xs font-semibold text-muted">Chưa có nhóm nào được tạo</p>
                     <Button
                       size="sm"
                       onClick={() => setShowCreateGroupModal(true)}
-                      className="sd-btn-gradient rounded-xl text-xs font-bold gap-1.5"
+                      className="sd-btn-gradient rounded-full text-xs font-bold gap-1.5"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Tạo nhóm đầu tiên</span>
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    {realGroups.map((g) => {
-                      return (
-                        <div
-                          key={g.id}
-                          className="bg-muted/10 rounded-2xl border border-border/70 p-4 flex flex-col justify-between hover:border-primary/40 transition-all group/card shadow-2xs cursor-pointer"
-                          onClick={() => setSelectedGroupIdOrSlug(g.id)}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary flex items-center gap-1.5">
-                                {g.privacy === "private" ? (
-                                  <Lock className="w-3 h-3 text-pink-500" />
-                                ) : (
-                                  <Globe className="w-3 h-3 text-primary" />
-                                )}
-                                {g.name}
-                              </span>
-                              <span className="text-[11px] text-muted font-medium">
-                                {g.memberCount} thành viên
-                              </span>
-                            </div>
-                            <p className="text-xs text-foreground/80 leading-relaxed mb-4 line-clamp-2">
-                              {g.description || "Chưa có mô tả nhóm."}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
-                            <span className="text-[11px] text-muted flex items-center gap-1">
-                              Tạo bởi: <strong className="text-foreground">{g.creator.displayName}</strong>
-                            </span>
-
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedGroupIdOrSlug(g.id);
-                                }}
-                                className="rounded-xl text-xs font-semibold gap-1"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Thông tin</span>
-                              </Button>
-
-                              <Link
-                                href={`/groups/${g.id}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-primary bg-primary text-primary-foreground hover:opacity-90 text-xs font-bold transition-all shadow-2xs"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Xem nhóm</span>
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="py-10 text-center space-y-2 bg-surface rounded-2xl border border-dashed border-border/70 p-6">
+                    <Search className="w-8 h-8 text-muted mx-auto opacity-60" />
+                    <p className="text-xs font-semibold text-muted">
+                      Không tìm thấy nhóm phù hợp với từ khóa &ldquo;{groupSearchQuery}&rdquo;
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setGroupSearchQuery("")}
+                      className="text-xs text-primary font-bold"
+                    >
+                      Xóa tìm kiếm
+                    </Button>
                   </div>
-                )}
-              </div>
+                )
+              ) : (
+                <div className="space-y-2.5 sm:space-y-3">
+                  {filteredGroups.map((g) => (
+                    <GroupListItem
+                      key={g.id}
+                      group={g}
+                      onOpenInfo={(id) => setSelectedGroupIdOrSlug(id)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1325,118 +1341,20 @@ export default function CommunityPage() {
 
         {/* RIGHT COLUMN: Right Rail Widgets */}
         <aside className="space-y-6 sticky top-20">
-          
-          {/* WIDGET 1: TỪ VỰNG MỚI HÔM NAY (Daily New Vocabulary) */}
-          <div className="bg-surface rounded-2xl border border-border shadow-sm p-4 overflow-hidden relative">
-            <div className="flex items-center justify-between mb-3 border-b border-border/50 pb-2.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                <BookOpen className="w-4 h-4 text-primary" />
-                <span className="tracking-wide uppercase text-[11px]">
-                  {t("community.daily_vocab_title")}
-                </span>
-                {dailyWordsData?.language && (
-                  <span className="text-[10px] font-extrabold uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-md ml-1">
-                    {dailyWordsData.language.name || dailyWordsData.language.code}
-                  </span>
-                )}
-              </div>
-              {dailyWordsData && dailyWordsData.words.length > 0 && (
-                <span className="text-xs font-semibold text-muted bg-muted/20 px-2 py-0.5 rounded-full">
-                  {vocabIndex + 1} / {dailyWordsData.words.length}
-                </span>
-              )}
-            </div>
-
-            {currentWord ? (
-              <div className="bg-gradient-to-br from-primary/5 via-pink-500/5 to-warning/5 rounded-xl p-4 border border-primary/10">
-                {/* Word Term & Audio Speaker Button */}
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-2xl font-bold font-display text-foreground tracking-tight">
-                    {currentWord.term}
-                  </h3>
-                  <button
-                    onClick={() => handlePlayAudio(currentWord, dailyWordsData?.language?.code || "en")}
-                    className="w-8 h-8 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
-                    title="Nghe phát âm chuẩn (Free Dictionary Audio)"
-                  >
-                    <Volume2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* IPA Phonetic */}
-                {currentWord.phonetic && (
-                  <div className="flex items-center gap-2 mt-1 text-xs text-secondary font-semibold">
-                    <span>{currentWord.phonetic}</span>
-                  </div>
-                )}
-
-                {/* Definition / Meaning */}
-                <p className="text-sm font-semibold text-foreground/90 mt-3 leading-snug">
-                  {currentWord.definition}
-                </p>
-
-                {/* Example sentence */}
-                {currentWord.example && (
-                  <p className="text-xs italic text-muted mt-2 leading-relaxed bg-surface/60 p-2.5 rounded-lg border border-border/50">
-                    {currentWord.example}
-                  </p>
-                )}
-
-                {/* Action controls */}
-                <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-primary/10">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handlePrevVocab}
-                    title={t("community.prev_word")}
-                    className="w-9 h-9 p-0 rounded-xl shrink-0 flex items-center justify-center bg-surface/80 hover:bg-surface border-border/80 text-foreground transition-all shadow-xs"
-                  >
-                    <ChevronLeft className="w-4 h-4 text-foreground/80" />
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant={currentWord.isSaved ? "outline" : "default"}
-                    onClick={handleSaveCurrentVocab}
-                    disabled={savingVocab || currentWord.isSaved}
-                    className={cn(
-                      "flex-1 h-9 rounded-xl text-xs font-semibold gap-1.5 px-3 min-w-0 shadow-xs transition-all",
-                      currentWord.isSaved
-                        ? "bg-success/10 text-success border-success/30 hover:bg-success/20"
-                        : "bg-primary text-white hover:bg-primary/90"
-                    )}
-                  >
-                    {currentWord.isSaved ? (
-                      <>
-                        <Check className="w-4 h-4 shrink-0 text-success" />
-                        <span className="truncate">{t("community.saved_word")}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Bookmark className="w-4 h-4 shrink-0 fill-current" />
-                        <span className="truncate">{t("community.save_word")}</span>
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    onClick={handleNextVocab}
-                    title={t("community.next_word")}
-                    className="w-9 h-9 p-0 rounded-xl shrink-0 flex items-center justify-center sd-btn-gradient text-white shadow-xs transition-all"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="py-8 text-center text-xs text-muted">
-                {t("common.loading")}
-              </div>
-            )}
-          </div>
-
-
+          <DailyVocabCard
+            dailyWordsData={dailyWordsData}
+            vocabIndex={vocabIndex}
+            savingVocab={savingVocab}
+            dailyTargetLang={dailyTargetLang}
+            onTargetLangChange={(code) => {
+              setDailyTargetLang(code);
+              fetchDailyWords(code);
+            }}
+            onPrev={handlePrevVocab}
+            onNext={handleNextVocab}
+            onSave={handleSaveCurrentVocab}
+            onPlayAudio={handlePlayAudio}
+          />
         </aside>
 
       </div>

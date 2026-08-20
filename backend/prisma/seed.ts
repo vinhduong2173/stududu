@@ -24,7 +24,7 @@ const TOPICS = [
   'Books',
   'Gaming',
   'Culture',
-  'Exams (IELTS/TOEIC…)',
+  'Exams',
 ];
 
 const MEMBERS_DATA = [

@@ -42,6 +42,8 @@ export function useRegister() {
   const [year, setYear] = React.useState("");
   const [gender, setGender] = React.useState("");
   const [country, setCountry] = React.useState("VN");
+  const [city, setCity] = React.useState("");
+  const [intent, setIntent] = React.useState("Giao tiếp casual");
 
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
@@ -59,6 +61,8 @@ export function useRegister() {
         if (data.year) setYear(data.year);
         if (data.gender) setGender(data.gender);
         if (data.country) setCountry(data.country);
+        if (data.city) setCity(data.city);
+        if (data.intent) setIntent(data.intent);
       } catch (e) {
         console.error(e);
       }
@@ -75,6 +79,8 @@ export function useRegister() {
       year,
       gender,
       country,
+      city,
+      intent,
       ...overrides,
     };
     sessionStorage.setItem("register_form_draft", JSON.stringify(draft));
@@ -119,6 +125,8 @@ export function useRegister() {
           dob,
           gender,
           country,
+          city: city.trim() || undefined,
+          intent: intent || undefined,
         },
       });
 
@@ -154,8 +162,21 @@ export function useRegister() {
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
-  const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(2026, i, 15);
+    let label = (i + 1).toString();
+    try {
+      const raw = new Intl.DateTimeFormat(locale, { month: "long" }).format(d);
+      label = raw.charAt(0).toUpperCase() + raw.slice(1);
+    } catch (e) {
+      // fallback
+    }
+    return {
+      value: (i + 1).toString(),
+      label,
+    };
+  });
 
   return {
     t,
@@ -180,6 +201,10 @@ export function useRegister() {
     setGender,
     country,
     setCountry,
+    city,
+    setCity,
+    intent,
+    setIntent,
     loading,
     error,
     saveDraft,

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Search, Users } from "lucide-react";
 import { MatchCard } from "@/components/features/MatchCard";
 import { Button } from "@/components/ui/Button";
 import { DiscoverTab, MatchResult } from "@/hooks/useDiscover";
@@ -18,8 +19,6 @@ interface DiscoverGridProps {
   source: MatchResult[];
   fetchCandidates: (offset?: number) => void;
   fetchMembers: (offset?: number) => void;
-  handleLike: (targetId: number) => void;
-  handleUnlike: (targetId: number) => void;
   resetFilters: () => void;
 }
 
@@ -36,14 +35,18 @@ export function DiscoverGrid({
   source,
   fetchCandidates,
   fetchMembers,
-  handleLike,
-  handleUnlike,
   resetFilters,
 }: DiscoverGridProps) {
   if (visible.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="text-6xl mb-4">{candidates.length === 0 && insufficientPool ? "🌱" : "🔍"}</div>
+        <div className="w-16 h-16 rounded-full bg-surface-2 flex items-center justify-center text-muted mb-4">
+          {candidates.length === 0 && insufficientPool ? (
+            <Users className="w-8 h-8 opacity-60" />
+          ) : (
+            <Search className="w-8 h-8 opacity-60" />
+          )}
+        </div>
         <h2 className="text-xl font-bold text-foreground mb-2">
           {source.length === 0
             ? tab === "all"
@@ -76,15 +79,13 @@ export function DiscoverGrid({
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {/* 4-column responsive grid matching Tandem layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
         {visible.map((c) => (
           <MatchCard
             key={c.user.id}
             user={c.user}
             whyMatched={c.whyMatched}
-            liked={c.liked}
-            onLike={() => handleLike(c.user.id)}
-            onUnlike={() => handleUnlike(c.user.id)}
           />
         ))}
       </div>
@@ -107,7 +108,7 @@ export function DiscoverGrid({
 
       {tab === "suggest" && insufficientPool && (
         <p className="text-center text-sm text-muted mt-6">
-          🌱 {t("discover.insufficient_pool")}
+          {t("discover.insufficient_pool")}
         </p>
       )}
     </>

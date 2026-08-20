@@ -25,7 +25,7 @@ export function SocialRegisterButtons({ t, handleGoogleClick }: SocialRegisterBu
         type="button"
         variant="ghost"
         onClick={handleGoogleClick}
-        className="mt-6 w-full flex items-center justify-center gap-3 py-5 rounded-xl border border-border hover:bg-muted/10 transition-all font-medium text-foreground text-base"
+        className="mt-6 w-full flex items-center justify-center gap-3 h-12 rounded-full border border-border hover:bg-muted/10 transition-all font-semibold text-sm text-foreground"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path

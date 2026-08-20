@@ -38,7 +38,7 @@ export function ConversationListSidebar({
         selectedId ? "hidden md:flex" : "flex",
       )}
     >
-      <div className="p-4 border-b border-border">
+      <div className="p-4">
         <h1 className="font-display text-xl font-extrabold tracking-tight text-foreground mb-3">
           {t("chat.title")}
         </h1>
@@ -56,10 +56,19 @@ export function ConversationListSidebar({
 
       <div className="flex-1 overflow-y-auto divide-y divide-border/50">
         {loadingList ? (
-          <div className="p-8 text-center text-sm text-muted">{t("chat.loading_conversations")}</div>
+          <div className="p-8 text-center text-xs text-muted">{t("chat.loading_conversations")}</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted">
-            {search ? t("chat.no_result") : t("chat.no_conversations")}
+          <div className="p-6 text-center text-xs text-muted space-y-3">
+            <p>{search ? t("chat.no_result") : t("chat.no_conversations")}</p>
+            {!search && (
+              <a
+                href="/discover"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 bg-teal-50 px-3.5 py-1.5 rounded-full border border-teal-200 hover:bg-teal-100 transition-colors"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Tìm bạn học ngay</span>
+              </a>
+            )}
           </div>
         ) : (
           filtered.map((c) => {
@@ -71,20 +80,24 @@ export function ConversationListSidebar({
                 key={c.id}
                 onClick={() => setSelectedId(c.id)}
                 className={cn(
-                  "w-full p-4 flex items-center gap-3 text-left transition-colors hover:bg-muted/10 relative",
-                  active && "bg-primary/5 border-l-4 border-primary pl-3",
+                  "w-full p-3.5 flex items-center gap-3 text-left transition-colors relative",
+                  active
+                    ? "bg-teal-50/70 font-semibold"
+                    : "hover:bg-slate-50",
                 )}
               >
                 <div className="relative shrink-0">
                   <Avatar src={c.partner.avatarUrl ?? undefined} fallback={c.partner.displayName} size="md" />
                   {online && (
-                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-success ring-2 ring-surface" />
+                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-surface" />
                   )}
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="font-bold text-sm text-foreground truncate">{c.partner.displayName}</span>
+                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                    <span className={cn("text-xs md:text-sm truncate", active ? "font-bold text-teal-950" : "font-semibold text-foreground")}>
+                      {c.partner.displayName}
+                    </span>
                     {c.lastMessage && (
                       <span className="text-[10px] text-muted shrink-0">
                         {new Date(c.lastMessage.sentAt).toLocaleTimeString("vi-VN", {

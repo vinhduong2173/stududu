@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { BookOpen, X, Volume2 } from "lucide-react";
+import { BookOpen, X, Volume2, Lightbulb } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { WordSaveModal, type SavedWord } from "@/components/features/WordSaveModal";
@@ -383,8 +383,9 @@ export function TextSelectionPopup({
               {/* Định nghĩa (Native Language) */}
               {definition && (
                 <div>
-                  <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <span>📖</span> {t("definition_heading")}
+                  <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>{t("definition_heading")}</span>
                   </p>
                   <p className="text-sm font-medium text-foreground leading-relaxed">
                     {definition}
@@ -395,8 +396,9 @@ export function TextSelectionPopup({
               {/* Ví dụ (Original Target Language) */}
               {example && (
                 <div>
-                  <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <span>💡</span> {t("example_heading")}
+                  <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                    <span>{t("example_heading")}</span>
                   </p>
                   <p className="text-sm text-foreground/80 italic leading-relaxed">
                     &ldquo;{example}&rdquo;
