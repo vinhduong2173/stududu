@@ -24,7 +24,7 @@ const TOPICS = [
   'Books',
   'Gaming',
   'Culture',
-  'Exams (IELTS/TOEIC…)',
+  'Exams',
 ];
 
 // Chủ đề TỪ VỰNG cho bộ đề — cố tình khác TOPICS ở trên (TOPICS = sở thích để

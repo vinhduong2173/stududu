@@ -623,7 +623,7 @@
     "level_4": "中上級 (B2)",
     "level_5": "上級・流暢 (C1/C2)",
     "intent_casual": "日常会話・フリートーク",
-    "intent_exam": "資格対策 (IELTS, JLPT...)",
+    "intent_exam": "資格対策",
     "intent_travel": "旅行会話",
     "intent_work": "ビジネス・仕事",
     "empty_languages_hint": "言語がまだ追加されていません。言語を選択し上の「追加」を押してください。",
@@ -661,7 +661,7 @@
     "books": "読書・本",
     "game": "ゲーム",
     "culture": "文化・歴史",
-    "exams": "資格試験 (IELTS/TOEIC...)"
+    "exams": "資格試験"
   },
   "call": {
     "start_audio": "音声通話",

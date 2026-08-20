@@ -36,6 +36,7 @@ export class UserService {
         gender: true,
         dob: true,
         city: true,
+        country: true,
         timezone: true,
         availableSlots: true,
         shareActivity: true,
@@ -67,6 +68,7 @@ export class UserService {
         gender: true,
         dob: true,
         city: true,
+        country: true,
         timezone: true,
         availableSlots: true,
         languages: { include: { language: true } },
@@ -99,6 +101,7 @@ export class UserService {
         gender: true,
         dob: true,
         city: true,
+        country: true,
       },
     });
   }

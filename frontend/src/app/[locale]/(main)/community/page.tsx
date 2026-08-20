@@ -806,9 +806,9 @@ export default function CommunityPage() {
   );
 
   return (
-    <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 pb-16">
+    <div className="w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 pb-16">
       {/* 3 Column Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[210px_1fr_380px] xl:grid-cols-[230px_1fr_400px] 2xl:grid-cols-[240px_1fr_420px] gap-5 xl:gap-7 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_400px] xl:grid-cols-[260px_1fr_440px] 2xl:grid-cols-[280px_1fr_480px] gap-6 xl:gap-8 items-start">
         
         {/* LEFT COLUMN: Sidebar Navigation */}
         <aside className="bg-surface rounded-2xl border border-border/80 shadow-card p-2 sticky top-20">

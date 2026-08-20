@@ -49,9 +49,21 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
-    const displayName = dto.displayName?.trim() || dto.email.split('@')[0];
+    const displayName =
+      dto.displayName?.trim() ||
+      [dto.lastName, dto.firstName].filter(Boolean).join(' ').trim() ||
+      dto.email.split('@')[0];
     const user = await this.prisma.user.create({
-      data: { email: dto.email, passwordHash, displayName },
+      data: {
+        email: dto.email,
+        passwordHash,
+        displayName,
+        gender: dto.gender || null,
+        dob: dto.dob ? new Date(dto.dob) : null,
+        country: dto.country || null,
+        city: dto.city?.trim() || null,
+        intent: dto.intent || null,
+      },
     });
 
     return { user: this.toPublic(user), tokens: await this.issueTokens(user) };

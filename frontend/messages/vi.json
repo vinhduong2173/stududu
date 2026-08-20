@@ -637,7 +637,7 @@
     "level_4": "Khá",
     "level_5": "Thành thạo",
     "intent_casual": "Giao tiếp casual",
-    "intent_exam": "Thi cử (IELTS, JLPT...)",
+    "intent_exam": "Thi cử",
     "intent_travel": "Du lịch",
     "intent_work": "Làm việc",
     "empty_languages_hint": "Chưa có ngôn ngữ nào. Hãy chọn ngôn ngữ và bấm 'Thêm' ở trên.",
@@ -675,7 +675,7 @@
     "books": "Sách",
     "game": "Game",
     "culture": "Văn hóa",
-    "exams": "Thi cử (IELTS/TOEIC...)"
+    "exams": "Thi cử"
   },
   "call": {
     "start_audio": "Gọi thoại",

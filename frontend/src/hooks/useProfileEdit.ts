@@ -38,6 +38,7 @@ export function useProfileEdit() {
   const [gender, setGender] = React.useState("");
   const [dob, setDob] = React.useState("");
   const [city, setCity] = React.useState("");
+  const [country, setCountry] = React.useState("");
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
 
   const [availableLanguages, setAvailableLanguages] = React.useState<Language[]>([]);
@@ -72,6 +73,7 @@ export function useProfileEdit() {
         setGender(me.gender ?? "");
         setDob(me.dob ? String(me.dob).slice(0, 10) : "");
         setCity(me.city ?? "");
+        setCountry(me.country ?? "VN");
         setMyLanguages(
           me.languages.map((l: any) => ({
             languageId: l.languageId ?? l.language.id,
@@ -159,6 +161,7 @@ export function useProfileEdit() {
           gender: gender || null,
           dob: dob || null,
           city: city.trim() || null,
+          country: country || null,
           timezone,
           availableSlots,
         },
@@ -221,6 +224,8 @@ export function useProfileEdit() {
     setDob,
     city,
     setCity,
+    country,
+    setCountry,
     avatarInputRef,
     availableLanguages,
     myLanguages,

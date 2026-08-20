@@ -16,6 +16,7 @@ interface ProfilePreviewCardProps {
   avatarUrl: string;
   previewAge: number | null;
   city: string;
+  country?: string;
   teachPreview?: UserLanguageItem;
   learnPreview?: UserLanguageItem;
   previewTopics: Topic[];
@@ -33,6 +34,7 @@ export function ProfilePreviewCard({
   avatarUrl,
   previewAge,
   city,
+  country,
   teachPreview,
   learnPreview,
   previewTopics,
@@ -41,7 +43,7 @@ export function ProfilePreviewCard({
   setIntent,
 }: ProfilePreviewCardProps) {
   const selectClass =
-    "flex h-12 rounded-xl border border-border bg-transparent px-4 py-2 outline-none focus:border-primary";
+    "flex h-12 rounded-xl border border-border bg-transparent px-4 py-2 outline-none focus:border-primary font-medium text-foreground";
 
   return (
     <div className="space-y-6">
@@ -64,9 +66,9 @@ export function ProfilePreviewCard({
               <p className="text-xs text-muted flex items-center gap-1">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
                 {t("preview_online")}
-                {city && (
+                {(city || country) && (
                   <span className="inline-flex items-center gap-0.5">
-                    · <MapPin className="w-3 h-3" /> {city}
+                    · <MapPin className="w-3 h-3" /> {[city, country].filter(Boolean).join(", ")}
                   </span>
                 )}
               </p>

@@ -12,6 +12,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { getTopicTranslation } from "@/lib/i18nHelper";
 import { getLanguageInfo } from "@/lib/languages";
 import { AlertCircle, Plus, X } from "lucide-react";
+import { COUNTRIES } from "@/hooks/useRegister";
+import { Input } from "@/components/ui/Input";
 
 type Language = { id: number; code: string; name: string };
 type Topic = { id: number; name: string };
@@ -42,11 +44,21 @@ export default function OnboardingPage() {
   // Step 3 State: Profile
   const [bio, setBio] = React.useState("");
   const [intent, setIntent] = React.useState("Giao tiếp casual");
+  const [city, setCity] = React.useState("");
+  const [country, setCountry] = React.useState("VN");
 
   React.useEffect(() => {
-    // Fetch seed data
+    // Fetch seed data & current user profile
     api<Language[]>("/languages").then(setAvailableLanguages).catch(console.error);
     api<Topic[]>("/topics").then(setAvailableTopics).catch(console.error);
+    api<any>("/users/me")
+      .then((me) => {
+        if (me.bio) setBio(me.bio);
+        if (me.intent) setIntent(me.intent);
+        if (me.city) setCity(me.city);
+        if (me.country) setCountry(me.country);
+      })
+      .catch(() => {});
   }, []);
 
   const getLangName = (id: number) => {
@@ -124,7 +136,15 @@ export default function OnboardingPage() {
     setLoading(true);
     setError("");
     try {
-      await api("/users/me", { method: "PATCH", body: { bio, intent } });
+      await api("/users/me", {
+        method: "PATCH",
+        body: {
+          bio: bio.trim(),
+          intent,
+          city: city.trim() || undefined,
+          country: country || undefined,
+        },
+      });
       await api("/users/me/preference", { method: "PUT", body: { intent } });
       router.push("/discover");
     } catch (err) {
@@ -305,6 +325,52 @@ export default function OnboardingPage() {
               <p className="text-muted text-xs sm:text-sm mb-6">{t("profile_subtitle")}</p>
               
               <div className="space-y-4">
+                {/* Quốc gia / Quê quán & Nơi sinh sống */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">
+                      {tRoot("register.country") || "Quốc gia / Quê quán"}
+                    </label>
+                    <select
+                      className="w-full h-11 rounded-xl border border-border bg-surface-2/60 px-4 outline-none focus:border-primary font-medium text-sm text-foreground"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    >
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.flag} {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">
+                      {tRoot("profile.lives_in") || "Nơi sinh sống (Thành phố)"}
+                    </label>
+                    <Input
+                      placeholder={tRoot("profile.city_placeholder") || "Ví dụ: Hà Nội, Tokyo..."}
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="h-11 bg-surface-2/60"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">{t("intent_label")}</label>
+                  <select 
+                    className="w-full h-11 rounded-xl border border-border bg-surface-2/60 px-4 outline-none focus:border-primary font-medium text-sm text-foreground"
+                    value={intent}
+                    onChange={(e) => setIntent(e.target.value)}
+                  >
+                    <option value="Giao tiếp casual">{t("intent_casual")}</option>
+                    <option value="Thi cử">{t("intent_exam")}</option>
+                    <option value="Du lịch">{t("intent_travel")}</option>
+                    <option value="Làm việc">{t("intent_work")}</option>
+                  </select>
+                </div>
+
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-xs font-bold text-muted uppercase tracking-wider">{t("bio_label")}</label>
@@ -320,20 +386,6 @@ export default function OnboardingPage() {
                   <p className="text-[11px] text-teal-800 bg-teal-50/80 p-2.5 rounded-lg border border-teal-200/60 mt-2 font-medium">
                     {t("bio_tip")}
                   </p>
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">{t("intent_label")}</label>
-                  <select 
-                    className="w-full h-11 rounded-xl border border-border bg-surface-2/60 px-4 outline-none focus:border-primary font-medium text-sm text-foreground"
-                    value={intent}
-                    onChange={(e) => setIntent(e.target.value)}
-                  >
-                    <option value="Giao tiếp casual">{t("intent_casual")}</option>
-                    <option value="Thi cử">{t("intent_exam")}</option>
-                    <option value="Du lịch">{t("intent_travel")}</option>
-                    <option value="Làm việc">{t("intent_work")}</option>
-                  </select>
                 </div>
               </div>
             </div>

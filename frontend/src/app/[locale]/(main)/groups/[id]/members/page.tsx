@@ -299,7 +299,7 @@ export default function GroupMembersPage() {
     <div className="min-h-screen bg-background text-foreground pb-20">
       {/* Top Navigation Bar */}
       <div className="sticky top-0 z-30 bg-surface/90 backdrop-blur-md border-b border-border/80 px-4 py-3 shadow-xs">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+        <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -324,12 +324,12 @@ export default function GroupMembersPage() {
       </div>
 
       {loading ? (
-        <div className="max-w-5xl mx-auto p-12 text-center flex flex-col items-center justify-center gap-3">
+        <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto p-12 text-center flex flex-col items-center justify-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
           <p className="text-sm font-semibold text-muted">Đang tải thông tin quản lý nhóm...</p>
         </div>
       ) : group ? (
-        <div className="max-w-5xl mx-auto px-4 pt-6 space-y-6">
+        <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 pt-6 space-y-6">
           {/* Header Banner Card */}
           <div className="bg-surface rounded-3xl border border-border p-6 shadow-xs relative overflow-hidden">
             <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-0 pointer-events-none" />
@@ -817,7 +817,7 @@ export default function GroupMembersPage() {
           )}
         </div>
       ) : (
-        <div className="max-w-5xl mx-auto p-16 text-center bg-surface rounded-3xl border border-border text-rose-500 font-semibold text-sm">
+        <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto p-16 text-center bg-surface rounded-3xl border border-border text-rose-500 font-semibold text-sm">
           Không tìm thấy thông tin nhóm.
         </div>
       )}

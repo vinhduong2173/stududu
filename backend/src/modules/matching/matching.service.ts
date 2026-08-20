@@ -219,8 +219,21 @@ export class MatchingService {
         data: { matchId: existing.id },
       }));
 
-    // Mình đã thích trước đó → idempotent
+    // Mình là người tạo match trước đó
     if (existing.memberId === userId) {
+      if (
+        existing.status !== MatchStatus.liked &&
+        existing.status !== MatchStatus.mutual
+      ) {
+        const match = await this.prisma.match.update({
+          where: { id: existing.id },
+          data: { status: MatchStatus.liked },
+        });
+        await this.prisma.interaction.create({
+          data: { matchId: existing.id, userId, action: InteractionAction.like },
+        });
+        return { match, conversation, mutual: false };
+      }
       return {
         match: existing,
         conversation,
@@ -228,18 +241,95 @@ export class MatchingService {
       };
     }
 
-    // Đối phương thích trước, giờ mình thích lại → mutual (US-13)
-    const match =
-      existing.status === MatchStatus.mutual
-        ? existing
-        : await this.prisma.match.update({
-            where: { id: existing.id },
-            data: { status: MatchStatus.mutual },
-          });
+    // Đối phương là người tạo match:
+    // Nếu đối phương đang thích mình -> chuyển thành mutual (US-13)
+    if (existing.status === MatchStatus.liked) {
+      const match = await this.prisma.match.update({
+        where: { id: existing.id },
+        data: { status: MatchStatus.mutual },
+      });
+      await this.prisma.interaction.create({
+        data: { matchId: existing.id, userId, action: InteractionAction.like },
+      });
+      return { match, conversation, mutual: true };
+    }
+
+    // Nếu đối phương đã từng bỏ thích -> mình thích lại thì đảo người tạo match thành mình
+    const match = await this.prisma.match.update({
+      where: { id: existing.id },
+      data: {
+        memberId: userId,
+        candidateId: targetId,
+        status: MatchStatus.liked,
+      },
+    });
     await this.prisma.interaction.create({
       data: { matchId: existing.id, userId, action: InteractionAction.like },
     });
-    return { match, conversation, mutual: true };
+    return { match, conversation, mutual: false };
+  }
+
+  // Unlike — hủy thích một người đã thích trước đó (bảo lưu toàn bộ tin nhắn & hội thoại)
+  async unlike(userId: number, targetId: number) {
+    if (userId === targetId) {
+      throw new BadRequestException(
+        this.i18n.t('translation.matching.noSelfLike', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
+    }
+
+    const match = await this.prisma.match.findFirst({
+      where: {
+        OR: [
+          { memberId: userId, candidateId: targetId },
+          { memberId: targetId, candidateId: userId },
+        ],
+      },
+      include: {
+        conversation: true,
+      },
+    });
+
+    if (!match) {
+      return { unliked: false };
+    }
+
+    // TH 1: Match đang ở trạng thái mutual (cả 2 bên cùng thích nhau)
+    if (match.status === MatchStatus.mutual) {
+      await this.prisma.interaction.deleteMany({
+        where: { matchId: match.id, userId },
+      });
+
+      // TargetId vẫn thích userId, nên chuyển match về trạng thái liked 1 chiều do targetId khởi xướng
+      await this.prisma.match.update({
+        where: { id: match.id },
+        data: {
+          memberId: targetId,
+          candidateId: userId,
+          status: MatchStatus.liked,
+        },
+      });
+
+      return { unliked: true, mutual: false };
+    }
+
+    // TH 2: Match 1 chiều do chính userId thích targetId
+    if (match.memberId === userId && match.status === MatchStatus.liked) {
+      await this.prisma.interaction.deleteMany({
+        where: { matchId: match.id, userId },
+      });
+
+      // Cập nhật trạng thái thành skipped để hủy like nhưng vẫn giữ nguyên Conversation & Messages
+      await this.prisma.match.update({
+        where: { id: match.id },
+        data: { status: MatchStatus.skipped },
+      });
+
+      return { unliked: true };
+    }
+
+    return { unliked: false };
   }
 
   // Loại khỏi gợi ý: chỉ những người đã block nhau (skip đã bỏ khỏi sản phẩm)

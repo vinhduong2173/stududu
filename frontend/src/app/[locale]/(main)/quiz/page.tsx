@@ -45,7 +45,7 @@ export default function QuizListPage() {
     topicId === "all" ? sets : sets.filter((s) => s.topic.id === topicId);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto space-y-6 p-4 sm:p-6 lg:p-8 pb-16">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl md:text-3xl font-extrabold text-foreground font-display tracking-tight">
@@ -113,7 +113,7 @@ export default function QuizListPage() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-3.5 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleSets.map((set) => (
             <div
               key={set.id}

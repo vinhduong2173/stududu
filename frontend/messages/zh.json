@@ -623,7 +623,7 @@
     "level_4": "中高级",
     "level_5": "精通",
     "intent_casual": "日常交流",
-    "intent_exam": "备考 (IELTS, JLPT...)",
+    "intent_exam": "备考",
     "intent_travel": "旅游出行",
     "intent_work": "工作职场",
     "empty_languages_hint": "暂未添加语言。请选择语言并点击上方的“添加”。",
@@ -661,7 +661,7 @@
     "books": "阅读书籍",
     "game": "游戏电竞",
     "culture": "文化历史",
-    "exams": "语言考试 (IELTS/TOEIC...)"
+    "exams": "语言考试"
   },
   "call": {
     "start_audio": "语音通话",

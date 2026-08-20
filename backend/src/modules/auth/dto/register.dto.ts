@@ -42,4 +42,12 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   country?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  intent?: string;
 }

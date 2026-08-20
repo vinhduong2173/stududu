@@ -624,7 +624,7 @@
     "level_4": "Gute Mittelstufe (B2)",
     "level_5": "Fließend (C1/C2)",
     "intent_casual": "Lockerer Austausch / Konversation",
-    "intent_exam": "Prüfungsvorbereitung (IELTS, JLPT...)",
+    "intent_exam": "Prüfungsvorbereitung",
     "intent_travel": "Reisen",
     "intent_work": "Beruf & Arbeit",
     "empty_languages_hint": "Noch keine Sprache hinzugefügt. Bitte wähle eine Sprache und klicke oben auf 'Hinzufügen'.",
@@ -662,7 +662,7 @@
     "books": "Bücher & Lesen",
     "game": "Gaming",
     "culture": "Kultur & Geschichte",
-    "exams": "Prüfungen (IELTS/TOEIC...)"
+    "exams": "Prüfungen"
   },
   "call": {
     "start_audio": "Sprachanruf",

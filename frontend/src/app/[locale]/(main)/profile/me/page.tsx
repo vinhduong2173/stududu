@@ -37,6 +37,7 @@ type Me = {
   gender?: string | null;
   dob?: string | null;
   city?: string | null;
+  country?: string | null;
   timezone?: string | null;
   availableSlots?: string[];
   languages: { id: number; role: string; level?: string | null; language: { id?: number; code?: string; name: string } }[];
@@ -74,7 +75,7 @@ export default function MyProfilePage() {
     );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-8 pb-24">
+    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 pb-24">
       {/* Profile Header (Banner, Avatar, Info, Tabs) */}
       <ProfileHeader
         me={me}
@@ -130,12 +131,12 @@ export default function MyProfilePage() {
                 </div>
               )}
 
-              {me.city && (
+              {(me.city || me.country) && (
                 <div className="flex items-center gap-3">
                   <MapPin className="w-4 h-4 text-muted shrink-0" />
                   <div>
                     <span className="font-semibold text-muted text-xs block uppercase">{t("lives_in")}</span>
-                    <span className="font-medium text-foreground">{me.city}</span>
+                    <span className="font-medium text-foreground">{[me.city, me.country].filter(Boolean).join(", ")}</span>
                   </div>
                 </div>
               )}
