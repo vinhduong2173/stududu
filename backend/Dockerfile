@@ -1,7 +1,7 @@
 # ==========================================
 # Stage 1: Builder stage
 # ==========================================
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY prisma ./prisma/
 # Cài đặt tất cả dependencies (bao gồm devDependencies để build)
 RUN npm ci
 
-# Generate Prisma Client (tạo binary tương thích với Linux Alpine)
+# Generate Prisma Client
 RUN npx prisma generate
 
 # Copy toàn bộ source code & build dự án NestJS
@@ -28,7 +28,7 @@ RUN npm prune --production
 # ==========================================
 # Stage 2: Production Runner stage
 # ==========================================
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 ENV NODE_ENV=production
 WORKDIR /app
@@ -45,5 +45,5 @@ COPY --from=builder /app/prisma ./prisma
 # Khai báo port ứng dụng
 EXPOSE 3001
 
-# Chạy migration DB tự động (nếu có) và khởi chạy server NestJS
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+# Khởi chạy trực tiếp server NestJS (Không chạy migration DB)
+CMD ["node", "dist/main.js"]

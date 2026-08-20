@@ -299,7 +299,7 @@ export default function CreateQuizPage() {
             <Button
               type="button"
               variant="ghost"
-              size="md"
+              size="default"
               onClick={() => router.push("/quiz")}
               disabled={isProcessing}
             >
@@ -307,7 +307,7 @@ export default function CreateQuizPage() {
             </Button>
             <Button
               type="submit"
-              size="md"
+              size="default"
               className="sd-btn-gradient px-6 py-2.5 font-extrabold rounded-2xl"
               disabled={isProcessing}
             >

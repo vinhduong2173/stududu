@@ -270,9 +270,9 @@ export function useVocabulary() {
       void ensureTargetTranslations(mergedWords);
     } catch (err) {
       console.error("Failed to load words:", err);
-    } fontally: () => {
+    } finally {
       setLoading(false);
-    };
+    }
   }, [ensureTargetTranslations]);
 
   React.useEffect(() => {

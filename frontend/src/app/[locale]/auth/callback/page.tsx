@@ -13,6 +13,12 @@ export default function AuthCallbackPage() {
   React.useEffect(() => {
     const accessToken = searchParams.get("accessToken");
     const refreshToken = searchParams.get("refreshToken");
+    const errorParam = searchParams.get("error");
+
+    if (errorParam) {
+      setError(errorParam);
+      return;
+    }
 
     if (!accessToken || !refreshToken) {
       setError("Thiếu thông tin xác thực từ Google.");

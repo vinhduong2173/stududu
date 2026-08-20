@@ -1,16 +1,17 @@
 # 1. Base image & Install dependencies
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:20-slim AS deps
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 # Copy package lockfiles
 COPY package.json package-lock.json* pnpm-lock.yaml* ./
 
-# Install dependencies using npm
-RUN npm ci
+# Install dependencies using npm install
+RUN npm install
 
 # 2. Build the application
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -23,7 +24,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # 3. Production runner
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
