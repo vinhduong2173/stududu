@@ -36,6 +36,7 @@ export class UserService {
         gender: true,
         dob: true,
         city: true,
+        country: true,
         timezone: true,
         availableSlots: true,
         shareActivity: true,
@@ -67,6 +68,7 @@ export class UserService {
         gender: true,
         dob: true,
         city: true,
+        country: true,
         timezone: true,
         availableSlots: true,
         languages: { include: { language: true } },
@@ -99,12 +101,20 @@ export class UserService {
         gender: true,
         dob: true,
         city: true,
+        country: true,
       },
     });
   }
 
   // US-04 — khai ngôn ngữ + trình độ (thay toàn bộ danh sách)
   async setLanguages(userId: number, dto: SetLanguagesDto) {
+    const langIds = dto.languages.map((l) => l.languageId);
+    if (new Set(langIds).size !== langIds.length) {
+      throw new BadRequestException(
+        'Không thể chọn cùng một ngôn ngữ cho nhiều vai trò khác nhau.',
+      );
+    }
+
     for (const item of dto.languages) {
       if (item.role === LanguageRole.learning && !item.level) {
         throw new BadRequestException(

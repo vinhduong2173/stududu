@@ -49,6 +49,13 @@ export function useDiscover() {
   // Cấu hình được GIỮ LẠI khi hạ cấp, chỉ ngừng áp dụng (SRS §5.4).
   const [timezoneFilter, setTimezoneFilter] = React.useState("");
   const [mobileFilterOpen, setMobileFilterOpen] = React.useState(false);
+  const [filterModalOpen, setFilterModalOpen] = React.useState(false);
+
+  const activeFilterCount =
+    (levelFilter !== "all" ? 1 : 0) +
+    activeTopics.length +
+    (onlineOnly ? 1 : 0) +
+    (timezoneFilter ? 1 : 0);
 
   const [modalOpen, setModalOpen] = React.useState(false);
   const [matchedUser, setMatchedUser] = React.useState<any>(null);
@@ -126,7 +133,7 @@ export function useDiscover() {
         setMatchedConversationId(result.conversation?.id);
         setModalOpen(true);
       } else {
-        showToast(`💜 ${t("discover.liked_toast", { name: candidate.user.displayName })}`);
+        showToast(t("discover.liked_toast", { name: candidate.user.displayName }));
       }
     } catch (err: any) {
       // US-39 AC1 — chạm hạn mức Like (BR-45): mở hộp thoại giải thích + lối
@@ -146,7 +153,7 @@ export function useDiscover() {
 
     try {
       await api(`/matching/like/${targetId}`, { method: "DELETE" });
-      showToast(`💔 ${t("discover.card_unliked_toast", { name: candidate.user.displayName })}`);
+      showToast(t("discover.card_unliked_toast", { name: candidate.user.displayName }));
     } catch (err: any) {
       console.error(err);
       setSource((prev) => prev.map((c) => (c.user.id === targetId ? { ...c, liked: true, conversationId: candidate.conversationId } : c)));
@@ -230,8 +237,9 @@ export function useDiscover() {
     applyTimezoneFilter,
     sort,
     setSort,
-    mobileFilterOpen,
-    setMobileFilterOpen,
+    filterModalOpen,
+    setFilterModalOpen,
+    activeFilterCount,
     modalOpen,
     setModalOpen,
     matchedUser,

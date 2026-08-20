@@ -611,7 +611,6 @@ model QuestionSet {
   attempts   TestAttempt[]
   challenges CommunityChallenge[]
 
-  @@unique([languageId, topicId, level])
   @@index([status, languageId, levelOrder])
   @@map("question_sets")
 }

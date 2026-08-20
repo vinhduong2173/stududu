@@ -1,0 +1,21 @@
+Word,Phonetic,Meaning,POS,Example,Distractor1,Distractor2,Distractor3
+パソコン,/pasokon/,Máy tính cá nhân,Danh từ,毎日パソコンを使います。,Điện thoại,Ti vi,Tủ lạnh
+スマホ,/sumaho/,Điện thoại thông minh,Danh từ,スマホで写真を撮ります。,Máy tính,Máy ảnh,Đồng hồ
+ネット,/netto/,Mạng Internet,Danh từ,ネットで情報を調べます。,Sách báo,Ti vi,Bức thư
+メール,/mēru/,Thư điện tử (Email),Danh từ,先生にメールを送りました。,Tin nhắn thoại,Bức thư tay,Cuộc gọi
+ボタン,/botan/,Nút bấm,Danh từ,このボタンを押してください。,Màn hình,Bàn phím,Dây cáp
+カメラ,/kamera/,Máy ảnh,Danh từ,新しいカメラを買いました。,Điện thoại,Máy tính,Tai nghe
+テレビ,/terebi/,Ti vi,Danh từ,ニュースをテレビで見ます。,Máy tính,Màn hình,Đài radio
+電気,/denki/,Điện / Đèn điện,Danh từ,部屋の電気をつけます。,Nước,Gió,Lửa
+電話,/denwa/,Điện thoại / Cuộc gọi,Danh từ,友達に電話をかけます。,Email,Bức thư,Tin nhắn
+写真,/shashin/,Bức ảnh,Danh từ,旅行の写真を撮りました。,Video,Tranh vẽ,Bài viết
+音楽,/ongaku/,Âm nhạc,Danh từ,イヤホンで音楽を聞きます。,Phim ảnh,Tin tức,Truyện tranh
+ニュース,/nyūsu/,Tin tức,Danh từ,ネットのニュースを読みます。,Phim hoạt hình,Âm nhạc,Quảng cáo
+機械,/kikai/,Máy móc,Danh từ,工場で新しい機械を使います。,Con người,Tài liệu,Dụng cụ
+音,/oto/,Âm thanh,Danh từ,パソコンの音が大きいです。,Hình ảnh,Ánh sáng,Thời gian
+切る,/kiru/,Tắt (máy / điện),Động từ,電源を切ります。,Bật,Mở,Bấm
+つける,/tsukeru/,Bật (máy / điện),Động từ,テレビをつけます。,Tắt,Xóa,Đóng
+押す,/osu/,Bấm / Nhấn,Động từ,ここを押してください。,Kéo,Xóa,Giữ
+使う,/tsukau/,Sử dụng,Động từ,新しいアプリを使います。,Mua,Bán,Sửa
+送る,/okuru/,Gửi (tin nhắn / file),Động từ,メールを送りました。,Nhận,Xóa,Đọc
+見る,/miru/,Xem / Nhìn,Động từ,動画を見ます。,Nghe,Nói,Viết

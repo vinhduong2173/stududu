@@ -28,32 +28,58 @@ const LANGUAGE_MAP: Record<string, Omit<LanguageInfo, "code" | "displayName">> =
   hi: { countryCode: "in", flagEmoji: "🇮🇳", englishName: "Hindi", nativeName: "हिन्दी" },
 };
 
-export function getLanguageInfo(code?: string | null, name?: string | null): LanguageInfo {
+/**
+ * Returns localized language name based on current viewer's locale
+ */
+export function getLocalizedLanguageName(langCode: string, locale: string = "en"): string {
+  try {
+    const dn = new Intl.DisplayNames([locale], { type: "language" });
+    const name = dn.of(langCode);
+    if (name) {
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+  } catch (e) {
+    // Fallback if Intl.DisplayNames is not supported
+  }
+  return LANGUAGE_MAP[langCode]?.nativeName || langCode;
+}
+
+export function getLanguageInfo(code?: string | null, name?: string | null, currentLocale?: string | null): LanguageInfo {
   const normCode = (code || "").toLowerCase().trim();
   const normName = (name || "").toLowerCase().trim();
 
+  let matchedCode: string | null = null;
+  let item: Omit<LanguageInfo, "code" | "displayName"> | null = null;
+
   if (normCode && LANGUAGE_MAP[normCode]) {
-    const item = LANGUAGE_MAP[normCode];
-    const displayName =
-      item.englishName === item.nativeName
-        ? item.englishName
-        : `${item.nativeName} (${item.englishName})`;
-    return { code: normCode, displayName, ...item };
+    matchedCode = normCode;
+    item = LANGUAGE_MAP[normCode];
+  } else {
+    for (const [c, mappedItem] of Object.entries(LANGUAGE_MAP)) {
+      if (
+        (normName && normName.includes(mappedItem.englishName.toLowerCase())) ||
+        (normName && normName.includes(mappedItem.nativeName.toLowerCase())) ||
+        mappedItem.englishName.toLowerCase() === normName ||
+        mappedItem.nativeName.toLowerCase() === normName
+      ) {
+        matchedCode = c;
+        item = mappedItem;
+        break;
+      }
+    }
   }
 
-  for (const [c, item] of Object.entries(LANGUAGE_MAP)) {
-    if (
-      (normName && normName.includes(item.englishName.toLowerCase())) ||
-      (normName && normName.includes(item.nativeName.toLowerCase())) ||
-      item.englishName.toLowerCase() === normName ||
-      item.nativeName.toLowerCase() === normName
-    ) {
-      const displayName =
-        item.englishName === item.nativeName
-          ? item.englishName
-          : `${item.nativeName} (${item.englishName})`;
-      return { code: c, displayName, ...item };
-    }
+  if (matchedCode && item) {
+    const targetLocale = currentLocale || "en";
+    const localizedAnnotation = getLocalizedLanguageName(matchedCode, targetLocale);
+    
+    // If nativeName is same as localized annotation (e.g. English in 'en' or Tiếng Việt in 'vi')
+    const displayName =
+      item.nativeName.toLowerCase() === localizedAnnotation.toLowerCase()
+        ? item.nativeName
+        : `${item.nativeName} (${localizedAnnotation})`;
+
+    return { code: matchedCode, displayName, ...item };
   }
 
   const rawName = name || code || "Unknown";
@@ -117,8 +143,17 @@ export function getLevelText(level?: string | null): string {
     case "5":
       return "Thành thạo (C1/C2)";
     default:
+      if (trimmed.match(/^N[1-5]$/i)) {
+        return `JLPT ${trimmed.toUpperCase()}`;
+      }
+      if (trimmed.match(/^HSK\s*[1-6]$/i)) {
+        return trimmed.toUpperCase();
+      }
+      if (trimmed.match(/^TOPIK\s*[1-6]$/i)) {
+        return trimmed.toUpperCase();
+      }
       if (trimmed.match(/^[A-C][1-2]$/i)) {
-        return `Trình độ ${trimmed.toUpperCase()}`;
+        return `CEFR ${trimmed.toUpperCase()}`;
       }
       return trimmed.startsWith("Level") || trimmed.startsWith("Trình độ")
         ? trimmed

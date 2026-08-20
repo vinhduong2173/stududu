@@ -18,11 +18,14 @@ import {
   User,
   Clock,
   Award,
+  Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { ageFromDob, cn } from "@/lib/utils";
 import { ReportDialog, BlockDialog, useToast } from "@/components/features/TrustDialogs";
 import { LanguagesCard } from "@/components/features/LanguagesCard";
+import { ProfileAvailabilityCard } from "@/components/features/profile/ProfileAvailabilityCard";
 import { MatchModal } from "@/components/features/MatchModal";
 import {
   EndorseModal,
@@ -30,7 +33,7 @@ import {
   ChatStats,
 } from "@/components/features/Endorsements";
 import { useTranslations } from "next-intl";
-import { getTopicTranslation, getIntentTranslation } from "@/lib/i18nHelper";
+import { getTopicTranslation, getIntentTranslation, getGenderTranslation } from "@/lib/i18nHelper";
 import { PostCard, FeedPost } from "@/components/features/PostCard";
 
 export default function ProfilePage() {
@@ -124,7 +127,7 @@ export default function ProfilePage() {
   const learnLangs = user.languages.filter((l: any) => l.role === "learning");
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-8 pb-24">
+    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 pb-24">
       <div className="sticky top-0 bg-background/80 backdrop-blur-md z-10 flex items-center justify-between p-4">
         <button onClick={() => router.back()} className="p-2 hover:bg-muted/10 rounded-full transition-colors">
           <ArrowLeft className="w-6 h-6 text-foreground" />
@@ -216,10 +219,10 @@ export default function ProfilePage() {
               {isOnline ? tDisc("card_online") : tDisc("card_recent")}
               {user.city && (
                 <span className="inline-flex items-center gap-0.5">
-                  · <MapPin className="w-4 h-4" /> {user.city}
+                  · <MapPin className="w-4 h-4" /> {[user.city, user.country].filter(Boolean).join(", ")}
                 </span>
               )}
-              {user.gender && <span>· {user.gender}</span>}
+              {user.gender && <span>· {getGenderTranslation(user.gender, tRoot)}</span>}
             </p>
           </div>
         </div>
@@ -230,7 +233,8 @@ export default function ProfilePage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <span>🏅</span> {t("trust_activity_other")}
+                <Award className="w-5 h-5 text-primary" />
+                <span>{t("trust_activity_other")}</span>
               </h2>
               {conversationId && (
                 <button
@@ -287,7 +291,8 @@ export default function ProfilePage() {
           {(activeTab === "posts" || activeTab === "about") && (
             <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
-                <span>📌</span> {t("intro")}
+                <User className="w-5 h-5 text-primary" />
+                <span>{t("intro")}</span>
               </h2>
               <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm italic bg-surface-2/60 p-4 rounded-2xl border border-border/50 mb-4">
                 {user.bio ? `"${user.bio}"` : t("no_intro_other")}
@@ -306,10 +311,18 @@ export default function ProfilePage() {
             <LanguagesCard languages={user.languages || []} />
           )}
 
+          {(activeTab === "posts" || activeTab === "about") && (
+            <ProfileAvailabilityCard
+              availableSlots={user.availableSlots}
+              timezone={user.timezone}
+            />
+          )}
+
           {(activeTab === "posts" || activeTab === "about") && user.interests && user.interests.length > 0 && (
             <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <span>⭐</span> {t("interests")}
+                <Sparkles className="w-5 h-5 text-primary" />
+                <span>{t("interests")}</span>
               </h2>
               <div className="flex flex-wrap gap-2">
                 {user.interests.map((i: any) => (
@@ -332,7 +345,8 @@ export default function ProfilePage() {
             <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <span>💬</span> {t("posts_title")}
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  <span>{t("posts_title")}</span>
                 </span>
                 <span className="text-xs text-muted font-normal">{t("posts_count", { count: userPosts.length })}</span>
               </h2>
@@ -381,22 +395,29 @@ export default function ProfilePage() {
             <>
               <div className="flex-1 h-14 relative" onMouseEnter={() => setIsLikeHovered(true)} onMouseLeave={() => setIsLikeHovered(false)}>
                 <Button
-                  variant={isLikeHovered ? "ghost" : "ghost"}
+                  variant="ghost"
                   onClick={handleUnlike}
                   className={cn(
-                    "w-full h-full rounded-2xl border transition-all duration-200",
+                    "w-full h-full rounded-2xl border-2 transition-all duration-200 font-bold",
                     isLikeHovered
-                      ? "border-error/40 text-error bg-error/5"
-                      : "border-success/40 text-success bg-success/5"
+                      ? "border-rose-300 bg-rose-100/70 text-rose-700 dark:bg-rose-900/30 dark:border-rose-700 dark:text-rose-300"
+                      : "border-rose-200 bg-rose-50/90 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300 shadow-sm"
                   )}
                 >
-                  <Heart className={cn("w-6 h-6 mr-2", isLikeHovered ? "fill-none text-error" : "fill-success")} />
+                  <Heart
+                    className={cn(
+                      "w-6 h-6 mr-2 transition-transform duration-200",
+                      isLikeHovered
+                        ? "fill-none text-rose-600"
+                        : "fill-rose-500 text-rose-500 scale-105"
+                    )}
+                  />
                   {isLikeHovered ? tDisc("card_unlike") : tDisc("card_liked")}
                 </Button>
               </div>
               <Button
-                variant="secondary"
-                className="flex-1 h-14 rounded-2xl shadow-lg transition-transform hover:scale-[1.02]"
+                variant="default"
+                className="flex-1 h-14 rounded-2xl shadow-lg transition-transform hover:scale-[1.02] font-bold"
                 onClick={() =>
                   router.push(conversationId ? `/inbox?conversation=${conversationId}` : "/inbox")
                 }
@@ -407,11 +428,11 @@ export default function ProfilePage() {
             </>
           ) : (
             <Button
-              variant="secondary"
-              className="flex-1 h-14 rounded-2xl shadow-lg transition-transform hover:scale-[1.02]"
+              variant="ghost"
+              className="flex-1 h-14 rounded-2xl border-2 border-rose-400/80 bg-surface text-rose-600 hover:bg-rose-50 hover:border-rose-500 dark:bg-surface-2 dark:border-rose-500/80 dark:text-rose-400 dark:hover:bg-rose-950/30 shadow-md transition-all hover:scale-[1.01] font-bold text-base"
               onClick={handleLike}
             >
-              <Heart className="w-6 h-6 mr-2 fill-current" />
+              <Heart className="w-6 h-6 mr-2 fill-none stroke-[2.2] text-rose-500" />
               {tDisc("card_like")}
             </Button>
           )}

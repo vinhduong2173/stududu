@@ -1,17 +1,19 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { useVocabulary } from "@/hooks/useVocabulary";
 import { VocabularyHeader } from "@/components/features/vocabulary/VocabularyHeader";
 import { VocabularyTabSwitcher } from "@/components/features/vocabulary/VocabularyTabSwitcher";
 import { VocabularyQuizSection } from "@/components/features/vocabulary/VocabularyQuizSection";
 import { VocabularyNotebookSection } from "@/components/features/vocabulary/VocabularyNotebookSection";
+import { CreateUserSetModal } from "@/components/features/CreateUserSetModal";
 
 export default function VocabularyPage() {
   const v = useVocabulary();
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-4 md:py-6 pb-16 space-y-6">
+    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 pb-16 space-y-6">
       {/* HEADER SECTION */}
       <VocabularyHeader
         t={v.t}
@@ -56,6 +58,8 @@ export default function VocabularyPage() {
           isAnswered={v.isAnswered}
           handleSelectOption={v.handleSelectOption}
           handleNextQuestion={v.handleNextQuestion}
+          incorrectWords={v.incorrectWords}
+          handleRetryMissed={v.handleRetryMissed}
         />
       )}
 
@@ -71,6 +75,8 @@ export default function VocabularyPage() {
           selectedWordId={v.selectedWordId}
           getDefinitionForTargetLang={v.getDefinitionForTargetLang}
           handleDeleteWord={v.handleDeleteWord}
+          undoItem={v.undoItem}
+          handleUndoDelete={v.handleUndoDelete}
         />
       )}
 

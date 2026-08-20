@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/Button";
-import { BookOpen, CalendarClock, Check, Globe, Phone, PhoneMissed, PhoneOff, Smile, Video, X } from "lucide-react";
+import { BookOpen, CalendarClock, Check, Clock, Globe, Phone, PhoneMissed, PhoneOff, Smile, Sparkles, Video, X } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/components/call/CallScreen";
 import type { CallMessagePayload } from "@/lib/webrtc/callContract";
@@ -131,13 +132,43 @@ export function MessageBubbleItem({
 
         <div
           className={cn(
-            "rounded-3xl p-4 shadow-sm text-sm relative",
+            "rounded-2xl px-4 py-2.5 text-sm relative shadow-2xs",
             mine
-              ? "bg-gradient-to-r from-primary to-primary-hover text-white rounded-br-none"
-              : "bg-surface border border-border text-foreground rounded-bl-none",
+              ? "bg-teal-600 text-white rounded-br-xs"
+              : "bg-surface border border-border text-foreground rounded-bl-xs",
           )}
         >
-          {m.type === "text" && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
+          {m.type === "text" && (!m.payload || !("quizId" in (m.payload as any))) && (
+            <p className="whitespace-pre-wrap break-words">{m.content}</p>
+          )}
+
+          {m.payload && "quizId" in (m.payload as any) && (
+            <div className="space-y-2.5 min-w-[220px] p-1">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <Sparkles className="h-4 w-4 text-amber-300 animate-pulse shrink-0" />
+                <span>Thách đấu Đề thi Quiz</span>
+              </div>
+              <div className="rounded-2xl bg-black/10 dark:bg-white/10 p-3 space-y-1">
+                <p className="font-bold text-xs line-clamp-2">{(m.payload as any).quizTitle}</p>
+                <div className="flex items-center gap-2 text-[11px] opacity-80">
+                  <span>{(m.payload as any).level}</span>
+                  <span>•</span>
+                  <span>{(m.payload as any).questionCount || 10} câu hỏi</span>
+                </div>
+              </div>
+              <a
+                href={`/quiz/${(m.payload as any).quizId}`}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl font-bold text-xs transition-all shadow-sm",
+                  mine
+                    ? "bg-white text-primary hover:bg-white/90"
+                    : "bg-primary text-white hover:bg-primary-hover",
+                )}
+              >
+                <span>Làm bài thi ngay 🚀</span>
+              </a>
+            </div>
+          )}
 
           {m.type === "image" && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -224,8 +255,9 @@ export function MessageBubbleItem({
 
           {/* Dịch inline */}
           {m.type === "text" && showTranslationFor[m.id] && (
-            <div className="mt-2 pt-2 border-t border-current/20 text-xs opacity-90 italic">
-              🌐 {translations[m.id]}
+            <div className="mt-2 pt-2 border-t border-current/20 text-xs opacity-90 italic flex items-center gap-1">
+              <Globe className="w-3 h-3 shrink-0" />
+              <span>{translations[m.id]}</span>
             </div>
           )}
 
@@ -238,7 +270,7 @@ export function MessageBubbleItem({
             <span>{formatBubbleTime(m.sentAt)}</span>
             {mine && (
               <span>
-                {m.pending ? "🕒" : m.readAt ? "✓✓" : "✓"}
+                {m.pending ? <Clock className="w-2.5 h-2.5 inline" /> : m.readAt ? "✓✓" : "✓"}
               </span>
             )}
           </div>

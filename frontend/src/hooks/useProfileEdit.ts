@@ -38,6 +38,7 @@ export function useProfileEdit() {
   const [gender, setGender] = React.useState("");
   const [dob, setDob] = React.useState("");
   const [city, setCity] = React.useState("");
+  const [country, setCountry] = React.useState("");
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
 
   const [availableLanguages, setAvailableLanguages] = React.useState<Language[]>([]);
@@ -72,6 +73,7 @@ export function useProfileEdit() {
         setGender(me.gender ?? "");
         setDob(me.dob ? String(me.dob).slice(0, 10) : "");
         setCity(me.city ?? "");
+        setCountry(me.country ?? "VN");
         setMyLanguages(
           me.languages.map((l: any) => ({
             languageId: l.languageId ?? l.language.id,
@@ -94,24 +96,34 @@ export function useProfileEdit() {
   const addTeach = () => {
     if (!teachLangId) return;
     const langId = parseInt(teachLangId);
-    if (myLanguages.some((l) => l.languageId === langId && l.role !== "learning")) return;
+    if (myLanguages.some((l) => l.languageId === langId)) {
+      setError("Ngôn ngữ này đã có trong danh sách hồ sơ.");
+      return;
+    }
     setMyLanguages([
       ...myLanguages,
       { languageId: langId, role: teachRole, level: teachRole === "fluent" ? "C1" : undefined },
     ]);
     setTeachLangId("");
+    setError("");
   };
 
   const addLearn = () => {
     if (!learnLangId) return;
     const langId = parseInt(learnLangId);
-    if (myLanguages.some((l) => l.languageId === langId && l.role === "learning")) return;
+    if (myLanguages.some((l) => l.languageId === langId)) {
+      setError("Ngôn ngữ này đã có trong danh sách hồ sơ.");
+      return;
+    }
     setMyLanguages([...myLanguages, { languageId: langId, role: "learning", level: learnLevel }]);
     setLearnLangId("");
+    setError("");
   };
 
-  const removeLang = (langId: number, role: string) =>
+  const removeLang = (langId: number, role: string) => {
     setMyLanguages(myLanguages.filter((l) => !(l.languageId === langId && l.role === role)));
+    setError("");
+  };
 
   const toggleTopic = (id: number) =>
     setSelectedTopics((prev) =>
@@ -130,6 +142,12 @@ export function useProfileEdit() {
       return;
     }
 
+    const langIds = myLanguages.map((l) => l.languageId);
+    if (new Set(langIds).size !== langIds.length) {
+      setError("Không thể chọn cùng một ngôn ngữ cho nhiều vai trò.");
+      return;
+    }
+
     setSaving(true);
     setError("");
     try {
@@ -143,6 +161,7 @@ export function useProfileEdit() {
           gender: gender || null,
           dob: dob || null,
           city: city.trim() || null,
+          country: country || null,
           timezone,
           availableSlots,
         },
@@ -205,6 +224,8 @@ export function useProfileEdit() {
     setDob,
     city,
     setCity,
+    country,
+    setCountry,
     avatarInputRef,
     availableLanguages,
     myLanguages,

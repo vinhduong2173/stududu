@@ -11,14 +11,48 @@ export const QUESTION_TYPES: { value: QuestionTypeValue; label: string }[] = [
 ];
 
 export const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
+export const JLPT_LEVELS = ["N5", "N4", "N3", "N2", "N1"] as const;
+export const HSK_LEVELS = ["HSK 1", "HSK 2", "HSK 3", "HSK 4", "HSK 5", "HSK 6"] as const;
+export const TOPIK_LEVELS = ["TOPIK 1", "TOPIK 2", "TOPIK 3", "TOPIK 4", "TOPIK 5", "TOPIK 6"] as const;
 
-/**
- * Chỉ CEFR. Khung trình độ riêng theo ngôn ngữ (HSK/JLPT/TOPIK) nằm trong danh sách
- * "việc KHÔNG làm" của AGENTS.md mục 7 — cột `framework` để mở sẵn cho sau này,
- * nhưng cho chọn bây giờ chỉ tạo ra dữ liệu vô nghĩa kiểu "JLPT A1" vì thang trình
- * độ và `levelOrder` ở backend đều đang theo CEFR.
- */
-export const FRAMEWORKS = ["CEFR"] as const;
+export const FRAMEWORKS = ["CEFR", "JLPT", "HSK", "TOPIK"] as const;
+
+export type FrameworkType = (typeof FRAMEWORKS)[number];
+
+export function getLevelsForFramework(framework: string): string[] {
+  switch (framework.toUpperCase()) {
+    case "JLPT":
+      return [...JLPT_LEVELS];
+    case "HSK":
+      return [...HSK_LEVELS];
+    case "TOPIK":
+      return [...TOPIK_LEVELS];
+    case "CEFR":
+    default:
+      return [...CEFR_LEVELS];
+  }
+}
+
+export function getDefaultFrameworkForLanguage(langCodeOrName?: string | null): {
+  framework: FrameworkType;
+  defaultLevel: string;
+  levels: string[];
+} {
+  if (!langCodeOrName) {
+    return { framework: "CEFR", defaultLevel: "A1", levels: [...CEFR_LEVELS] };
+  }
+  const norm = langCodeOrName.toLowerCase().trim();
+  if (norm === "ja" || norm.includes("nhật") || norm.includes("japanese") || norm.includes("日本語")) {
+    return { framework: "JLPT", defaultLevel: "N5", levels: [...JLPT_LEVELS] };
+  }
+  if (norm === "zh" || norm.includes("trung") || norm.includes("chinese") || norm.includes("中文")) {
+    return { framework: "HSK", defaultLevel: "HSK 1", levels: [...HSK_LEVELS] };
+  }
+  if (norm === "ko" || norm.includes("hàn") || norm.includes("korean") || norm.includes("한국어")) {
+    return { framework: "TOPIK", defaultLevel: "TOPIK 1", levels: [...TOPIK_LEVELS] };
+  }
+  return { framework: "CEFR", defaultLevel: "A1", levels: [...CEFR_LEVELS] };
+}
 
 /** Số câu bắt buộc để publish — khớp REQUIRED_QUESTION_COUNT ở backend */
 export const REQUIRED_QUESTION_COUNT = 20;
@@ -234,6 +268,22 @@ export function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+export function formatDateInput(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return isNaN(d.getTime())
+    ? ""
+    : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function parseIsoDate(dateStr?: string | null, isEnd = false): string | null {
+  if (!dateStr?.trim()) return null;
+  const parts = dateStr.trim().split("-").map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  const [y, m, d] = parts;
+  return new Date(y, m - 1, d, isEnd ? 23 : 0, isEnd ? 59 : 0, isEnd ? 59 : 0).toISOString();
+}
+
 /**
  * Kết quả chấm trả `answerIndex` theo thứ tự GỐC của câu hỏi, còn màn làm bài đang
  * render theo thứ tự ĐÃ ĐẢO — nên phải dò lại vị trí theo nội dung đáp án.
@@ -249,3 +299,4 @@ export function displayIndexOfCorrect(
   const index = displayedOptions.indexOf(correctText);
   return index >= 0 ? index : null;
 }
+

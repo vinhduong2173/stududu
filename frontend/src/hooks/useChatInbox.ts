@@ -79,7 +79,7 @@ export function previewText(m: Conversation["lastMessage"], mine: boolean, t: an
   const prefix = mine ? t("chat.you") : "";
   if (m.type === "image") return `${prefix}${t("chat.photo")}`;
   if (m.type === "schedule") return `${prefix}${t("chat.schedule_invite")}`;
-  if (m.type === "call") return `📞 ${m.content}`;
+  if (m.type === "call") return m.content;
   return prefix + m.content;
 }
 
@@ -534,6 +534,7 @@ export function useChatInbox() {
     fileInputRef,
     inputRef,
     selected,
+    sendMessage,
     handleSend,
     handleImageUpload,
     handleTranslate,

@@ -240,7 +240,14 @@ export function GeneratePanel({
             </div>
 
             <Button className="w-full" onClick={generate} disabled={!file || generating}>
-              {generating ? "AI đang soạn câu hỏi…" : "✨ Sinh từ tài liệu"}
+              {generating ? (
+                "AI đang soạn câu hỏi…"
+              ) : (
+                <span className="inline-flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Sinh từ tài liệu</span>
+                </span>
+              )}
             </Button>
           </div>
         </div>

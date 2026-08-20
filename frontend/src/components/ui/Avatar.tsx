@@ -24,27 +24,35 @@ const dotClasses = {
 
 export function Avatar({ src, fallback, online, size = "md", className, ...props }: AvatarProps) {
   return (
-    <div className={cn("relative inline-block", className)} {...props}>
+    <div className={cn("relative inline-flex shrink-0 select-none rounded-full", className)} {...props}>
       <div 
         className={cn(
-          "relative flex shrink-0 overflow-hidden rounded-full items-center justify-center bg-gradient-to-br from-primary to-secondary text-white font-bold",
+          "relative flex shrink-0 overflow-hidden rounded-full items-center justify-center bg-teal-600 text-white font-bold shadow-2xs",
           sizeClasses[size]
         )}
       >
         {src ? (
           <img src={src} alt="Avatar" className="aspect-square h-full w-full object-cover" />
         ) : (
-          <span>{fallback}</span>
+          <span className="font-display font-semibold uppercase">{fallback}</span>
         )}
       </div>
       {online !== undefined && (
         <span 
           className={cn(
-            "absolute bottom-0 right-0 rounded-full border-surface",
-            online ? "bg-success" : "bg-muted",
+            "absolute bottom-0 right-0 flex items-center justify-center rounded-full border-2 border-surface",
             dotClasses[size]
           )}
-        />
+        >
+          {online ? (
+            <>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-full w-full bg-emerald-500" />
+            </>
+          ) : (
+            <span className="inline-flex rounded-full h-full w-full bg-muted/60" />
+          )}
+        </span>
       )}
     </div>
   )

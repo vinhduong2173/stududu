@@ -489,7 +489,7 @@ export function VideoCallModal({
               </button>
               <button
                 onClick={acceptCall}
-                className="flex items-center gap-2 px-6 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg hover:scale-105 active:scale-95 transition-all animate-bounce"
+                className="flex items-center gap-2 px-6 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg hover:scale-105 active:scale-95 transition-all animate-pulse"
               >
                 <VideoIcon className="w-5 h-5" />
                 <span>Chấp nhận</span>

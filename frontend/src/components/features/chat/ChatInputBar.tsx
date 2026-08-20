@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { EmojiPicker } from "@/components/features/EmojiPicker";
-import { Image as ImageIcon, Send, Smile } from "lucide-react";
+import { Image as ImageIcon, Send, Smile, Sparkles } from "lucide-react";
 import { QuotaChip } from "@/components/ui/QuotaChip";
 import { useEntitlements } from "@/hooks/useEntitlements";
 
@@ -16,6 +16,7 @@ interface ChatInputBarProps {
   inputRef: React.RefObject<HTMLInputElement | null>;
   showEmoji: boolean;
   setShowEmoji: React.Dispatch<React.SetStateAction<boolean>>;
+  onOpenQuizShare?: () => void;
 }
 
 export function ChatInputBar({
@@ -28,6 +29,7 @@ export function ChatInputBar({
   inputRef,
   showEmoji,
   setShowEmoji,
+  onOpenQuizShare,
 }: ChatInputBarProps) {
   // EP-11 — chỉ ẢNH có hạn mức (chi phí lưu trữ). BR-38: ô soạn tin nhắn text
   // và nút gọi KHÔNG bao giờ bị chặn, kể cả khi hạn mức ảnh đã hết.
@@ -77,6 +79,17 @@ export function ChatInputBar({
         >
           <Smile className="h-5 w-5" />
         </button>
+
+        {onOpenQuizShare && (
+          <button
+            type="button"
+            onClick={onOpenQuizShare}
+            className="p-2.5 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 rounded-full transition-colors"
+            title="Gửi bài thi Quiz cho bạn chat"
+          >
+            <Sparkles className="h-5 w-5" />
+          </button>
+        )}
 
         <input
           ref={inputRef}

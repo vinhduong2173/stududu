@@ -1,16 +1,15 @@
 # 1. Base image & Install dependencies
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:20-slim AS deps
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* pnpm-lock.yaml* ./
+COPY package.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # 2. Build the application
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -30,7 +29,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # 3. Production runner
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -39,8 +38,7 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Security: Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 -g nodejs nextjs
 
 # Copy public assets and static standalone output
 COPY --from=builder /app/public ./public
