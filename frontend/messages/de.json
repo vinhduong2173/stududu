@@ -8,7 +8,8 @@
     "messages": "Nachrichten",
     "vocabulary": "Vokabeln",
     "community": "Community",
-    "profile": "Profil"
+    "profile": "Profil",
+    "pricing": "Plans"
   },
   "menu": {
     "profile": "Profil",
@@ -156,7 +157,13 @@
     "match_title": "🎉 Es ist ein Match!",
     "match_desc": "Großartig! Du und {name} mögt euch gegenseitig. Startet ein Gespräch und übt gemeinsam.",
     "match_chat_now": "Jetzt schreiben",
-    "match_continue": "Weiter entdecken"
+    "match_continue": "Weiter entdecken",
+    "proFilter": {
+      "timezoneLabel": "Filter by timezone",
+      "timezoneAll": "All timezones",
+      "lockedHint": "Advanced filters are part of Pro. Your suggestion list stays exactly as complete as before.",
+      "lockedCta": "See Pro"
+    }
   },
   "community": {
     "title": "Community",
@@ -595,7 +602,11 @@
     "group_member_muted": "Du wurdest in der Gruppe \"{group}\" stummgeschaltet.",
     "group_member_report": "Neuer Mitgliedsbericht in Gruppe \"{group}\": {reason}",
     "group_post_report": "Neuer Beitragsbericht in Gruppe \"{group}\": {reason}",
-    "schedule_reminder": "Anstehender geplanter Chat in 30 Minuten – bitte vorbereiten!"
+    "schedule_reminder": "Anstehender geplanter Chat in 30 Minuten – bitte vorbereiten!",
+    "subscription_renewal_reminder": "Your Pro plan is about to renew.",
+    "subscription_past_due": "Payment failed — you still have Pro during the grace period.",
+    "subscription_downgraded": "Your Pro plan has ended. Your data is untouched.",
+    "subscription_activated": "Your Pro plan is now active."
   },
   "topics": {
     "travel": "Reisen",
@@ -742,5 +753,133 @@
     "unlimited": "Unbegrenzt",
     "view_results": "Ergebnisse anzeigen",
     "resume": "Fortsetzen"
+  },
+  "pricing": {
+    "title": "Stududu plans",
+    "loading": "Loading your plan…",
+    "principle": {
+      "line1": "Human-to-human interaction is free forever.",
+      "line2": "Only things that burn real infrastructure cost have limits."
+    },
+    "plan": {
+      "free": "Free",
+      "pro": "Pro"
+    },
+    "table": {
+      "feature": "Feature"
+    },
+    "usage": {
+      "today": "You have used {used}/{limit} today",
+      "total": "You have saved {used}/{limit} words"
+    },
+    "features": {
+      "translate_lookup": {
+        "label": "Lookup & in-chat translation",
+        "basis": "Google Translate API — billed per character",
+        "free": "30 /day",
+        "pro": "500 /day"
+      },
+      "vocabulary_save": {
+        "label": "Vocabulary notebook",
+        "basis": "Storage",
+        "free": "100 words",
+        "pro": "2,000 words"
+      },
+      "chat_image_upload": {
+        "label": "Images in chat",
+        "basis": "Images stored as base64 in the DB — real storage cost",
+        "free": "10 images/day",
+        "pro": "100 images/day"
+      },
+      "match_like": {
+        "label": "Likes",
+        "basis": "Anti-spam — the Pro cap is deliberately not unlimited",
+        "free": "10 /day",
+        "pro": "50 /day"
+      },
+      "match_advanced_filter": {
+        "label": "Advanced matching filters",
+        "basis": "Both plans see 100% of candidates — Pro only adds narrowing tools",
+        "free": "No extra filtering",
+        "pro": "Filter by timezone, level, topic"
+      }
+    },
+    "current": {
+      "title": "Current plan",
+      "free": "Stududu Free",
+      "pro": "Stududu Pro",
+      "grace": "Payment failed. You keep Pro access until {date}.",
+      "canceling": "Pro stays active until {date}.",
+      "priceNote": "Pro is {price}/month. Cancel anytime — you keep what you paid for."
+    },
+    "status": {
+      "free": "On the free plan",
+      "pending_payment": "Waiting for payment confirmation",
+      "active": "Active, renews monthly",
+      "past_due": "Renewal failed — currently in the grace period",
+      "canceling": "Canceled, access kept until the end of the paid period"
+    },
+    "cta": {
+      "upgrade": "Upgrade — {price}/month",
+      "cancel": "Cancel plan",
+      "resume": "Resume plan"
+    },
+    "quota": {
+      "title": "Daily limit reached",
+      "body": "You have used all {limit} of your current plan.",
+      "resetAt": "The limit resets at {time}.",
+      "dismiss": "Not now",
+      "seePlans": "See plans",
+      "warn": "{remaining} left today"
+    },
+    "notForSale": {
+      "title": "What Stududu deliberately does not sell",
+      "intro": "Stududu does not sell the right to talk to other people. This list is part of the product design, not an oversight.",
+      "items": {
+        "ranking": {
+          "what": "Priority placement in match suggestions",
+          "why": "If money buys ranking, MATCH_SCORE stops meaning anything."
+        },
+        "badge": {
+          "what": "A Pro badge on public profiles",
+          "why": "It creates social tiers inside a learning community."
+        },
+        "calls": {
+          "what": "Audio/video call length or count",
+          "why": "Speaking practice is the whole point of the product."
+        },
+        "messages": {
+          "what": "Number of chat messages",
+          "why": "Core loop — free forever."
+        },
+        "safety": {
+          "what": "Safety features (block, report)",
+          "why": "Selling safety to users is an ethical violation."
+        }
+      }
+    },
+    "checkout": {
+      "title": "Pay for Pro",
+      "subtitle": "Test environment — no real money moves.",
+      "cardLabel": "Visa/Mastercard number",
+      "pay": "Pay {price}",
+      "missingSession": "Missing checkout session. Please start the upgrade again from the plans page.",
+      "testCardsTitle": "Test cards",
+      "testCards": {
+        "success": "Payment succeeds",
+        "dunning": "Succeeds now, but renewal will fail",
+        "declined": "Declined by the bank"
+      },
+      "activated": "Payment succeeded. Pro is now active.",
+      "confirming": "Confirming your payment with the provider…",
+      "confirmingSlow": "Your payment was recorded but the provider has not confirmed yet. Reload in a few minutes; if Pro is still not active, contact support.",
+      "canceled": "You canceled the checkout. Nothing was charged."
+    },
+    "nav": {
+      "upgrade": "Get Pro",
+      "upgradeHint": "See the Pro plan and your current limits",
+      "manage": "Manage plan",
+      "manageHint": "You are on Stududu Pro. Review your limits and renewal."
+    }
   }
 }

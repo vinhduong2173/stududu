@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { EntitlementsService } from '../../entitlements/entitlements.service';
 import { SaveWordDto } from '../dto/save-word.dto';
 
 @Injectable()
 export class UserVocabularyService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   // FS-23 — tìm/tạo WORD_LIBRARY theo (term, language) rồi gắn USER_SAVED_WORD
   async saveWord(userId: number, dto: SaveWordDto) {
@@ -89,6 +93,10 @@ export class UserVocabularyService {
       });
       return { saved, duplicated: true };
     }
+
+    // EP-11 — trần sổ từ vựng chỉ chặn THÊM MỚI (BR-43): người vừa bị hạ cấp
+    // vẫn giữ nguyên và ôn tập được toàn bộ từ đã lưu, chỉ không lưu thêm.
+    await this.entitlements.assertAndConsume(userId, 'vocabulary.save');
 
     const saved = await this.prisma.userSavedWord.create({
       data: {

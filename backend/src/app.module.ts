@@ -16,6 +16,8 @@ import { UserModule } from './modules/user/user.module';
 import { VocabularyModule } from './modules/vocabulary/vocabulary.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { QuestionSetsModule } from './modules/question-sets/question-sets.module';
+import { EntitlementsModule } from './modules/entitlements/entitlements.module';
+import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 
@@ -93,6 +95,8 @@ import * as path from 'path';
     ScheduleModule, // FS-28
     NotificationModule,
     QuestionSetsModule, // Bộ đề trắc nghiệm + thử thách community
+    EntitlementsModule, // EP-11 — cổng kiểm tra quyền duy nhất (BR-39)
+    SubscriptionModule, // EP-11 — vòng đời gói Pro & thanh toán
   ],
 })
 export class AppModule {}

@@ -9,7 +9,8 @@
     "vocabulary": "Từ vựng",
     "community": "Cộng đồng",
     "profile": "Hồ sơ",
-    "quiz": "Luyện đề"
+    "quiz": "Luyện đề",
+    "pricing": "Gói Pro"
   },
   "menu": {
     "profile": "Hồ sơ",
@@ -157,7 +158,13 @@
     "match_title": "🎉 Đã match!",
     "match_desc": "Tuyệt vời! Bạn và {name} đã thích nhau. Bắt đầu trò chuyện và luyện tập cùng nhau nhé.",
     "match_chat_now": "Nhắn tin ngay",
-    "match_continue": "Tiếp tục khám phá"
+    "match_continue": "Tiếp tục khám phá",
+    "proFilter": {
+      "timezoneLabel": "Lọc theo múi giờ",
+      "timezoneAll": "Tất cả múi giờ",
+      "lockedHint": "Bộ lọc nâng cao thuộc gói Pro. Danh sách gợi ý của bạn vẫn đầy đủ như cũ.",
+      "lockedCta": "Xem gói Pro"
+    }
   },
   "community": {
     "title": "Cộng đồng",
@@ -592,7 +599,11 @@
     "group_member_muted": "Tài khoản của bạn đã bị vi phạm/tắt tiếng trong nhóm \"{group}\".",
     "group_member_report": "Có báo cáo thành viên mới trong nhóm \"{group}\": {reason}",
     "group_post_report": "Có báo cáo bài viết mới trong nhóm \"{group}\": {reason}",
-    "schedule_reminder": "Sắp đến giờ hẹn trò chuyện (30 phút nữa) — chuẩn bị nhé!"
+    "schedule_reminder": "Sắp đến giờ hẹn trò chuyện (30 phút nữa) — chuẩn bị nhé!",
+    "subscription_renewal_reminder": "Gói Pro của bạn sắp tự gia hạn.",
+    "subscription_past_due": "Thanh toán chưa thành công — bạn vẫn đang dùng Pro trong thời gian ân hạn.",
+    "subscription_downgraded": "Gói Pro đã kết thúc. Dữ liệu của bạn được giữ nguyên.",
+    "subscription_activated": "Gói Pro đã được kích hoạt."
   },
   "topics": {
     "travel": "Du lịch",
@@ -757,5 +768,133 @@
     "phase_running": "Đang diễn ra",
     "phase_ended": "Đã kết thúc",
     "resume": "Làm tiếp"
+  },
+  "pricing": {
+    "title": "Gói Stududu",
+    "loading": "Đang tải thông tin gói…",
+    "principle": {
+      "line1": "Tương tác giữa người với người thì miễn phí vĩnh viễn.",
+      "line2": "Chỉ những gì đốt chi phí biên của hạ tầng mới có hạn mức."
+    },
+    "plan": {
+      "free": "Free",
+      "pro": "Pro"
+    },
+    "table": {
+      "feature": "Hạng mục"
+    },
+    "usage": {
+      "today": "Bạn đã dùng {used}/{limit} hôm nay",
+      "total": "Bạn đã lưu {used}/{limit} từ"
+    },
+    "features": {
+      "translate_lookup": {
+        "label": "Tra từ & dịch trong chat",
+        "basis": "Google Translate API — chi phí theo ký tự",
+        "free": "30 lượt/ngày",
+        "pro": "500 lượt/ngày"
+      },
+      "vocabulary_save": {
+        "label": "Sổ từ vựng",
+        "basis": "Lưu trữ",
+        "free": "100 từ",
+        "pro": "2.000 từ"
+      },
+      "chat_image_upload": {
+        "label": "Ảnh trong chat",
+        "basis": "Ảnh lưu base64 trong DB — chi phí lưu trữ thật",
+        "free": "10 ảnh/ngày",
+        "pro": "100 ảnh/ngày"
+      },
+      "match_like": {
+        "label": "Lượt Thích (Like)",
+        "basis": "Chống spam — trần Pro cố ý không vô hạn",
+        "free": "10/ngày",
+        "pro": "50/ngày"
+      },
+      "match_advanced_filter": {
+        "label": "Bộ lọc ghép đôi nâng cao",
+        "basis": "Cả hai gói đều thấy đủ 100% ứng viên — Pro chỉ thêm công cụ thu hẹp",
+        "free": "Không lọc thêm được",
+        "pro": "Lọc theo múi giờ, trình độ, chủ đề"
+      }
+    },
+    "current": {
+      "title": "Gói hiện tại",
+      "free": "Stududu Free",
+      "pro": "Stududu Pro",
+      "grace": "Thanh toán chưa thành công. Bạn vẫn dùng Pro đến {date}.",
+      "canceling": "Pro có hiệu lực đến {date}.",
+      "priceNote": "Gói Pro {price}/tháng. Huỷ bất cứ lúc nào, không mất phần đã trả tiền."
+    },
+    "status": {
+      "free": "Đang dùng gói miễn phí",
+      "pending_payment": "Đang chờ xác nhận thanh toán",
+      "active": "Đang hiệu lực, tự gia hạn hằng tháng",
+      "past_due": "Gia hạn thất bại — đang trong thời gian ân hạn",
+      "canceling": "Đã huỷ, giữ quyền đến hết chu kỳ đã thanh toán"
+    },
+    "cta": {
+      "upgrade": "Nâng cấp — {price}/tháng",
+      "cancel": "Huỷ gói",
+      "resume": "Khôi phục gói"
+    },
+    "quota": {
+      "title": "Đã hết hạn mức",
+      "body": "Bạn đã dùng hết {limit} lượt của gói hiện tại.",
+      "resetAt": "Hạn mức đặt lại vào {time}.",
+      "dismiss": "Để sau",
+      "seePlans": "Xem các gói",
+      "warn": "Còn {remaining} lượt hôm nay"
+    },
+    "notForSale": {
+      "title": "Những thứ Stududu cố ý không bán",
+      "intro": "Stududu không bán quyền được nói chuyện với người khác. Danh sách này là một phần của thiết kế sản phẩm, không phải thiếu sót.",
+      "items": {
+        "ranking": {
+          "what": "Ưu tiên hiển thị trong gợi ý ghép đôi",
+          "why": "Nếu tiền mua được thứ hạng thì MATCH_SCORE mất ý nghĩa."
+        },
+        "badge": {
+          "what": "Huy hiệu Pro trên hồ sơ công khai",
+          "why": "Tạo phân tầng xã hội trong cộng đồng học tập."
+        },
+        "calls": {
+          "what": "Thời lượng và số cuộc gọi audio/video",
+          "why": "Luyện nói là mục đích cuối cùng của sản phẩm."
+        },
+        "messages": {
+          "what": "Số lượng tin nhắn chat",
+          "why": "Thuộc core loop, miễn phí vĩnh viễn."
+        },
+        "safety": {
+          "what": "Chức năng an toàn (chặn, báo cáo)",
+          "why": "Bán an toàn cho người dùng là vi phạm đạo đức sản phẩm."
+        }
+      }
+    },
+    "checkout": {
+      "title": "Thanh toán gói Pro",
+      "subtitle": "Môi trường thử nghiệm — không có tiền thật được luân chuyển.",
+      "cardLabel": "Số thẻ Visa/Mastercard",
+      "pay": "Thanh toán {price}",
+      "missingSession": "Thiếu mã phiên thanh toán. Vui lòng bấm Nâng cấp lại từ trang gói.",
+      "testCardsTitle": "Thẻ thử nghiệm",
+      "testCards": {
+        "success": "Thanh toán thành công",
+        "dunning": "Thành công, nhưng lần gia hạn sau sẽ thất bại",
+        "declined": "Bị ngân hàng từ chối"
+      },
+      "activated": "Thanh toán thành công. Gói Pro đã được kích hoạt.",
+      "confirming": "Đang xác nhận thanh toán với cổng…",
+      "confirmingSlow": "Thanh toán đã ghi nhận nhưng cổng chưa xác nhận xong. Tải lại trang sau ít phút; nếu vẫn chưa lên Pro, hãy liên hệ hỗ trợ.",
+      "canceled": "Bạn đã huỷ phiên thanh toán. Không có khoản nào bị trừ."
+    },
+    "nav": {
+      "upgrade": "Nâng cấp Pro",
+      "upgradeHint": "Xem gói Pro và hạn mức hiện tại của bạn",
+      "manage": "Quản lý gói",
+      "manageHint": "Bạn đang dùng Stududu Pro. Xem hạn mức và quản lý gia hạn."
+    }
   }
 }

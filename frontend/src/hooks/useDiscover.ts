@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { api } from "@/lib/api";
+import { useQuotaGuard } from "@/components/features/pricing/QuotaExceededDialog";
 import { useToast } from "@/components/features/TrustDialogs";
 import { useTranslations } from "next-intl";
 
@@ -44,23 +45,29 @@ export function useDiscover() {
   const [onlineOnly, setOnlineOnly] = React.useState(false);
   const [levelFilter, setLevelFilter] = React.useState<LevelFilter>("all");
   const [sort, setSort] = React.useState<SortKey>("best");
+  // EP-11 — bộ lọc nâng cao theo múi giờ, chỉ gói Pro dùng được (SRS §3.2).
+  // Cấu hình được GIỮ LẠI khi hạ cấp, chỉ ngừng áp dụng (SRS §5.4).
+  const [timezoneFilter, setTimezoneFilter] = React.useState("");
   const [mobileFilterOpen, setMobileFilterOpen] = React.useState(false);
 
   const [modalOpen, setModalOpen] = React.useState(false);
   const [matchedUser, setMatchedUser] = React.useState<any>(null);
   const [matchedConversationId, setMatchedConversationId] = React.useState<number | undefined>();
   const { show: showToast, toast } = useToast();
+  const quota = useQuotaGuard();
 
   React.useEffect(() => {
     fetchCandidates();
     api<Topic[]>("/topics").then(setTopics).catch(console.error);
   }, []);
 
-  const fetchCandidates = async (offset = 0) => {
+  const fetchCandidates = async (offset = 0, timezone = timezoneFilter) => {
     if (offset === 0) setLoading(true);
     else setLoadingMore(true);
     try {
-      const data = await api<SuggestionsResponse>(`/matching/suggestions?offset=${offset}`);
+      const query = new URLSearchParams({ offset: String(offset) });
+      if (timezone) query.set("timezone", timezone);
+      const data = await api<SuggestionsResponse>(`/matching/suggestions?${query}`);
       setCandidates((prev) => (offset === 0 ? data.items : [...prev, ...data.items]));
       setTotal(data.total);
       setInsufficientPool(data.insufficientPool);
@@ -122,6 +129,9 @@ export function useDiscover() {
         showToast(`💜 ${t("discover.liked_toast", { name: candidate.user.displayName })}`);
       }
     } catch (err: any) {
+      // US-39 AC1 — chạm hạn mức Like (BR-45): mở hộp thoại giải thích + lối
+      // dẫn tới /pricing thay vì chỉ nuốt lỗi vào console.
+      quota.capture(err);
       console.error(err);
       setSource((prev) => prev.map((c) => (c.user.id === targetId ? { ...c, liked: false } : c)));
     }
@@ -151,6 +161,14 @@ export function useDiscover() {
     setActiveTopics([]);
     setOnlineOnly(false);
     setLevelFilter("all");
+    setTimezoneFilter("");
+    void fetchCandidates(0, "");
+  };
+
+  /** Bộ lọc nâng cao chạy ở server (BR-46: lọc SAU khi xếp hạng) nên phải tải lại. */
+  const applyTimezoneFilter = (timezone: string) => {
+    setTimezoneFilter(timezone);
+    void fetchCandidates(0, timezone);
   };
 
   const source = tab === "suggest" ? candidates : allMembers;
@@ -207,6 +225,9 @@ export function useDiscover() {
     setOnlineOnly,
     levelFilter,
     setLevelFilter,
+    timezoneFilter,
+    setTimezoneFilter,
+    applyTimezoneFilter,
     sort,
     setSort,
     mobileFilterOpen,
@@ -216,6 +237,7 @@ export function useDiscover() {
     matchedUser,
     matchedConversationId,
     toast,
+    quotaDialog: quota.dialog,
     handleLike,
     handleUnlike,
     resetFilters,

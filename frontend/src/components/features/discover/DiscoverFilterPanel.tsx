@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { getTopicTranslation } from "@/lib/i18nHelper";
 import { LevelFilter, Topic } from "@/hooks/useDiscover";
+import { ProFilterSection } from "./ProFilterSection";
 
 interface DiscoverFilterPanelProps {
   t: any;
@@ -17,6 +18,10 @@ interface DiscoverFilterPanelProps {
   onlineOnly: boolean;
   setOnlineOnly: (val: boolean) => void;
   resetFilters: () => void;
+  /** EP-11 — bộ lọc nâng cao theo múi giờ (gói Pro). */
+  proFilterEnabled: boolean;
+  timezoneFilter: string;
+  applyTimezoneFilter: (timezone: string) => void;
 }
 
 export function DiscoverFilterPanel({
@@ -29,6 +34,9 @@ export function DiscoverFilterPanel({
   onlineOnly,
   setOnlineOnly,
   resetFilters,
+  proFilterEnabled,
+  timezoneFilter,
+  applyTimezoneFilter,
 }: DiscoverFilterPanelProps) {
   return (
     <div className="rounded-2xl border border-border bg-surface shadow-sm p-5">
@@ -37,6 +45,12 @@ export function DiscoverFilterPanel({
       </h2>
 
       <div className="space-y-5">
+        <ProFilterSection
+          enabled={proFilterEnabled}
+          timezone={timezoneFilter}
+          onChange={applyTimezoneFilter}
+        />
+
         <div>
           <label className="text-xs font-bold text-muted uppercase tracking-wide mb-2 block">
             {t("discover.filter_level_label")}

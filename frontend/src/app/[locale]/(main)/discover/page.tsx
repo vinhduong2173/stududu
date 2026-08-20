@@ -5,12 +5,14 @@ import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { MatchModal } from "@/components/features/MatchModal";
 import { useDiscover, SortKey } from "@/hooks/useDiscover";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { DiscoverFilterPanel } from "@/components/features/discover/DiscoverFilterPanel";
 import { DiscoverHeader } from "@/components/features/discover/DiscoverHeader";
 import { DiscoverGrid } from "@/components/features/discover/DiscoverGrid";
 
 export default function DiscoverPage() {
   const d = useDiscover();
+  const { can } = useEntitlements();
 
   if (d.loading) {
     return (
@@ -44,6 +46,9 @@ export default function DiscoverPage() {
     onlineOnly: d.onlineOnly,
     setOnlineOnly: d.setOnlineOnly,
     resetFilters: d.resetFilters,
+    proFilterEnabled: can("match.advanced_filter"),
+    timezoneFilter: d.timezoneFilter,
+    applyTimezoneFilter: d.applyTimezoneFilter,
   };
 
   return (
@@ -131,6 +136,8 @@ export default function DiscoverPage() {
         conversationId={d.matchedConversationId}
       />
       {d.toast}
+      {/* US-39 AC1 — hộp thoại khi chạm hạn mức Like */}
+      {d.quotaDialog}
     </div>
   );
 }

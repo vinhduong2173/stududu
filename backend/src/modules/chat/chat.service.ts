@@ -7,6 +7,7 @@ import {
 import { MessageType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { I18nService, I18nContext } from 'nestjs-i18n';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 
 const MAX_TEXT_LENGTH = 2000;
 const MAX_IMAGE_DATA_URL_LENGTH = 700_000; // ~500KB ảnh đã nén phía client
@@ -34,6 +35,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly i18n: I18nService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   // US-15 — Inbox: danh sách hội thoại sắp theo tin mới nhất, kèm tin cuối
@@ -135,6 +137,12 @@ export class ChatService {
 
     await this.assertParticipant(userId, conversationId);
     this.validateMessage(content, type, payload);
+
+    // EP-11 — chỉ ẢNH có hạn mức (ảnh lưu base64 trong DB = chi phí lưu trữ thật).
+    // BR-38: số tin nhắn text và cuộc gọi KHÔNG bao giờ bị giới hạn (US-39 AC4).
+    if (type === MessageType.image) {
+      await this.entitlements.assertAndConsume(userId, 'chat.image_upload');
+    }
 
     const [message] = await this.prisma.$transaction([
       this.prisma.message.create({

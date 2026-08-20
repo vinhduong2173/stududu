@@ -21,6 +21,7 @@ import { PostCard, FeedPost } from "@/components/features/PostCard";
 import { ReportDialog, useToast } from "@/components/features/TrustDialogs";
 import { Avatar } from "@/components/ui/Avatar";
 import { ProfileHeader } from "@/components/features/profile/ProfileHeader";
+import { ProPlanCard } from "@/components/features/pricing/ProPlanCard";
 
 type Me = {
   id: number;
@@ -86,6 +87,9 @@ export default function MyProfilePage() {
           activeTab === "posts" && "block",
           activeTab === "about" && "block lg:col-span-12"
         )}>
+          {/* EP-11 — lối vào gói Pro (đường duy nhất tới /pricing trên mobile) */}
+          <ProPlanCard />
+
           {/* Trust Signals */}
           <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
             <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
