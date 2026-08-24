@@ -719,7 +719,7 @@ export default function GroupDetailPage() {
   };
 
   return (
-    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pb-12 animate-fade-in">
+    <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-fade-in">
       {loading ? (
         <div className="p-16 flex flex-col items-center justify-center space-y-3 bg-surface rounded-3xl border border-border shadow-sm">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />

@@ -71,15 +71,5 @@
     "suspendedNoCall": "您的账号已被暂停，无法拨打电话",
     "notYourCall": "您不属于此通话",
     "notRinging": "此通话已不再振铃"
-  },
-  "subscription": {
-    "quotaExceeded": "You have used all {limit} of your current plan quota.",
-    "featureRequiresPro": "This feature is part of the Pro plan.",
-    "alreadyPro": "Your account is already on the Pro plan.",
-    "cannotCancel": "Only an active plan can be canceled.",
-    "cannotResume": "Your plan is not scheduled for cancellation.",
-    "cardDeclined": "Card declined. Please try another card.",
-    "checkoutNotFound": "Checkout session not found.",
-    "mockOnly": "The current payment provider does not support this action."
   }
 }

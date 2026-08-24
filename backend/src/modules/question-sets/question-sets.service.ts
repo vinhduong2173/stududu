@@ -137,7 +137,6 @@ export class QuestionSetsService {
     languageId?: number;
     topicId?: number;
     level?: string;
-    createdById?: number;
   }) {
     return this.prisma.questionSet.findMany({
       where: {
@@ -145,7 +144,6 @@ export class QuestionSetsService {
         ...(filter.languageId ? { languageId: filter.languageId } : {}),
         ...(filter.topicId ? { topicId: filter.topicId } : {}),
         ...(filter.level ? { level: filter.level } : {}),
-        ...(filter.createdById ? { createdById: filter.createdById } : {}),
       },
       include: {
         language: { select: { id: true, code: true, name: true } },
@@ -157,31 +155,17 @@ export class QuestionSetsService {
   }
 
   async createSet(adminId: number, dto: CreateQuestionSetDto) {
-    let topicId: number = dto.topicId ?? 0;
-    let topic = topicId ? await this.prisma.vocabTopic.findUnique({ where: { id: topicId } }) : null;
-    if (!topic) {
-      const firstTopic = await this.prisma.vocabTopic.findFirst({ where: { hidden: false } }) || await this.prisma.vocabTopic.findFirst();
-      if (firstTopic) {
-        topicId = firstTopic.id;
-      } else {
-        const createdTopic = await this.prisma.vocabTopic.create({ data: { name: 'Tổng hợp' } });
-        topicId = createdTopic.id;
-      }
-    }
-
-    let languageId: number = dto.languageId ?? 0;
-    let language = languageId ? await this.prisma.language.findUnique({ where: { id: languageId } }) : null;
-    if (!language) {
-      const firstLang = await this.prisma.language.findFirst();
-      if (!firstLang) throw new NotFoundException('Không tìm thấy ngôn ngữ nào trong hệ thống');
-      languageId = firstLang.id;
-    }
+    await this.getVocabTopicOrThrow(dto.topicId);
+    const language = await this.prisma.language.findUnique({
+      where: { id: dto.languageId },
+    });
+    if (!language) throw new NotFoundException('Không tìm thấy ngôn ngữ');
 
     try {
       return await this.prisma.questionSet.create({
         data: {
-          languageId,
-          topicId,
+          languageId: dto.languageId,
+          topicId: dto.topicId,
           framework: dto.framework,
           level: dto.level,
           levelOrder: levelOrderOf(dto.level),
@@ -276,7 +260,7 @@ export class QuestionSetsService {
       );
     }
 
-    const extracted = await this.extractor.extract(file.buffer, file.mimetype, file.originalname);
+    const extracted = await this.extractor.extract(file.buffer, file.mimetype);
 
     // Đặt mốc TRƯỚC khi gọi AI: BR-52 chặn bấm nhầm liên tiếp, mà lần bấm thứ hai
     // thường rơi vào lúc lần đầu còn đang chạy. Đặt sau khi gọi xong thì hai
@@ -294,8 +278,6 @@ export class QuestionSetsService {
         level: set.level,
         questionCount: options.questionCount ?? REQUIRED_QUESTION_COUNT,
         extractedText: extracted.text,
-        fileBuffer: file.buffer,
-        fileMimeType: file.mimetype,
         note: options.note,
       },
       { fileName: file.originalname, fileType: file.mimetype },
@@ -576,7 +558,7 @@ export class QuestionSetsService {
 
     const hasEnoughQuestions = activeCount === REQUIRED_QUESTION_COUNT;
     const hasAdminTrial = adminTrial !== null;
-    const canPublish = hasEnoughQuestions;
+    const canPublish = hasEnoughQuestions && hasAdminTrial;
 
     return {
       requiredCount: REQUIRED_QUESTION_COUNT,
@@ -596,6 +578,16 @@ export class QuestionSetsService {
         `Bộ đề chưa đủ câu (hiện có ${gate.activeCount}/${REQUIRED_QUESTION_COUNT} câu). Cần đúng ${REQUIRED_QUESTION_COUNT} câu mới xuất bản được.`,
       );
     }
+    if (gate.trialOutdated) {
+      throw new BadRequestException(
+        'Nội dung bộ đề đã đổi câu hỏi kể từ lần làm thử cuối. Vui lòng làm thử lại trước khi xuất bản.',
+      );
+    }
+    if (!gate.hasAdminTrial) {
+      throw new BadRequestException(
+        'Admin phải làm thử bộ đề (đạt ít nhất 1 lần) mới được xuất bản.',
+      );
+    }
 
     return this.prisma.questionSet.update({
       where: { id: setId },
@@ -603,28 +595,6 @@ export class QuestionSetsService {
         status: SetStatus.published,
         publishedAt: new Date(),
         updatedById: adminId,
-      },
-    });
-  }
-
-  async userPublishSet(userId: number, setId: number) {
-    const set = await this.prisma.questionSet.findUnique({
-      where: { id: setId },
-      include: { questions: { where: { status: 'active' } } },
-    });
-    if (!set) throw new NotFoundException('Không tìm thấy bộ đề');
-    if (set.createdById !== userId) {
-      throw new BadRequestException('Bạn không phải người tạo bộ đề này');
-    }
-    if (set.questions.length === 0) {
-      throw new BadRequestException('Bộ đề chưa có câu hỏi nào');
-    }
-    return this.prisma.questionSet.update({
-      where: { id: setId },
-      data: {
-        status: SetStatus.published,
-        publishedAt: new Date(),
-        updatedById: userId,
       },
     });
   }

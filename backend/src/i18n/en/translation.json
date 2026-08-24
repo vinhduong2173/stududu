@@ -71,15 +71,5 @@
     "suspendedNoCall": "Your account is suspended, you cannot make calls",
     "notYourCall": "You are not part of this call",
     "notRinging": "This call is no longer ringing"
-  },
-  "subscription": {
-    "quotaExceeded": "You have used all {limit} of your current plan quota.",
-    "featureRequiresPro": "This feature is part of the Pro plan.",
-    "alreadyPro": "Your account is already on the Pro plan.",
-    "cannotCancel": "Only an active plan can be canceled.",
-    "cannotResume": "Your plan is not scheduled for cancellation.",
-    "cardDeclined": "Card declined. Please try another card.",
-    "checkoutNotFound": "Checkout session not found.",
-    "mockOnly": "The current payment provider does not support this action."
   }
 }

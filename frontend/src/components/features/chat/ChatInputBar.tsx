@@ -2,9 +2,7 @@
 
 import * as React from "react";
 import { EmojiPicker } from "@/components/features/EmojiPicker";
-import { Image as ImageIcon, Send, Smile, Sparkles } from "lucide-react";
-import { QuotaChip } from "@/components/ui/QuotaChip";
-import { useEntitlements } from "@/hooks/useEntitlements";
+import { Image as ImageIcon, Send, Smile } from "lucide-react";
 
 interface ChatInputBarProps {
   t: any;
@@ -16,7 +14,6 @@ interface ChatInputBarProps {
   inputRef: React.RefObject<HTMLInputElement | null>;
   showEmoji: boolean;
   setShowEmoji: React.Dispatch<React.SetStateAction<boolean>>;
-  onOpenQuizShare?: () => void;
 }
 
 export function ChatInputBar({
@@ -29,14 +26,7 @@ export function ChatInputBar({
   inputRef,
   showEmoji,
   setShowEmoji,
-  onOpenQuizShare,
 }: ChatInputBarProps) {
-  // EP-11 — chỉ ẢNH có hạn mức (chi phí lưu trữ). BR-38: ô soạn tin nhắn text
-  // và nút gọi KHÔNG bao giờ bị chặn, kể cả khi hạn mức ảnh đã hết.
-  const { entitlement } = useEntitlements();
-  const images = entitlement("chat.image_upload");
-  const imagesExhausted = images ? !images.allowed : false;
-
   return (
     <div className="p-4 border-t border-border bg-surface shrink-0 relative">
       {showEmoji && (
@@ -58,18 +48,14 @@ export function ChatInputBar({
           className="hidden"
           onChange={handleImageUpload}
         />
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={imagesExhausted}
-            className="p-2.5 text-muted hover:text-primary hover:bg-primary/10 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-            title={t("chat.attach_photo")}
-          >
-            <ImageIcon className="h-5 w-5" />
-          </button>
-          {(imagesExhausted || images?.warn) && <QuotaChip entitlement={images} />}
-        </div>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="p-2.5 text-muted hover:text-primary hover:bg-primary/10 rounded-full transition-colors"
+          title={t("chat.attach_photo")}
+        >
+          <ImageIcon className="h-5 w-5" />
+        </button>
 
         <button
           type="button"
@@ -79,17 +65,6 @@ export function ChatInputBar({
         >
           <Smile className="h-5 w-5" />
         </button>
-
-        {onOpenQuizShare && (
-          <button
-            type="button"
-            onClick={onOpenQuizShare}
-            className="p-2.5 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 rounded-full transition-colors"
-            title="Gửi bài thi Quiz cho bạn chat"
-          >
-            <Sparkles className="h-5 w-5" />
-          </button>
-        )}
 
         <input
           ref={inputRef}

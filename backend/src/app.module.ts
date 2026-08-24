@@ -16,8 +16,6 @@ import { UserModule } from './modules/user/user.module';
 import { VocabularyModule } from './modules/vocabulary/vocabulary.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { QuestionSetsModule } from './modules/question-sets/question-sets.module';
-import { EntitlementsModule } from './modules/entitlements/entitlements.module';
-import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 
@@ -66,14 +64,16 @@ import * as path from 'path';
         path: (() => {
           const fs = require('fs');
           const candidates = [
-            path.join(__dirname, '/i18n/'),
-            path.join(__dirname, '../i18n/'),
-            path.join(process.cwd(), 'src/i18n/'),
-            path.join(process.cwd(), 'dist/i18n/'),
+            path.join(__dirname, 'i18n'),
+            path.join(__dirname, '../i18n'),
+            path.join(process.cwd(), 'src/i18n'),
+            path.join(process.cwd(), 'dist/i18n'),
+            path.join(process.cwd(), 'dist/i18n/i18n'),
           ];
-          return (
-            candidates.find((p: string) => fs.existsSync(p)) || candidates[0]
+          const valid = candidates.find(
+            (p: string) => fs.existsSync(p) && fs.existsSync(path.join(p, 'vi')),
           );
+          return valid || candidates[0];
         })(),
         watch: true,
       },
@@ -95,8 +95,6 @@ import * as path from 'path';
     ScheduleModule, // FS-28
     NotificationModule,
     QuestionSetsModule, // Bộ đề trắc nghiệm + thử thách community
-    EntitlementsModule, // EP-11 — cổng kiểm tra quyền duy nhất (BR-39)
-    SubscriptionModule, // EP-11 — vòng đời gói Pro & thanh toán
   ],
 })
 export class AppModule {}

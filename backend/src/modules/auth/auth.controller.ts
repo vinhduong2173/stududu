@@ -62,26 +62,10 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Request() req: any, @Res() res: any) {
-    const rawOrigins =
+    const loginResult = await this.authService.googleLogin(req.user);
+    const frontendUrl =
       this.config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3000';
-    const frontendUrl = rawOrigins.split(',')[0].trim();
-
-    if (req.authError || !req.user) {
-      const errorMsg = encodeURIComponent(
-        req.authError || 'Mã xác thực Google đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.',
-      );
-      return res.redirect(`${frontendUrl}/auth/callback?error=${errorMsg}`);
-    }
-
-    try {
-      const loginResult = await this.authService.googleLogin(req.user);
-      const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${loginResult.tokens.accessToken}&refreshToken=${loginResult.tokens.refreshToken}`;
-      return res.redirect(redirectUrl);
-    } catch (err: any) {
-      const errorMsg = encodeURIComponent(
-        err?.message || 'Đăng nhập Google thất bại.',
-      );
-      return res.redirect(`${frontendUrl}/auth/callback?error=${errorMsg}`);
-    }
+    const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${loginResult.tokens.accessToken}&refreshToken=${loginResult.tokens.refreshToken}`;
+    return res.redirect(redirectUrl);
   }
 }

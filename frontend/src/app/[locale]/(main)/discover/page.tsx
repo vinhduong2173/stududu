@@ -4,14 +4,12 @@ import * as React from "react";
 import { Button } from "@/components/ui/Button";
 import { MatchModal } from "@/components/features/MatchModal";
 import { useDiscover } from "@/hooks/useDiscover";
-import { useEntitlements } from "@/hooks/useEntitlements";
 import { DiscoverHeader } from "@/components/features/discover/DiscoverHeader";
 import { DiscoverGrid } from "@/components/features/discover/DiscoverGrid";
 import { DiscoverFilterModal } from "@/components/features/discover/DiscoverFilterModal";
 
 export default function DiscoverPage() {
   const d = useDiscover();
-  const { can } = useEntitlements();
 
   if (d.loading) {
     return (
@@ -91,8 +89,6 @@ export default function DiscoverPage() {
         conversationId={d.matchedConversationId}
       />
       {d.toast}
-      {/* US-39 AC1 — hộp thoại khi chạm hạn mức Like */}
-      {d.quotaDialog}
     </div>
   );
 }

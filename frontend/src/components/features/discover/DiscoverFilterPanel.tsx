@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { getTopicTranslation } from "@/lib/i18nHelper";
 import { LevelFilter, Topic } from "@/hooks/useDiscover";
-import { ProFilterSection } from "./ProFilterSection";
 
 interface DiscoverFilterPanelProps {
   t: any;
@@ -18,10 +17,6 @@ interface DiscoverFilterPanelProps {
   onlineOnly: boolean;
   setOnlineOnly: (val: boolean) => void;
   resetFilters: () => void;
-  /** EP-11 — bộ lọc nâng cao theo múi giờ (gói Pro). */
-  proFilterEnabled: boolean;
-  timezoneFilter: string;
-  applyTimezoneFilter: (timezone: string) => void;
 }
 
 export function DiscoverFilterPanel({
@@ -34,9 +29,6 @@ export function DiscoverFilterPanel({
   onlineOnly,
   setOnlineOnly,
   resetFilters,
-  proFilterEnabled,
-  timezoneFilter,
-  applyTimezoneFilter,
 }: DiscoverFilterPanelProps) {
   return (
     <div className="rounded-2xl border border-border/80 bg-surface shadow-card p-5 space-y-5">
@@ -44,27 +36,19 @@ export function DiscoverFilterPanel({
         <SlidersHorizontal className="h-4 w-4 text-primary" /> {t("discover.filter_title")}
       </h2>
 
-      <div className="space-y-5">
-        <ProFilterSection
-          enabled={proFilterEnabled}
-          timezone={timezoneFilter}
-          onChange={applyTimezoneFilter}
-        />
-
-        <div>
-          <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">
-            {t("discover.filter_level_label")}
-          </label>
-          <select
-            className="w-full rounded-xl border border-border/80 bg-surface-2/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-medium cursor-pointer"
-            value={levelFilter}
-            onChange={(e) => setLevelFilter(e.target.value as LevelFilter)}
-          >
-            <option value="all">{t("discover.filter_level_all")}</option>
-            <option value="native">{t("discover.filter_level_native")}</option>
-            <option value="fluent">{t("discover.filter_level_fluent")}</option>
-          </select>
-        </div>
+      <div>
+        <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">
+          {t("discover.filter_level_label")}
+        </label>
+        <select
+          className="w-full rounded-xl border border-border/80 bg-surface-2/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:bg-surface focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-medium cursor-pointer"
+          value={levelFilter}
+          onChange={(e) => setLevelFilter(e.target.value as LevelFilter)}
+        >
+          <option value="all">{t("discover.filter_level_all")}</option>
+          <option value="native">{t("discover.filter_level_native")}</option>
+          <option value="fluent">{t("discover.filter_level_fluent")}</option>
+        </select>
       </div>
 
       <div>

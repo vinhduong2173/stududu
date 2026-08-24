@@ -4,7 +4,12 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
-    "assets": ["i18n/**/*"],
+    "assets": [
+      {
+        "include": "i18n/**/*",
+        "outDir": "dist"
+      }
+    ],
     "watchAssets": true
   }
 }

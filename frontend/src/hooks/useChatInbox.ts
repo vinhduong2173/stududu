@@ -534,7 +534,6 @@ export function useChatInbox() {
     fileInputRef,
     inputRef,
     selected,
-    sendMessage,
     handleSend,
     handleImageUpload,
     handleTranslate,

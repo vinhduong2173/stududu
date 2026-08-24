@@ -52,12 +52,6 @@ export function getNotificationMessage(n: any, t: any) {
       return t("notifications.group_post_report", { group, reason });
     case "schedule_reminder":
       return t("notifications.schedule_reminder");
-    // EP-11 — chuỗi dunning §5.3
-    case "subscription_renewal_reminder":
-    case "subscription_past_due":
-    case "subscription_downgraded":
-    case "subscription_activated":
-      return t(`notifications.${n.type}`);
     default:
       return n.message;
   }

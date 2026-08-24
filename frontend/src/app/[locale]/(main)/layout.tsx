@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Bell, BookOpen, Compass, LogOut, MessageCircle, Settings, Sparkles, User, UserRound, Users } from "lucide-react";
+import { Bell, BookOpen, Compass, LogOut, MessageCircle, Settings, User, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { disconnectSocket, getSocket } from "@/lib/socket";
@@ -13,7 +13,6 @@ import { LanguageSwitcher } from "@/components/features/LanguageSwitcher";
 import { TextSelectionPopup } from "@/components/features/TextSelectionPopup";
 import { Logo } from "@/components/ui/Logo";
 import { CallProvider } from "@/components/call/CallProvider";
-import { ProNavButton } from "@/components/features/pricing/ProNavButton";
 
 import { NotificationDropdown, getNotificationMessage } from "@/components/layout/NotificationDropdown";
 
@@ -199,8 +198,6 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="flex items-center gap-3">
-          {/* EP-11 — lối vào gói Pro */}
-          <ProNavButton />
           <LanguageSwitcher />
           
           <NotificationDropdown
@@ -237,13 +234,6 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     onClick={() => setMenuOpen(false)}
                   >
                     <UserRound className="h-4 w-4 text-muted" /> {t("menu.profile")}
-                  </Link>
-                  <Link
-                    href="/pricing"
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <Sparkles className="h-4 w-4 text-muted" /> {t("nav.pricing")}
                   </Link>
                   <Link
                     href="/settings"

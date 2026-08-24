@@ -10,7 +10,6 @@ export interface CandidateWithRelations {
   lastActive: Date | null;
   dob: Date | null;
   city: string | null;
-  timezone: string | null;
   languages: { role: LanguageRole; level: string | null; language: any }[];
   interests: { topicId: number; topic: { name: string } }[];
 }

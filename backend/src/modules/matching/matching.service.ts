@@ -14,12 +14,6 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { I18nService, I18nContext } from 'nestjs-i18n';
 import { scoreAndRankCandidates } from './utils/matching-score.calculator';
-import { EntitlementsService } from '../entitlements/entitlements.service';
-import {
-  AdvancedFilter,
-  applyAdvancedFilter,
-  hasAdvancedFilter,
-} from './utils/advanced-filter.util';
 
 const TEACH_ROLES: LanguageRole[] = [LanguageRole.native, LanguageRole.fluent];
 
@@ -32,7 +26,6 @@ export class MatchingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly i18n: I18nService,
-    private readonly entitlements: EntitlementsService,
   ) {}
 
   // FS-08 — gợi ý bù trừ ngôn ngữ, MATCH_SCORE tính on-the-fly (không cache).
@@ -40,13 +33,8 @@ export class MatchingService {
   // → (3) bỏ ưu tiên last_active. Điều kiện bù trừ learning↔native|fluent KHÔNG nới.
   async getSuggestions(
     userId: number,
-    filter?: { languageId?: number; offset?: number; advanced?: AdvancedFilter },
+    filter?: { languageId?: number; offset?: number },
   ) {
-    // EP-11 — bộ lọc nâng cao là hạng mục Pro (SRS §3.2). Không có quyền thì
-    // chặn đúng bộ lọc, KHÔNG cắt bớt danh sách gợi ý (BR-46).
-    if (hasAdvancedFilter(filter?.advanced)) {
-      await this.entitlements.assertAndConsume(userId, 'match.advanced_filter');
-    }
     const me = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { languages: true, interests: true, matchPreference: true },
@@ -112,7 +100,6 @@ export class MatchingService {
         lastActive: true,
         dob: true,
         city: true,
-        timezone: true,
         languages: { include: { language: true } },
         interests: { include: { topic: true } },
       },
@@ -120,17 +107,13 @@ export class MatchingService {
     });
 
     const likedMap = await this.getLikedMap(userId);
-    const ranked = scoreAndRankCandidates(me, candidates, likedMap);
-
-    // Lọc SAU khi đã xếp hạng: thứ tự và thành phần gợi ý không đổi giữa hai gói.
-    const picked = applyAdvancedFilter(ranked, filter?.advanced);
+    const picked = scoreAndRankCandidates(me, candidates, likedMap);
 
     const insufficientPool = picked.length < SUGGESTIONS_MIN;
     const offset = Math.max(0, filter?.offset ?? 0);
     return {
       items: picked.slice(offset, offset + SUGGESTIONS_PAGE_SIZE),
       total: picked.length,
-      unfilteredTotal: ranked.length,
       insufficientPool,
     };
   }
@@ -201,11 +184,6 @@ export class MatchingService {
         }),
       );
 
-    // BR-45 — hạn mức Like áp dụng cho MỌI tài khoản kể cả Pro. Hạn mức này
-    // sinh ra để chống spam sau khi bỏ điều kiện mutual match (SRS §3.4);
-    // việc nó đồng thời là ranh giới gói chỉ là hệ quả.
-    await this.entitlements.assertAndConsume(userId, 'match.like');
-
     // Đã có match theo chiều nào chưa (mình→họ hoặc họ→mình)?
     const existing = await this.prisma.match.findFirst({
       where: {
@@ -241,21 +219,8 @@ export class MatchingService {
         data: { matchId: existing.id },
       }));
 
-    // Mình là người tạo match trước đó
+    // Mình đã thích trước đó → idempotent
     if (existing.memberId === userId) {
-      if (
-        existing.status !== MatchStatus.liked &&
-        existing.status !== MatchStatus.mutual
-      ) {
-        const match = await this.prisma.match.update({
-          where: { id: existing.id },
-          data: { status: MatchStatus.liked },
-        });
-        await this.prisma.interaction.create({
-          data: { matchId: existing.id, userId, action: InteractionAction.like },
-        });
-        return { match, conversation, mutual: false };
-      }
       return {
         match: existing,
         conversation,
@@ -263,95 +228,18 @@ export class MatchingService {
       };
     }
 
-    // Đối phương là người tạo match:
-    // Nếu đối phương đang thích mình -> chuyển thành mutual (US-13)
-    if (existing.status === MatchStatus.liked) {
-      const match = await this.prisma.match.update({
-        where: { id: existing.id },
-        data: { status: MatchStatus.mutual },
-      });
-      await this.prisma.interaction.create({
-        data: { matchId: existing.id, userId, action: InteractionAction.like },
-      });
-      return { match, conversation, mutual: true };
-    }
-
-    // Nếu đối phương đã từng bỏ thích -> mình thích lại thì đảo người tạo match thành mình
-    const match = await this.prisma.match.update({
-      where: { id: existing.id },
-      data: {
-        memberId: userId,
-        candidateId: targetId,
-        status: MatchStatus.liked,
-      },
-    });
+    // Đối phương thích trước, giờ mình thích lại → mutual (US-13)
+    const match =
+      existing.status === MatchStatus.mutual
+        ? existing
+        : await this.prisma.match.update({
+            where: { id: existing.id },
+            data: { status: MatchStatus.mutual },
+          });
     await this.prisma.interaction.create({
       data: { matchId: existing.id, userId, action: InteractionAction.like },
     });
-    return { match, conversation, mutual: false };
-  }
-
-  // Unlike — hủy thích một người đã thích trước đó (bảo lưu toàn bộ tin nhắn & hội thoại)
-  async unlike(userId: number, targetId: number) {
-    if (userId === targetId) {
-      throw new BadRequestException(
-        this.i18n.t('translation.matching.noSelfLike', {
-          lang: I18nContext.current()?.lang,
-        }),
-      );
-    }
-
-    const match = await this.prisma.match.findFirst({
-      where: {
-        OR: [
-          { memberId: userId, candidateId: targetId },
-          { memberId: targetId, candidateId: userId },
-        ],
-      },
-      include: {
-        conversation: true,
-      },
-    });
-
-    if (!match) {
-      return { unliked: false };
-    }
-
-    // TH 1: Match đang ở trạng thái mutual (cả 2 bên cùng thích nhau)
-    if (match.status === MatchStatus.mutual) {
-      await this.prisma.interaction.deleteMany({
-        where: { matchId: match.id, userId },
-      });
-
-      // TargetId vẫn thích userId, nên chuyển match về trạng thái liked 1 chiều do targetId khởi xướng
-      await this.prisma.match.update({
-        where: { id: match.id },
-        data: {
-          memberId: targetId,
-          candidateId: userId,
-          status: MatchStatus.liked,
-        },
-      });
-
-      return { unliked: true, mutual: false };
-    }
-
-    // TH 2: Match 1 chiều do chính userId thích targetId
-    if (match.memberId === userId && match.status === MatchStatus.liked) {
-      await this.prisma.interaction.deleteMany({
-        where: { matchId: match.id, userId },
-      });
-
-      // Cập nhật trạng thái thành skipped để hủy like nhưng vẫn giữ nguyên Conversation & Messages
-      await this.prisma.match.update({
-        where: { id: match.id },
-        data: { status: MatchStatus.skipped },
-      });
-
-      return { unliked: true };
-    }
-
-    return { unliked: false };
+    return { match, conversation, mutual: true };
   }
 
   // Loại khỏi gợi ý: chỉ những người đã block nhau (skip đã bỏ khỏi sản phẩm)

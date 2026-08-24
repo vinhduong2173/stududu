@@ -50,11 +50,6 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(100)
-  country?: string;
-
-  @IsOptional()
-  @IsString()
   @MaxLength(10)
   timezone?: string; // mã múi giờ (VN, UK, JP…) — hẹn lịch chat
 

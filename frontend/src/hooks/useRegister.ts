@@ -42,8 +42,6 @@ export function useRegister() {
   const [year, setYear] = React.useState("");
   const [gender, setGender] = React.useState("");
   const [country, setCountry] = React.useState("VN");
-  const [city, setCity] = React.useState("");
-  const [intent, setIntent] = React.useState("Giao tiếp casual");
 
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
@@ -61,8 +59,6 @@ export function useRegister() {
         if (data.year) setYear(data.year);
         if (data.gender) setGender(data.gender);
         if (data.country) setCountry(data.country);
-        if (data.city) setCity(data.city);
-        if (data.intent) setIntent(data.intent);
       } catch (e) {
         console.error(e);
       }
@@ -79,8 +75,6 @@ export function useRegister() {
       year,
       gender,
       country,
-      city,
-      intent,
       ...overrides,
     };
     sessionStorage.setItem("register_form_draft", JSON.stringify(draft));
@@ -125,8 +119,6 @@ export function useRegister() {
           dob,
           gender,
           country,
-          city: city.trim() || undefined,
-          intent: intent || undefined,
         },
       });
 
@@ -201,10 +193,6 @@ export function useRegister() {
     setGender,
     country,
     setCountry,
-    city,
-    setCity,
-    intent,
-    setIntent,
     loading,
     error,
     saveDraft,

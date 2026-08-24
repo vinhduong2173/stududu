@@ -71,15 +71,5 @@
     "suspendedNoCall": "Tài khoản của bạn đang bị tạm khóa, không thể gọi",
     "notYourCall": "Bạn không thuộc cuộc gọi này",
     "notRinging": "Cuộc gọi không còn đổ chuông"
-  },
-  "subscription": {
-    "quotaExceeded": "Bạn đã dùng hết hạn mức {limit} lượt của gói hiện tại.",
-    "featureRequiresPro": "Tính năng này thuộc gói Pro.",
-    "alreadyPro": "Tài khoản của bạn đang dùng gói Pro.",
-    "cannotCancel": "Chỉ huỷ được gói đang có hiệu lực.",
-    "cannotResume": "Gói của bạn không ở trạng thái chờ huỷ.",
-    "cardDeclined": "Thẻ bị từ chối. Vui lòng thử thẻ khác.",
-    "checkoutNotFound": "Không tìm thấy phiên thanh toán này.",
-    "mockOnly": "Cổng thanh toán hiện tại không hỗ trợ thao tác này."
   }
 }

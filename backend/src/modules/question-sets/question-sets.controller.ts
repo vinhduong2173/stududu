@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -7,27 +6,20 @@ import {
   ParseIntPipe,
   Post,
   Query,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { JwtPayload } from '../../common/types/jwt-payload';
 import { AttemptsService } from './attempts.service';
 import { ChallengesService } from './challenges.service';
-import { MAX_FILE_BYTES } from './file-extractor.service';
 import { QuestionSetsService } from './question-sets.service';
 import {
-  CreateQuestionSetDto,
-  GenerateQuestionsDto,
-  ImportQuestionsDto,
   ListQuestionSetsQueryDto,
   SubmitAttemptDto,
 } from './dto/question-set.dto';
 
-/** Phía người học */
+/** Phía người học — chỉ thấy bộ đề đã publish */
 @Controller('question-sets')
 @UseGuards(JwtAuthGuard)
 export class QuestionSetsController {
@@ -52,51 +44,6 @@ export class QuestionSetsController {
       user.sub,
       setId ? parseInt(setId, 10) : undefined,
     );
-  }
-
-  @Get('my-sets')
-  mySets(@CurrentUser() user: JwtPayload) {
-    return this.sets.listSets({ createdById: user.sub });
-  }
-
-  @Post('user-create')
-  userCreate(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: CreateQuestionSetDto,
-  ) {
-    return this.sets.createSet(user.sub, dto);
-  }
-
-  @Post(':id/user-generate')
-  @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: MAX_FILE_BYTES } }),
-  )
-  userGenerate(
-    @Param('id', ParseIntPipe) id: number,
-    @UploadedFile() file: Express.Multer.File | undefined,
-    @Body() dto: GenerateQuestionsDto,
-  ) {
-    if (!file) {
-      throw new BadRequestException('Chưa chọn file tài liệu (PDF/DOCX/TXT).');
-    }
-    return this.sets.generateFromFile(id, file, dto);
-  }
-
-  @Post(':id/user-import')
-  userImport(
-    @CurrentUser() user: JwtPayload,
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: ImportQuestionsDto,
-  ) {
-    return this.sets.importQuestions(user.sub, id, dto);
-  }
-
-  @Post(':id/user-publish')
-  userPublish(
-    @CurrentUser() user: JwtPayload,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
-    return this.sets.userPublishSet(user.sub, id);
   }
 
   @Get()

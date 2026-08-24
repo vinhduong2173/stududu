@@ -70,7 +70,6 @@ export default function AdminQuestionSetsPage() {
         onOpenCreate={() => setCreating(true)}
       />
 
-
       {error && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
           {error}

@@ -71,15 +71,5 @@
     "suspendedNoCall": "アカウントが停止中のため発信できません",
     "notYourCall": "この通話の参加者ではありません",
     "notRinging": "この通話はすでに呼び出し中ではありません"
-  },
-  "subscription": {
-    "quotaExceeded": "You have used all {limit} of your current plan quota.",
-    "featureRequiresPro": "This feature is part of the Pro plan.",
-    "alreadyPro": "Your account is already on the Pro plan.",
-    "cannotCancel": "Only an active plan can be canceled.",
-    "cannotResume": "Your plan is not scheduled for cancellation.",
-    "cardDeclined": "Card declined. Please try another card.",
-    "checkoutNotFound": "Checkout session not found.",
-    "mockOnly": "The current payment provider does not support this action."
   }
 }

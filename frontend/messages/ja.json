@@ -8,8 +8,7 @@
     "messages": "メッセージ",
     "vocabulary": "単語帳",
     "community": "コミュニティ",
-    "profile": "プロフィール",
-    "pricing": "Plans"
+    "profile": "プロフィール"
   },
   "menu": {
     "profile": "プロフィール",
@@ -209,13 +208,7 @@
     "match_title": "マッチング成立！",
     "match_desc": "素晴らしい！あなたと {name} はお互いに「いいね！」しました。チャットを始めて一緒に練習しましょう。",
     "match_chat_now": "今すぐメッセージを送る",
-    "match_continue": "探索を続ける",
-    "proFilter": {
-      "timezoneLabel": "Filter by timezone",
-      "timezoneAll": "All timezones",
-      "lockedHint": "Advanced filters are part of Pro. Your suggestion list stays exactly as complete as before.",
-      "lockedCta": "See Pro"
-    }
+    "match_continue": "探索を続ける"
   },
   "community": {
     "title": "コミュニティ",
@@ -630,7 +623,7 @@
     "level_4": "中上級 (B2)",
     "level_5": "上級・流暢 (C1/C2)",
     "intent_casual": "日常会話・フリートーク",
-    "intent_exam": "資格対策",
+    "intent_exam": "資格対策 (IELTS, JLPT...)",
     "intent_travel": "旅行会話",
     "intent_work": "ビジネス・仕事",
     "empty_languages_hint": "言語がまだ追加されていません。言語を選択し上の「追加」を押してください。",
@@ -656,11 +649,7 @@
     "group_member_muted": "グループ「{group}」でミュートされました。",
     "group_member_report": "グループ「{group}」に新しいメンバー通報があります: {reason}",
     "group_post_report": "グループ「{group}」に新しい投稿通報があります: {reason}",
-    "schedule_reminder": "30分後にチャットの予定があります。準備してください！",
-    "subscription_renewal_reminder": "Your Pro plan is about to renew.",
-    "subscription_past_due": "Payment failed — you still have Pro during the grace period.",
-    "subscription_downgraded": "Your Pro plan has ended. Your data is untouched.",
-    "subscription_activated": "Your Pro plan is now active."
+    "schedule_reminder": "30分後にチャットの予定があります。準備してください！"
   },
   "topics": {
     "travel": "旅行",
@@ -672,7 +661,7 @@
     "books": "読書・本",
     "game": "ゲーム",
     "culture": "文化・歴史",
-    "exams": "資格試験"
+    "exams": "資格試験 (IELTS/TOEIC...)"
   },
   "call": {
     "start_audio": "音声通話",
@@ -806,169 +795,6 @@
     "days_left": "残り{count}日",
     "unlimited": "無制限",
     "view_results": "結果を見る",
-    "resume": "再開",
-    "create_ai_title": "AI (Gemini) でクイズを作成",
-    "create_ai_subtitle": "ドキュメント (.pdf, .docx, .txt) をアップロードするか、レッスンテキストを貼り付けると、Gemini AI が自動的にクイズを作成します！",
-    "back_to_quiz_list": "クイズ一覧に戻る",
-    "level_cefr_label": "レベル (CEFR)",
-    "question_count_select_label": "問題数",
-    "q_count_auto": "✨ ファイル内のすべての問題を自動抽出",
-    "q_count_5": "5問 (3分間でサクッと復習)",
-    "q_count_10": "10問 (標準 5分)",
-    "q_count_15": "15問 (詳細 10分)",
-    "q_count_20": "20問 (フルクイズ 15分)",
-    "q_count_30": "30問 (20分試験)",
-    "q_count_50": "50問 (35分総合試験)",
-    "q_count_custom": "カスタム問題数...",
-    "custom_q_count_placeholder": "希望する問題数を入力 (例: 15, 25, 40...)",
-    "title_input_label": "クイズのタイトル *",
-    "title_input_placeholder": "例: 旅行単語の復習 · A1",
-    "desc_input_label": "説明 & ハッシュタグ",
-    "desc_input_placeholder": "クイズの説明やハッシュタグを入力 (例: #IELTS #Travel #Vocabulary)...",
-    "content_source_label": "AI 問題生成用のコンテンツソース *",
-    "upload_file_btn": "ファイル (.pdf, .docx, .txt) をアップロード",
-    "delete_file_btn": "ファイルを削除",
-    "or_paste_text": "— または以下にテキストを貼り付け —",
-    "paste_text_placeholder": "読解文、単語リスト、または任意のテキストを貼り付けると、Gemini AI が問題を抽出します...",
-    "step_creating_msg": "1. クイズのフレームワークを初期化中...",
-    "step_generating_msg": "2. Gemini AI がコンテンツを分析して問題を生成中...",
-    "step_importing_msg": "3. 問題を検証して保存中...",
-    "step_publishing_msg": "4. クイズを公開中...",
-    "step_done_msg": "クイズの作成に成功しました！クイズ画面へ移動します...",
-    "btn_cancel": "キャンセル",
-    "btn_generate_ai": "AI でクイズを生成",
-    "btn_processing": "処理中...",
-    "err_missing_title": "クイズのタイトルを入力してください",
-    "err_missing_content": "AI が問題を生成できるように、ファイルをアップロードするかテキストを入力してください",
-    "err_ai_empty": "このコンテンツから問題を生成できませんでした。コンテンツを確認してください。"
-  },
-  "pricing": {
-    "title": "Stududu plans",
-    "loading": "Loading your plan…",
-    "loading": "Loading your plan…",
-    "principle": {
-      "line1": "Human-to-human interaction is free forever.",
-      "line2": "Only things that burn real infrastructure cost have limits."
-    },
-    "plan": {
-      "free": "Free",
-      "pro": "Pro"
-    },
-    "table": {
-      "feature": "Feature"
-    },
-    "usage": {
-      "today": "You have used {used}/{limit} today",
-      "total": "You have saved {used}/{limit} words"
-    },
-    "features": {
-      "translate_lookup": {
-        "label": "Lookup & in-chat translation",
-        "basis": "Google Translate API — billed per character",
-        "free": "30 /day",
-        "pro": "500 /day"
-      },
-      "vocabulary_save": {
-        "label": "Vocabulary notebook",
-        "basis": "Storage",
-        "free": "100 words",
-        "pro": "2,000 words"
-      },
-      "chat_image_upload": {
-        "label": "Images in chat",
-        "basis": "Images stored as base64 in the DB — real storage cost",
-        "free": "10 images/day",
-        "pro": "100 images/day"
-      },
-      "match_like": {
-        "label": "Likes",
-        "basis": "Anti-spam — the Pro cap is deliberately not unlimited",
-        "free": "10 /day",
-        "pro": "50 /day"
-      },
-      "match_advanced_filter": {
-        "label": "Advanced matching filters",
-        "basis": "Both plans see 100% of candidates — Pro only adds narrowing tools",
-        "free": "No extra filtering",
-        "pro": "Filter by timezone, level, topic"
-      }
-    },
-    "current": {
-      "title": "Current plan",
-      "free": "Stududu Free",
-      "pro": "Stududu Pro",
-      "grace": "Payment failed. You keep Pro access until {date}.",
-      "canceling": "Pro stays active until {date}.",
-      "priceNote": "Pro is {price}/month. Cancel anytime — you keep what you paid for."
-    },
-    "status": {
-      "free": "On the free plan",
-      "pending_payment": "Waiting for payment confirmation",
-      "active": "Active, renews monthly",
-      "past_due": "Renewal failed — currently in the grace period",
-      "canceling": "Canceled, access kept until the end of the paid period"
-    },
-    "cta": {
-      "upgrade": "Upgrade — {price}/month",
-      "cancel": "Cancel plan",
-      "resume": "Resume plan"
-    },
-    "quota": {
-      "title": "Daily limit reached",
-      "body": "You have used all {limit} of your current plan.",
-      "resetAt": "The limit resets at {time}.",
-      "dismiss": "Not now",
-      "seePlans": "See plans",
-      "warn": "{remaining} left today"
-    },
-    "notForSale": {
-      "title": "What Stududu deliberately does not sell",
-      "intro": "Stududu does not sell the right to talk to other people. This list is part of the product design, not an oversight.",
-      "items": {
-        "ranking": {
-          "what": "Priority placement in match suggestions",
-          "why": "If money buys ranking, MATCH_SCORE stops meaning anything."
-        },
-        "badge": {
-          "what": "A Pro badge on public profiles",
-          "why": "It creates social tiers inside a learning community."
-        },
-        "calls": {
-          "what": "Audio/video call length or count",
-          "why": "Speaking practice is the whole point of the product."
-        },
-        "messages": {
-          "what": "Number of chat messages",
-          "why": "Core loop — free forever."
-        },
-        "safety": {
-          "what": "Safety features (block, report)",
-          "why": "Selling safety to users is an ethical violation."
-        }
-      }
-    },
-    "checkout": {
-      "title": "Pay for Pro",
-      "subtitle": "Test environment — no real money moves.",
-      "cardLabel": "Visa/Mastercard number",
-      "pay": "Pay {price}",
-      "missingSession": "Missing checkout session. Please start the upgrade again from the plans page.",
-      "testCardsTitle": "Test cards",
-      "testCards": {
-        "success": "Payment succeeds",
-        "dunning": "Succeeds now, but renewal will fail",
-        "declined": "Declined by the bank"
-      },
-      "activated": "Payment succeeded. Pro is now active.",
-      "confirming": "Confirming your payment with the provider…",
-      "confirmingSlow": "Your payment was recorded but the provider has not confirmed yet. Reload in a few minutes; if Pro is still not active, contact support.",
-      "canceled": "You canceled the checkout. Nothing was charged."
-    },
-    "nav": {
-      "upgrade": "Get Pro",
-      "upgradeHint": "See the Pro plan and your current limits",
-      "manage": "Manage plan",
-      "manageHint": "You are on Stududu Pro. Review your limits and renewal."
-    }
+    "resume": "再開"
   }
 }

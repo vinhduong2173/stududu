@@ -7,26 +7,9 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
-    /** Body lỗi nguyên bản — EP-11 cần `code`, `limit`, `resetAt` của QUOTA_EXCEEDED. */
-    public body?: Record<string, unknown> | null,
   ) {
     super(message);
   }
-}
-
-/** US-39 AC1 — chạm hạn mức gói: 403 kèm mã QUOTA_EXCEEDED. */
-export interface QuotaErrorBody {
-  code: "QUOTA_EXCEEDED";
-  key: string;
-  limit: number;
-  used: number;
-  resetAt: string | null;
-}
-
-export function asQuotaError(err: unknown): QuotaErrorBody | null {
-  if (!(err instanceof ApiError) || err.status !== 403) return null;
-  const body = err.body;
-  return body?.code === "QUOTA_EXCEEDED" ? (body as unknown as QuotaErrorBody) : null;
 }
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
@@ -47,20 +30,13 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     headers: {
       'Content-Type': 'application/json',
       ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
-      // BR-40 — quota theo ngày reset 00:00 theo múi giờ TRÌNH DUYỆT, không phải
-      // của server. Dương về phía đông (UTC+7 → 420).
-      ...(typeof window !== 'undefined'
-        ? { 'x-timezone-offset': String(-new Date().getTimezoneOffset()) }
-        : {}),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (!res.ok) {
-    const data = (await res.json().catch(() => null)) as
-      | ({ message?: string | string[] } & Record<string, unknown>)
-      | null;
+    const data = (await res.json().catch(() => null)) as { message?: string | string[] } | null;
     const message = Array.isArray(data?.message) ? data.message.join(', ') : data?.message;
     
     if (res.status === 401 && typeof window !== 'undefined') {
@@ -75,7 +51,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       }
     }
     
-    throw new ApiError(res.status, message ?? res.statusText, data);
+    throw new ApiError(res.status, message ?? res.statusText);
   }
 
   if (res.status === 204) return undefined as T;

@@ -2,7 +2,6 @@ import { Test } from '@nestjs/testing';
 import { LanguageRole, UserStatus } from '@prisma/client';
 import { I18nService } from 'nestjs-i18n';
 import { PrismaService } from '../../prisma/prisma.service';
-import { EntitlementsService } from '../entitlements/entitlements.service';
 import {
   MatchingService,
   SUGGESTIONS_MIN,
@@ -83,20 +82,11 @@ async function buildService(candidates: unknown[]) {
     t: jest.fn((key: string) => key),
   };
 
-  // EP-11 — MatchingService hỏi EntitlementsService cho `match.like` và
-  // `match.advanced_filter`. Test FS-08 không kiểm hạn mức nên luôn cho phép.
-  const entitlementsMock = {
-    assertAndConsume: jest.fn().mockResolvedValue({ allowed: true }),
-    can: jest.fn().mockResolvedValue({ allowed: true }),
-    isEnabled: jest.fn().mockResolvedValue(true),
-  };
-
   const moduleRef = await Test.createTestingModule({
     providers: [
       MatchingService,
       { provide: PrismaService, useValue: prismaMock },
       { provide: I18nService, useValue: i18nMock },
-      { provide: EntitlementsService, useValue: entitlementsMock },
     ],
   }).compile();
 
