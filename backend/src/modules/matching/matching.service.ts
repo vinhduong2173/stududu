@@ -8,12 +8,17 @@ import {
   LanguageRole,
   MatchStatus,
   Prisma,
-  UserRole,
   UserStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { I18nService, I18nContext } from 'nestjs-i18n';
 import { scoreAndRankCandidates } from './utils/matching-score.calculator';
+import { EntitlementsService } from '../entitlements/entitlements.service';
+import {
+  AdvancedFilter,
+  applyAdvancedFilter,
+  hasAdvancedFilter,
+} from './utils/advanced-filter.util';
 
 const TEACH_ROLES: LanguageRole[] = [LanguageRole.native, LanguageRole.fluent];
 
@@ -26,6 +31,7 @@ export class MatchingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly i18n: I18nService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   // FS-08 — gợi ý bù trừ ngôn ngữ, MATCH_SCORE tính on-the-fly (không cache).
@@ -33,8 +39,13 @@ export class MatchingService {
   // → (3) bỏ ưu tiên last_active. Điều kiện bù trừ learning↔native|fluent KHÔNG nới.
   async getSuggestions(
     userId: number,
-    filter?: { languageId?: number; offset?: number },
+    filter?: { languageId?: number; offset?: number; advanced?: AdvancedFilter },
   ) {
+    // EP-11 — bộ lọc nâng cao là hạng mục Pro (SRS §3.2). Không có quyền thì
+    // chặn đúng bộ lọc, KHÔNG cắt bớt danh sách gợi ý (BR-46).
+    if (hasAdvancedFilter(filter?.advanced)) {
+      await this.entitlements.assertAndConsume(userId, 'match.advanced_filter');
+    }
     const me = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { languages: true, interests: true, matchPreference: true },
@@ -69,7 +80,6 @@ export class MatchingService {
     const where: Prisma.UserWhereInput = {
       id: { notIn: [userId, ...excludedIds] },
       status: UserStatus.active,
-      role: { not: UserRole.admin },
       AND: [
         {
           languages: {
@@ -100,6 +110,7 @@ export class MatchingService {
         lastActive: true,
         dob: true,
         city: true,
+        timezone: true,
         languages: { include: { language: true } },
         interests: { include: { topic: true } },
       },
@@ -107,13 +118,17 @@ export class MatchingService {
     });
 
     const likedMap = await this.getLikedMap(userId);
-    const picked = scoreAndRankCandidates(me, candidates, likedMap);
+    const ranked = scoreAndRankCandidates(me, candidates, likedMap);
+
+    // Lọc SAU khi đã xếp hạng: thứ tự và thành phần gợi ý không đổi giữa hai gói.
+    const picked = applyAdvancedFilter(ranked, filter?.advanced);
 
     const insufficientPool = picked.length < SUGGESTIONS_MIN;
     const offset = Math.max(0, filter?.offset ?? 0);
     return {
       items: picked.slice(offset, offset + SUGGESTIONS_PAGE_SIZE),
       total: picked.length,
+      unfilteredTotal: ranked.length,
       insufficientPool,
     };
   }
@@ -125,7 +140,6 @@ export class MatchingService {
     const where: Prisma.UserWhereInput = {
       id: { notIn: [userId, ...excludedIds] },
       status: UserStatus.active,
-      role: { not: UserRole.admin },
     };
 
     const [members, total, likedMap] = await Promise.all([
@@ -183,6 +197,11 @@ export class MatchingService {
           lang: I18nContext.current()?.lang,
         }),
       );
+
+    // BR-45 — hạn mức Like áp dụng cho MỌI tài khoản kể cả Pro. Hạn mức này
+    // sinh ra để chống spam sau khi bỏ điều kiện mutual match (SRS §3.4);
+    // việc nó đồng thời là ranh giới gói chỉ là hệ quả.
+    await this.entitlements.assertAndConsume(userId, 'match.like');
 
     // Đã có match theo chiều nào chưa (mình→họ hoặc họ→mình)?
     const existing = await this.prisma.match.findFirst({

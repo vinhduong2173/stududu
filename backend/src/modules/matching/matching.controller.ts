@@ -23,10 +23,19 @@ export class MatchingController {
     @CurrentUser() user: JwtPayload,
     @Query('languageId') languageId?: string,
     @Query('offset') offset?: string,
+    // EP-11 — bộ lọc nâng cao (Pro): múi giờ / trình độ / chủ đề (SRS §3.2)
+    @Query('timezone') timezone?: string,
+    @Query('level') level?: string,
+    @Query('topicId') topicId?: string,
   ) {
     return this.matchingService.getSuggestions(user.sub, {
       languageId: languageId ? Number(languageId) : undefined,
       offset: offset ? Number(offset) : 0,
+      advanced: {
+        timezone: timezone || undefined,
+        level: level || undefined,
+        topicId: topicId ? Number(topicId) : undefined,
+      },
     });
   }
 
