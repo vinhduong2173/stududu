@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.*
+.git
+.gitignore
+README.md
+*.log
+stududu_db_latest_20260814.sql
+test
+coverage
+

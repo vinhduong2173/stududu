@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { api, ApiError } from "@/lib/api";
 import { TRANSLATE_LANGS } from "@/lib/timezones";
 
+import { useLocale } from "next-intl";
+
 /** Bảng dịch (theo bản Figma Make) — gọi POST /translate của backend. */
 
 export function TranslationModal({
@@ -17,20 +19,24 @@ export function TranslationModal({
   onClose: () => void;
   initialText?: string;
 }) {
+  const locale = useLocale();
   const [sourceLang, setSourceLang] = React.useState("auto");
-  const [targetLang, setTargetLang] = React.useState("vi");
+  const [targetLang, setTargetLang] = React.useState(locale || "en");
   const [inputText, setInputText] = React.useState(initialText);
   const [outputText, setOutputText] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
 
-  React.useEffect(() => {
+  const [prevOpen, setPrevOpen] = React.useState(false);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setInputText(initialText);
       setOutputText("");
       setError("");
     }
-  }, [open, initialText]);
+  }
 
   if (!open) return null;
 

@@ -12,12 +12,16 @@ export class TrustService {
     private readonly i18n: I18nService,
   ) {}
 
-  // US-17 — report người dùng; FS-24/25 — report nội dung (post / word_library)
-  report(reporterId: number, dto: CreateReportDto) {
+  async report(reporterId: number, dto: CreateReportDto) {
     if (reporterId === dto.reportedId) {
-      throw new BadRequestException(this.i18n.t('translation.trust.noSelfReport', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.trust.noSelfReport', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
-    return this.prisma.report.create({
+
+    const report = await this.prisma.report.create({
       data: {
         reporterId,
         reportedId: dto.reportedId,
@@ -26,12 +30,56 @@ export class TrustService {
         targetId: dto.targetId,
       },
     });
+
+    if (dto.targetType === 'post' && dto.targetId) {
+      try {
+        const post = await this.prisma.activityPost.findUnique({
+          where: { id: dto.targetId },
+          include: { group: true },
+        });
+
+        if (post && post.groupId && post.group) {
+          const admins = await this.prisma.groupMember.findMany({
+            where: {
+              groupId: post.groupId,
+              status: 'active',
+              role: { in: ['owner', 'admin'] },
+            },
+            select: { userId: true },
+          });
+
+          const adminUserIds = Array.from(
+            new Set([post.group.creatorId, ...admins.map((a) => a.userId)]),
+          ).filter((id) => id !== reporterId);
+
+          if (adminUserIds.length > 0) {
+            await this.prisma.notification.createMany({
+              data: adminUserIds.map((userId) => ({
+                userId,
+                senderId: reporterId,
+                type: 'group_post_report',
+                message: `[Báo cáo Nhóm] Có báo cáo mới về bài viết trong nhóm "${post.group?.name}": "${dto.reason}"`,
+                referenceId: post.groupId,
+              })),
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to notify group admins of report:', err);
+      }
+    }
+
+    return report;
   }
 
   // US-18 — block
   async block(blockerId: number, blockedId: number) {
     if (blockerId === blockedId) {
-      throw new BadRequestException(this.i18n.t('translation.trust.noSelfBlock', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.trust.noSelfBlock', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
     return this.prisma.block.upsert({
       where: { blockerId_blockedId: { blockerId, blockedId } },
@@ -58,7 +106,11 @@ export class TrustService {
   // FS-26 — ghi nhận định tính; chỉ khi đã từng trò chuyện với nhau (≥1 CONVERSATION)
   async endorse(giverId: number, dto: EndorseDto) {
     if (giverId === dto.receiverId) {
-      throw new BadRequestException(this.i18n.t('translation.trust.noSelfEndorse', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.trust.noSelfEndorse', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
 
     const sharedConversation = await this.prisma.conversation.findFirst({
@@ -72,7 +124,11 @@ export class TrustService {
       },
     });
     if (!sharedConversation) {
-      throw new BadRequestException(this.i18n.t('translation.trust.endorseOnlyConversed', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.trust.endorseOnlyConversed', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
 
     // UNIQUE(giver, receiver, label) — lặp lại thì bỏ qua, không cộng dồn (BR-13)

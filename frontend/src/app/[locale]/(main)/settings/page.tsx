@@ -12,7 +12,7 @@ import { api, ApiError } from "@/lib/api";
 import { disconnectSocket } from "@/lib/socket";
 import { useToast } from "@/components/features/TrustDialogs";
 
-type Locale = "vi" | "en";
+type Locale = "vi" | "en" | "fr" | "es" | "zh";
 
 /** Cài đặt (MÀN 12/13): đổi mật khẩu, danh sách đã chặn (US-18 AC3), đăng xuất. */
 
@@ -106,11 +106,12 @@ export default function SettingsPage() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     disconnectSocket();
-    router.push("/login");
+    document.cookie = "NEXT_LOCALE=en; path=/; max-age=31536000";
+    router.push("/login", { locale: "en" });
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 md:p-8 pb-24">
+    <div className="max-w-2xl mx-auto p-4 md:px-8 md:py-6 pb-16">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={() => router.back()} className="p-2 hover:bg-muted/10 rounded-full transition-colors">
           <ArrowLeft className="w-6 h-6 text-foreground" />
@@ -119,17 +120,20 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
-        {/* NFR i18n — ngôn ngữ giao diện (vi/en), lưu localStorage */}
+        {/* NFR i18n — ngôn ngữ giao diện (vi/en/fr/es) */}
         <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
           <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
             <Languages className="h-5 w-5 text-primary" /> {t("settings.language")}
           </h2>
           <p className="text-sm text-muted mb-4">{t("settings.language_hint")}</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {(
               [
-                { code: "vi", label: "🇻🇳 Tiếng Việt" },
                 { code: "en", label: "🇬🇧 English" },
+                { code: "vi", label: "🇻🇳 Tiếng Việt" },
+                { code: "fr", label: "🇫🇷 Français" },
+                { code: "es", label: "🇪🇸 Español" },
+                { code: "zh", label: "🇨🇳 中文" },
               ] as { code: Locale; label: string }[]
             ).map((opt) => (
               <button
