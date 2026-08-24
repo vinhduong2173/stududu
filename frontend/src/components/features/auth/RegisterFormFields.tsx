@@ -4,6 +4,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { COUNTRIES } from "@/hooks/useRegister";
+import { PasswordRequirements } from "./PasswordRequirements";
 
 interface RegisterFormFieldsProps {
   t: any;
@@ -239,7 +240,7 @@ export function RegisterFormFields({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <span className="text-xs text-muted ml-1">{t("register.password_hint")}</span>
+        <PasswordRequirements password={password} t={t} />
       </div>
 
       <Button type="submit" disabled={loading || isPending} className="sd-btn-gradient mt-2 h-12 text-sm font-bold rounded-full">

@@ -23,7 +23,7 @@ Stududu — web trao đổi ngôn ngữ theo mô hình Tandem: người học đ
 
 | Mã | Quy tắc |
 |---|---|
-| BR-01 | Mật khẩu ≥8 ký tự (chữ + số), lưu băm bcrypt |
+| BR-01 | Mật khẩu ≥8 ký tự (gồm chữ hoa, chữ thường, chữ số, ký tự đặc biệt), lưu băm bcrypt |
 | BR-02 | Khóa đăng nhập tạm 15 phút sau 5 lần sai liên tiếp |
 | BR-03 | Session idle timeout 30 phút; link reset mật khẩu sống 30 phút |
 | BR-04 | Điều kiện matching: mỗi user cần ≥1 ngôn ngữ vai trò (native\|fluent) + ≥1 learning |
