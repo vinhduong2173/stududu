@@ -22,8 +22,6 @@ services:
         NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://api.stududu.io.vn}
         NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-727708804027-nuqmr75gl405o0794q8il97r42scoh3f.apps.googleusercontent.com}
     container_name: stududu-frontend
-    env_file:
-      - ./frontend/.env.local
     ports:
       - "3000:3000"
     environment:
