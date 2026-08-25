@@ -53,10 +53,6 @@ export default function RegisterPage() {
             setLastName={r.setLastName}
             country={r.country}
             handleCountryChange={r.handleCountryChange}
-            city={r.city}
-            setCity={r.setCity}
-            intent={r.intent}
-            setIntent={r.setIntent}
             day={r.day}
             setDay={r.setDay}
             month={r.month}

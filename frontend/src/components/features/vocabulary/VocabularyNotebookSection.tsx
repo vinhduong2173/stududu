@@ -85,7 +85,7 @@ export function VocabularyNotebookSection({
       </div>
 
       {/* WORD ITEMS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-2">
         {filteredWords.length > 0 ? (
           filteredWords.map((item) => {
             const targetDef = getDefinitionForTargetLang(item);

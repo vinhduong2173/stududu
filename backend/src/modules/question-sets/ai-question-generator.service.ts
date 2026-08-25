@@ -11,7 +11,7 @@ import { buildQuestionPrompt, PROMPT_VERSION } from './question-prompt';
  * Model mặc định — Gemini có gói miễn phí, xem `question-set-ai-generation-addendum.md`
  * mục 2b về lý do đổi khỏi Claude Haiku. Đổi qua biến GEMINI_MODEL trong .env.
  */
-const DEFAULT_MODEL = 'gemini-flash-latest';
+const DEFAULT_MODEL = 'gemini-2.0-flash';
 
 /** Một câu hỏi thô AI trả về — CHƯA qua validate (xem question-validator.service.ts) */
 export interface RawGeneratedQuestion {
@@ -30,8 +30,6 @@ export interface GenerateInput {
   level: string;
   questionCount: number;
   extractedText: string;
-  fileBuffer?: Buffer;
-  fileMimeType?: string;
   note?: string;
 }
 
@@ -131,23 +129,12 @@ export class AiQuestionGeneratorService {
     const model = this.config.get<string>('GEMINI_MODEL') || DEFAULT_MODEL;
     const prompt = buildQuestionPrompt(input);
 
-    const contents: any[] = [];
-    if (input.fileBuffer && input.fileMimeType) {
-      contents.push({
-        inlineData: {
-          data: input.fileBuffer.toString('base64'),
-          mimeType: input.fileMimeType === 'application/octet-stream' ? 'application/pdf' : input.fileMimeType,
-        },
-      });
-    }
-    contents.push(prompt);
-
     let lastError: unknown;
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await client.models.generateContent({
           model,
-          contents,
+          contents: prompt,
           config: {
             responseMimeType: 'application/json',
             responseSchema: QUESTION_RESPONSE_SCHEMA,

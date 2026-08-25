@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { EmojiPicker } from "@/components/features/EmojiPicker";
-import { Image as ImageIcon, Send, Smile, Sparkles } from "lucide-react";
+import { Image as ImageIcon, Send, Smile } from "lucide-react";
 
 interface ChatInputBarProps {
   t: any;
@@ -14,7 +14,6 @@ interface ChatInputBarProps {
   inputRef: React.RefObject<HTMLInputElement | null>;
   showEmoji: boolean;
   setShowEmoji: React.Dispatch<React.SetStateAction<boolean>>;
-  onOpenQuizShare?: () => void;
 }
 
 export function ChatInputBar({
@@ -27,7 +26,6 @@ export function ChatInputBar({
   inputRef,
   showEmoji,
   setShowEmoji,
-  onOpenQuizShare,
 }: ChatInputBarProps) {
   return (
     <div className="p-4 border-t border-border bg-surface shrink-0 relative">
@@ -67,17 +65,6 @@ export function ChatInputBar({
         >
           <Smile className="h-5 w-5" />
         </button>
-
-        {onOpenQuizShare && (
-          <button
-            type="button"
-            onClick={onOpenQuizShare}
-            className="p-2.5 text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 rounded-full transition-colors"
-            title="Gửi bài thi Quiz cho bạn chat"
-          >
-            <Sparkles className="h-5 w-5" />
-          </button>
-        )}
 
         <input
           ref={inputRef}

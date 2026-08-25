@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
-import { QuestionSource, QuestionStatus, SetStatus, UserRole } from '@prisma/client';
+import { QuestionSource, QuestionStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiQuestionGeneratorService } from './ai-question-generator.service';
 import { FileExtractorService } from './file-extractor.service';
@@ -118,28 +118,8 @@ describe('QuestionSetsService — cửa publish', () => {
     expect(gate.adminTrial).not.toHaveProperty('questionOrder');
   });
 
-  it('đủ số câu hỏi → cho phép publish trực tiếp không cần admin làm thử', async () => {
-    const { service, prismaMock } = await buildService({
-      activeQuestions: fullSet,
-      trials: [],
-    });
-
-    const gate = await service.getPublishGate(SET_ID);
-
-    expect(gate.hasEnoughQuestions).toBe(true);
-    expect(gate.hasAdminTrial).toBe(false);
-    expect(gate.canPublish).toBe(true);
-
-    await service.publish(1, SET_ID);
-    expect(prismaMock.questionSet.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: SetStatus.published }),
-      }),
-    );
-  });
-
-  it('lượt làm thử cũ không ảnh hưởng tới việc publish khi đã đủ số câu', async () => {
-    const { service, prismaMock } = await buildService({
+  it('lượt làm thử cũ chỉ phủ 3 câu → KHÔNG tính, báo là đã lỗi thời', async () => {
+    const { service } = await buildService({
       activeQuestions: fullSet,
       trials: [trial(100, [1, 2, 3])],
     });
@@ -149,25 +129,45 @@ describe('QuestionSetsService — cửa publish', () => {
     expect(gate.hasEnoughQuestions).toBe(true);
     expect(gate.hasAdminTrial).toBe(false);
     expect(gate.trialOutdated).toBe(true);
-    expect(gate.canPublish).toBe(true);
+    expect(gate.canPublish).toBe(false);
+  });
 
-    await service.publish(1, SET_ID);
-    expect(prismaMock.questionSet.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: SetStatus.published }),
-      }),
+  it('thay một câu sau khi làm thử → lượt cũ hết hiệu lực', async () => {
+    // câu 20 bị retire, câu 21 vào thay — lượt cũ chưa hề thấy câu 21
+    const swapped = [...fullSet.slice(0, 19), question(21)];
+    const { service } = await buildService({
+      activeQuestions: swapped,
+      trials: [trial(100, fullSetIds)],
+    });
+
+    expect((await service.getPublishGate(SET_ID)).canPublish).toBe(false);
+  });
+
+  it('publish khi lượt làm thử đã lỗi thời → báo đúng lý do, không báo "chưa làm thử"', async () => {
+    const { service } = await buildService({
+      activeQuestions: fullSet,
+      trials: [trial(100, [1, 2, 3])],
+    });
+
+    await expect(service.publish(1, SET_ID)).rejects.toThrow(
+      /đã đổi câu hỏi kể từ lần làm thử/i,
     );
   });
 
-  it('chưa đủ câu → chặn publish', async () => {
+  it('chưa đủ câu → chặn publish kể cả khi đã làm thử', async () => {
     const partial = fullSet.slice(0, 19);
     const { service } = await buildService({
       activeQuestions: partial,
-      trials: [],
+      trials: [
+        trial(
+          100,
+          partial.map((q) => q.id),
+        ),
+      ],
     });
 
     const gate = await service.getPublishGate(SET_ID);
-    expect(gate.hasEnoughQuestions).toBe(false);
+    expect(gate.hasAdminTrial).toBe(true);
     expect(gate.canPublish).toBe(false);
     await expect(service.publish(1, SET_ID)).rejects.toThrow(
       new RegExp(`đúng ${REQUIRED_QUESTION_COUNT} câu`, 'i'),

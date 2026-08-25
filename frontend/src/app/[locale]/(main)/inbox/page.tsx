@@ -8,7 +8,6 @@ import { WordSaveModal } from "@/components/features/WordSaveModal";
 import { TranslationModal } from "@/components/features/TranslationModal";
 import { ScheduleChatModal } from "@/components/features/ScheduleChatModal";
 import { CancelScheduleModal } from "@/components/features/CancelScheduleModal";
-import { QuizShareModal } from "@/components/features/QuizShareModal";
 import { getTimezone } from "@/lib/timezones";
 import { useChatInbox } from "@/hooks/useChatInbox";
 import { ConversationListSidebar } from "@/components/features/chat/ConversationListSidebar";
@@ -27,7 +26,6 @@ export default function InboxPage() {
 
 function InboxContent() {
   const c = useChatInbox();
-  const [quizShareOpen, setQuizShareOpen] = React.useState(false);
 
   return (
     <div className="h-[calc(100vh-4rem)] w-full flex bg-background overflow-hidden">
@@ -165,7 +163,6 @@ function InboxContent() {
               inputRef={c.inputRef}
               showEmoji={c.showEmoji}
               setShowEmoji={c.setShowEmoji}
-              onOpenQuizShare={() => setQuizShareOpen(true)}
             />
           </>
         ) : (
@@ -191,22 +188,6 @@ function InboxContent() {
       </main>
 
       {/* Modals & Dialogs */}
-      {quizShareOpen && c.selected && (
-        <QuizShareModal
-          open={quizShareOpen}
-          onClose={() => setQuizShareOpen(false)}
-          partnerName={c.selected.partner.displayName}
-          onSendQuiz={(quiz) => {
-            c.sendMessage(`🧠 [QUIZ] ${quiz.title}`, "text", {
-              quizId: quiz.id,
-              quizTitle: quiz.title,
-              level: quiz.level,
-              questionCount: quiz.questionCount,
-            } as any);
-          }}
-        />
-      )}
-
       {c.scheduleOpen && c.selected && (
         <ScheduleChatModal
           open={c.scheduleOpen}

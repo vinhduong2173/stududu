@@ -1,6 +1,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { json, urlencoded } from 'express';
+import { json, raw, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -8,6 +8,10 @@ async function bootstrap() {
   // bodyParser: false — tự đăng ký để nới giới hạn 100kb mặc định
   // (ảnh đại diện gửi dạng data URL đã nén ~vài trăm KB)
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+
+  // SRS §7.3 — webhook thanh toán cần raw body để verify chữ ký cổng.
+  // Phải đăng ký TRƯỚC bộ parse JSON chung, nếu không body đã bị parse mất.
+  app.use('/webhooks', raw({ type: 'application/json', limit: '1mb' }));
 
   app.use(json({ limit: '2mb' }));
   app.use(urlencoded({ limit: '2mb', extended: true }));

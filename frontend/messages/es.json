@@ -625,7 +625,7 @@
     "level_4": "Intermedio alto",
     "level_5": "Fluido",
     "intent_casual": "Conversación informal",
-    "intent_exam": "Preparación para exámenes",
+    "intent_exam": "Preparación para exámenes (IELTS, JLPT...)",
     "intent_travel": "Viajes",
     "intent_work": "Trabajo",
     "empty_languages_hint": "No hay idiomas añadidos aún. Selecciona un idioma y pulsa 'Añadir' arriba.",
@@ -663,7 +663,7 @@
     "books": "Libros",
     "game": "Videojuegos",
     "culture": "Cultura",
-    "exams": "Exámenes"
+    "exams": "Exámenes (IELTS/TOEIC...)"
   },
   "call": {
     "start_audio": "Llamada de voz",

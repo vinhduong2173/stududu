@@ -73,7 +73,11 @@ export function useLogin() {
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        let msg = err.message;
+        if (msg === "translation.auth.invalidCredentials" || msg === "auth.invalidCredentials") {
+          msg = locale === "en" ? "Email or password is incorrect" : "Email hoặc mật khẩu không đúng";
+        }
+        setError(msg);
       } else {
         setError(t("common.error_generic"));
       }

@@ -14,10 +14,6 @@ interface RegisterFormFieldsProps {
   setLastName: (val: string) => void;
   country: string;
   handleCountryChange: (country: string) => void;
-  city: string;
-  setCity: (val: string) => void;
-  intent: string;
-  setIntent: (val: string) => void;
   day: string;
   setDay: (val: string) => void;
   month: string;
@@ -47,10 +43,6 @@ export function RegisterFormFields({
   setLastName,
   country,
   handleCountryChange,
-  city,
-  setCity,
-  intent,
-  setIntent,
   day,
   setDay,
   month,
@@ -97,53 +89,20 @@ export function RegisterFormFields({
         />
       </div>
 
-      {/* Quốc gia / Quê quán & Nơi sinh sống */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-muted ml-1">{t("register.country") || "Quốc gia / Quê quán"}</label>
-          <select
-            className="flex h-12 w-full rounded-xl border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary font-medium text-foreground"
-            value={country}
-            onChange={(e) => handleCountryChange(e.target.value)}
-            disabled={isPending}
-          >
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.flag} {c.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-muted ml-1">{t("profile.lives_in") || "Nơi sinh sống"}</label>
-          <Input
-            type="text"
-            placeholder={t("profile.city_placeholder") || "Ví dụ: Hà Nội, Tokyo..."}
-            value={city}
-            onChange={(e) => {
-              setCity(e.target.value);
-              saveDraft({ city: e.target.value });
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Mục tiêu học ngôn ngữ */}
+      {/* Chọn Quốc gia */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-muted ml-1">{t("onboarding.intent_label") || "Mục tiêu khi học ngôn ngữ"}</label>
+        <label className="text-xs font-semibold text-muted ml-1">{t("register.country")}</label>
         <select
           className="flex h-12 w-full rounded-xl border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary font-medium text-foreground"
-          value={intent}
-          onChange={(e) => {
-            setIntent(e.target.value);
-            saveDraft({ intent: e.target.value });
-          }}
+          value={country}
+          onChange={(e) => handleCountryChange(e.target.value)}
+          disabled={isPending}
         >
-          <option value="Giao tiếp casual">{t("onboarding.intent_casual") || "Giao tiếp & Kết bạn (Casual)"}</option>
-          <option value="Thi cử">{t("onboarding.intent_exam") || "Luyện thi chứng chỉ"}</option>
-          <option value="Du lịch">{t("onboarding.intent_travel") || "Du lịch & Trải nghiệm văn hóa"}</option>
-          <option value="Làm việc">{t("onboarding.intent_work") || "Công việc & Định cư"}</option>
+          {COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.flag} {c.label}
+            </option>
+          ))}
         </select>
       </div>
 

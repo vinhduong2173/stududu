@@ -6,8 +6,6 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Pencil, Settings, FileText, User } from "lucide-react";
 import { ageFromDob, cn } from "@/lib/utils";
-import { getGenderTranslation } from "@/lib/i18nHelper";
-import { useTranslations } from "next-intl";
 
 interface ProfileHeaderProps {
   me: {
@@ -16,7 +14,6 @@ interface ProfileHeaderProps {
     email: string;
     dob?: string | null;
     city?: string | null;
-    country?: string | null;
     gender?: string | null;
   };
   activeTab: "posts" | "about";
@@ -25,7 +22,6 @@ interface ProfileHeaderProps {
 }
 
 export function ProfileHeader({ me, activeTab, setActiveTab, t }: ProfileHeaderProps) {
-  const tRoot = useTranslations();
   return (
     <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-6">
       {/* Cover Photo Banner */}
@@ -63,9 +59,9 @@ export function ProfileHeader({ me, activeTab, setActiveTab, t }: ProfileHeaderP
           )}
         </h1>
         <p className="text-muted mt-1">{me.email}</p>
-        {(me.city || me.gender || me.country) && (
+        {(me.city || me.gender) && (
           <p className="text-sm text-muted mt-1">
-            {[me.gender ? getGenderTranslation(me.gender, tRoot) : null, me.city, me.country].filter(Boolean).join(" · ")}
+            {[me.gender, me.city].filter(Boolean).join(" · ")}
           </p>
         )}
 

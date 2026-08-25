@@ -146,7 +146,6 @@ export default function AdminQuestionSetEditorPage() {
 
       {set.status !== "published" && <PublishGateCard gate={gate} onOpenTrial={() => setShowTrial(true)} />}
 
-
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-foreground">Danh sách câu hỏi (Hiện có {gate.activeCount} câu)</h2>
         <Button variant="ghost" size="sm" onClick={() => setShowManual(true)}>

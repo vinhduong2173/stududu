@@ -80,7 +80,7 @@ function mismatchHint(buffer: Buffer, expected: string): string {
 export class FileExtractorService {
   private readonly logger = new Logger(FileExtractorService.name);
 
-  async extract(file: Buffer, mimeType: string, fileName?: string): Promise<ExtractResult> {
+  async extract(file: Buffer, mimeType: string): Promise<ExtractResult> {
     if (file.byteLength === 0) {
       throw new BadRequestException('File rỗng (0 byte) — hãy chọn lại file.');
     }
@@ -92,19 +92,14 @@ export class FileExtractorService {
       );
     }
 
-    const type = this.detectType(mimeType, fileName);
+    const type = this.detectType(mimeType);
     const raw = await this.readByType(file, type);
     const cleaned = raw.replace(/\s+/g, ' ').trim();
 
+    if (cleaned.length === 0) {
+      throw new BadRequestException(this.noTextMessage(type));
+    }
     if (cleaned.length < MIN_CHARS) {
-      if (type === 'pdf') {
-        this.logger.log('PDF text is empty or too short (scanned image PDF). Falling back to Multimodal Gemini Vision.');
-        return {
-          text: cleaned,
-          charCount: cleaned.length,
-          truncated: false,
-        };
-      }
       throw new BadRequestException(
         `Nội dung đọc được quá ngắn (${cleaned.length} ký tự), cần tối thiểu ${MIN_CHARS} ký tự ` +
           'để sinh được câu hỏi có chất lượng. Hãy dùng tài liệu dài hơn.',
@@ -301,24 +296,16 @@ export class FileExtractorService {
     }
   }
 
-  private detectType(mimeType: string, fileName?: string): SupportedFileType {
-    const ext = fileName ? fileName.toLowerCase().split('.').pop() : '';
-    if (mimeType === 'application/pdf' || ext === 'pdf') return 'pdf';
-    if (
-      mimeType.includes('wordprocessingml') ||
-      mimeType.includes('msword') ||
-      mimeType.includes('officedocument') ||
-      ext === 'docx' ||
-      ext === 'doc'
-    ) {
-      return 'docx';
-    }
-    if (mimeType === 'text/plain' || ext === 'txt') return 'txt';
+  private detectType(mimeType: string): SupportedFileType {
+    if (mimeType === 'application/pdf') return 'pdf';
+    if (mimeType.includes('wordprocessingml')) return 'docx';
+    if (mimeType === 'text/plain') return 'txt';
 
+    // Nói rõ định dạng bị từ chối thay vì chỉ liệt kê thứ được hỗ trợ
     const rejected = mimeType ? ` (bạn vừa tải lên "${mimeType}")` : '';
     throw new BadRequestException(
       `Chỉ hỗ trợ file PDF, DOCX hoặc TXT${rejected}. ` +
-        'Hãy chọn file định dạng PDF (.pdf), Word (.docx) hoặc Văn bản (.txt).',
+        'File .doc bản cũ, .odt, .xlsx hay ảnh đều không dùng được — hãy chuyển sang một trong ba định dạng trên.',
     );
   }
 }

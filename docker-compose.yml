@@ -1,27 +1,21 @@
 services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: stududu-backend
-    env_file:
-      - ./backend/.env
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=production
-      - PORT=3001
-    restart: always
-
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
+<<<<<<< HEAD
         NEXT_PUBLIC_API_URL: https://api.stududu.io.vn
         NEXT_PUBLIC_SOCKET_URL: https://api.stududu.io.vn
         NEXT_PUBLIC_GOOGLE_CLIENT_ID: 727708804027-nuqmr75gl405o0794q8il97r42scoh3f.apps.googleusercontent.com
     container_name: stududu-frontend
+=======
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-http://localhost:3001}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+    env_file:
+      - ./frontend/.env.local
+>>>>>>> origin/develop
     ports:
       - "3000:3000"
     environment:

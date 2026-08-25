@@ -35,7 +35,7 @@ export default function EditProfilePage() {
   );
 
   return (
-    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 pb-24">
+    <div className="max-w-6xl mx-auto p-4 md:p-8 pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
@@ -65,13 +65,10 @@ export default function EditProfilePage() {
           <ProfileBasicInfoSection
             t={p.t}
             tOnboard={p.tOnboard}
-            tRoot={p.tRoot}
             displayName={p.displayName}
             setDisplayName={p.setDisplayName}
             city={p.city}
             setCity={p.setCity}
-            country={p.country}
-            setCountry={p.setCountry}
             dob={p.dob}
             setDob={p.setDob}
             gender={p.gender}
@@ -133,7 +130,6 @@ export default function EditProfilePage() {
           avatarUrl={p.avatarUrl}
           previewAge={p.previewAge}
           city={p.city}
-          country={p.country}
           teachPreview={p.teachPreview}
           learnPreview={p.learnPreview}
           previewTopics={p.previewTopics}

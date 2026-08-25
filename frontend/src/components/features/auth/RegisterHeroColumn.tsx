@@ -11,7 +11,7 @@ export function RegisterHeroColumn({ t }: RegisterHeroColumnProps) {
   return (
     <div className="hidden lg:flex lg:w-1/2 bg-[#0D766E] p-12 text-white flex-col justify-between relative overflow-hidden">
       <div className="relative">
-        <Logo size="md" href="/" />
+        <Logo size="md" href="/" variant="white" />
       </div>
 
       <div className="relative max-w-md my-auto">

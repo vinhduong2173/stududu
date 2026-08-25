@@ -625,7 +625,7 @@
     "level_4": "Avancé (B2)",
     "level_5": "Maîtrise (C1/C2)",
     "intent_casual": "Discussion informelle",
-    "intent_exam": "Préparation aux examens",
+    "intent_exam": "Préparation aux examens (DELF, IELTS...)",
     "intent_travel": "Voyages",
     "intent_work": "Travail / Affaires",
     "empty_languages_hint": "Aucune langue ajoutée. Veuillez sélectionner une langue et cliquer sur 'Ajouter' ci-dessus.",
@@ -663,7 +663,7 @@
     "books": "Livres & Lecture",
     "game": "Jeux vidéo",
     "culture": "Culture & Langues",
-    "exams": "Examens"
+    "exams": "Examens (DELF, IELTS...)"
   },
   "call": {
     "start_audio": "Appel vocal",

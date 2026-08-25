@@ -7,66 +7,40 @@ interface LogoProps {
   size?: "sm" | "md" | "lg";
   showTagline?: boolean;
   href?: string;
+  variant?: "dark" | "white";
 }
 
-export function LogoIcon({ className = "h-8 w-8" }: { className?: string }) {
+export function LogoIcon({
+  className = "h-8 w-8",
+  globeColor = "#0284c7",
+  sColor = "currentColor",
+}: {
+  className?: string;
+  globeColor?: string;
+  sColor?: string;
+}) {
   return (
     <svg
       viewBox="0 0 200 200"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
+      className={`${className} object-contain`}
     >
-      {/* Top Blue/Teal shape (#227C9D) */}
+      {/* Earth / Globe Grid (Ocean Blue) */}
+      <g stroke={globeColor}>
+        <circle cx="100" cy="100" r="76" strokeWidth="12" fill="none" />
+        <ellipse cx="100" cy="100" rx="36" ry="76" strokeWidth="9" fill="none" />
+        <path d="M 28 68 Q 100 90 172 68" strokeWidth="9" fill="none" />
+        <path d="M 28 132 Q 100 110 172 132" strokeWidth="9" fill="none" />
+        <line x1="24" y1="100" x2="176" y2="100" strokeWidth="9" />
+      </g>
+      {/* Stylized S Curve (Original Color) */}
       <path
-        d="M 100 20 
-           A 80 80 0 0 0 28 120 
-           C 30 102 42 85 58 76 
-           C 72 68 88 70 100 80 
-           C 112 90 125 90 135 80
-           C 142 72 145 62 140 52
-           C 133 42 117 42 110 52
-           C 105 60 108 68 115 72"
-        stroke="#227C9D"
-        strokeWidth="16"
+        d="M 148 42 C 95 18 42 52 48 95 C 54 138 152 110 144 156 C 134 194 58 188 42 156"
+        stroke={sColor}
+        strokeWidth="24"
         strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      
-      {/* Bottom Red shape (#FE6D73) */}
-      <path
-        d="M 100 180 
-           A 80 80 0 0 0 172 80 
-           C 170 98 158 115 142 124 
-           C 128 132 112 130 100 120 
-           C 88 110 75 110 65 120
-           C 58 128 55 138 60 148
-           C 67 158 83 158 90 148
-           C 95 140 92 132 85 128"
-        stroke="#FE6D73"
-        strokeWidth="16"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {/* Dots representing people/heads */}
-      <circle cx="118" cy="52" r="10" fill="#227C9D" />
-      <circle cx="82" cy="148" r="10" fill="#FE6D73" />
-      
-      {/* Top-Right Turquoise Accent (#17C3B2) */}
-      <path
-        d="M 143 37 A 80 80 0 0 1 176 80"
-        stroke="#17C3B2"
-        strokeWidth="16"
-        strokeLinecap="round"
-      />
-
-      {/* Bottom-Left Yellow Accent (#FFCB77) */}
-      <path
-        d="M 57 163 A 80 80 0 0 1 24 120"
-        stroke="#FFCB77"
-        strokeWidth="16"
-        strokeLinecap="round"
+        fill="none"
       />
     </svg>
   );
@@ -78,35 +52,36 @@ export function Logo({
   size = "md",
   showTagline = false,
   href = "/discover",
+  variant = "dark",
 }: LogoProps) {
   const sizeClasses = {
-    sm: { icon: "h-6 w-6", text: "text-lg", gap: "gap-2" },
-    md: { icon: "h-8 w-8", text: "text-2xl", gap: "gap-2.5" },
-    lg: { icon: "h-14 w-14", text: "text-4xl", gap: "gap-3.5" },
+    sm: { icon: "h-6 w-6", text: "text-xl", gap: "gap-2" },
+    md: { icon: "h-8 w-8", text: "text-2xl sm:text-3xl", gap: "gap-2.5" },
+    lg: { icon: "h-12 w-12", text: "text-4xl", gap: "gap-3.5" },
   }[size];
 
+  const isWhite = variant === "white";
+
+  const textColorClass = isWhite ? "text-white" : "text-[#1b4332]";
+  const taglineLineClass = isWhite ? "bg-white/60" : "bg-[#1b4332]";
+  const taglineTextClass = isWhite ? "text-white/80" : "text-muted";
+  const globeColor = isWhite ? "#38bdf8" : "#0284c7";
+
   const logoContent = (
-    <div className={`inline-flex items-center ${sizeClasses.gap} ${className || ""}`}>
-      <LogoIcon className={sizeClasses.icon} />
-      
+    <div className={`inline-flex items-center ${sizeClasses.gap} ${textColorClass} ${className || ""}`}>
+      <LogoIcon className={`${sizeClasses.icon} shrink-0`} globeColor={globeColor} sColor="currentColor" />
       {!iconOnly && (
         <div className="flex flex-col items-start leading-none">
-          <span className={`font-bold tracking-tight ${sizeClasses.text}`}>
-            <span style={{ color: "#227C9D" }}>s</span>
-            <span style={{ color: "#227C9D" }}>t</span>
-            <span style={{ color: "#17C3B2" }}>u</span>
-            <span style={{ color: "#17C3B2" }}>d</span>
-            <span style={{ color: "#FFCB77" }}>u</span>
-            <span style={{ color: "#FE6D73" }}>d</span>
-            <span style={{ color: "#FE6D73" }}>u</span>
+          <span className={`font-display font-extrabold tracking-tight ${sizeClasses.text} ${textColorClass}`}>
+            stududu
           </span>
           {showTagline && (
             <div className="flex items-center gap-1.5 mt-1">
-              <span className="h-[2px] w-4 rounded-full" style={{ backgroundColor: "#17C3B2" }} />
-              <span className="text-[10px] text-muted font-medium tracking-wide">
+              <span className={`h-[2px] w-4 rounded-full ${taglineLineClass}`} />
+              <span className={`text-[10px] font-medium tracking-wide ${taglineTextClass}`}>
                 Speak global, connect local.
               </span>
-              <span className="h-[2px] w-4 rounded-full" style={{ backgroundColor: "#FE6D73" }} />
+              <span className={`h-[2px] w-4 rounded-full ${taglineLineClass}`} />
             </div>
           )}
         </div>

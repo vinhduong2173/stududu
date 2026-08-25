@@ -71,5 +71,15 @@
     "suspendedNoCall": "Dein Konto ist gesperrt, du kannst nicht anrufen",
     "notYourCall": "Du bist nicht Teil dieses Anrufs",
     "notRinging": "Dieser Anruf klingelt nicht mehr"
+  },
+  "subscription": {
+    "quotaExceeded": "You have used all {limit} of your current plan quota.",
+    "featureRequiresPro": "This feature is part of the Pro plan.",
+    "alreadyPro": "Your account is already on the Pro plan.",
+    "cannotCancel": "Only an active plan can be canceled.",
+    "cannotResume": "Your plan is not scheduled for cancellation.",
+    "cardDeclined": "Card declined. Please try another card.",
+    "checkoutNotFound": "Checkout session not found.",
+    "mockOnly": "The current payment provider does not support this action."
   }
 }
