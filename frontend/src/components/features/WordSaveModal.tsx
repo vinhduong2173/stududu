@@ -15,12 +15,16 @@ export type SavedWord = {
   id: number;
   personalNote?: string | null;
   source: "chat" | "manual";
+  status?: "learning" | "mastered" | "new" | string;
   createdAt: string;
   word: {
     id: number;
     term: string;
+    phonetic?: string | null;
+    partOfSpeech?: string | null;
     definition?: string | null;
     example?: string | null;
+    audioUrl?: string | null;
     level?: string | null;
     saveCount: number;
     isPublic: boolean;
@@ -52,12 +56,20 @@ export function WordSaveModal({
 
 
 
-  React.useEffect(() => {
+  const [prevOpen, setPrevOpen] = React.useState(false);
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setTerm(initialWord.trim());
       setDefinition("");
       setExample("");
       setError("");
+    }
+  }
+
+  React.useEffect(() => {
+    if (open) {
       api<Language[]>("/languages")
         .then((langs) => {
           setLanguages(langs);
@@ -65,7 +77,7 @@ export function WordSaveModal({
         })
         .catch(console.error);
     }
-  }, [open, initialWord]);
+  }, [open]);
 
   if (!open) return null;
 

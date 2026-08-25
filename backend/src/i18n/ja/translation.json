@@ -52,7 +52,8 @@
     "missingScheduleInfo": "予定の招待情報が不足しています",
     "notInConversation": "この会話のメンバーではありません",
     "conversationNotFound": "会話が見つかりません",
-    "blockedUser": "このユーザーにメッセージを送信できません"
+    "blockedUser": "このユーザーにメッセージを送信できません",
+    "callMessageNotAllowed": "通話メッセージはシステムが生成するため、手動で送信できません"
   },
   "vocab": {
     "wordNotFound": "ノートに単語が見つかりません",
@@ -63,5 +64,22 @@
   },
   "common": {
     "accessDenied": "権限が不足しています"
+  },
+  "calls": {
+    "notFound": "通話が見つかりません",
+    "notInConversation": "同じ会話の相手にのみ発信できます",
+    "suspendedNoCall": "アカウントが停止中のため発信できません",
+    "notYourCall": "この通話の参加者ではありません",
+    "notRinging": "この通話はすでに呼び出し中ではありません"
+  },
+  "subscription": {
+    "quotaExceeded": "You have used all {limit} of your current plan quota.",
+    "featureRequiresPro": "This feature is part of the Pro plan.",
+    "alreadyPro": "Your account is already on the Pro plan.",
+    "cannotCancel": "Only an active plan can be canceled.",
+    "cannotResume": "Your plan is not scheduled for cancellation.",
+    "cardDeclined": "Card declined. Please try another card.",
+    "checkoutNotFound": "Checkout session not found.",
+    "mockOnly": "The current payment provider does not support this action."
   }
 }

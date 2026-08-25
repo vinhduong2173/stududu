@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   InteractionAction,
   LanguageRole,
@@ -8,6 +12,13 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { I18nService, I18nContext } from 'nestjs-i18n';
+import { scoreAndRankCandidates } from './utils/matching-score.calculator';
+import { EntitlementsService } from '../entitlements/entitlements.service';
+import {
+  AdvancedFilter,
+  applyAdvancedFilter,
+  hasAdvancedFilter,
+} from './utils/advanced-filter.util';
 
 const TEACH_ROLES: LanguageRole[] = [LanguageRole.native, LanguageRole.fluent];
 
@@ -20,6 +31,7 @@ export class MatchingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly i18n: I18nService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   // FS-08 — gợi ý bù trừ ngôn ngữ, MATCH_SCORE tính on-the-fly (không cache).
@@ -27,13 +39,23 @@ export class MatchingService {
   // → (3) bỏ ưu tiên last_active. Điều kiện bù trừ learning↔native|fluent KHÔNG nới.
   async getSuggestions(
     userId: number,
-    filter?: { languageId?: number; offset?: number },
+    filter?: { languageId?: number; offset?: number; advanced?: AdvancedFilter },
   ) {
+    // EP-11 — bộ lọc nâng cao là hạng mục Pro (SRS §3.2). Không có quyền thì
+    // chặn đúng bộ lọc, KHÔNG cắt bớt danh sách gợi ý (BR-46).
+    if (hasAdvancedFilter(filter?.advanced)) {
+      await this.entitlements.assertAndConsume(userId, 'match.advanced_filter');
+    }
     const me = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { languages: true, interests: true, matchPreference: true },
     });
-    if (!me) throw new NotFoundException(this.i18n.t('translation.user.notFound', { lang: I18nContext.current()?.lang }));
+    if (!me)
+      throw new NotFoundException(
+        this.i18n.t('translation.user.notFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
 
     const myLearning = me.languages
       .filter((l) => l.role === LanguageRole.learning)
@@ -45,7 +67,9 @@ export class MatchingService {
     // AC (US-04 AC3): cần ≥1 ngôn ngữ dạy được và ≥1 đang học
     if (myLearning.length === 0 || myTeach.length === 0) {
       throw new BadRequestException(
-        this.i18n.t('translation.matching.mustCompleteProfile', { lang: I18nContext.current()?.lang }),
+        this.i18n.t('translation.matching.mustCompleteProfile', {
+          lang: I18nContext.current()?.lang,
+        }),
       );
     }
 
@@ -61,11 +85,17 @@ export class MatchingService {
           languages: {
             some: {
               role: { in: TEACH_ROLES },
-              languageId: { in: filter?.languageId ? [filter.languageId] : myLearning },
+              languageId: {
+                in: filter?.languageId ? [filter.languageId] : myLearning,
+              },
             },
           },
         },
-        { languages: { some: { role: LanguageRole.learning, languageId: { in: myTeach } } } },
+        {
+          languages: {
+            some: { role: LanguageRole.learning, languageId: { in: myTeach } },
+          },
+        },
       ],
     };
 
@@ -80,75 +110,25 @@ export class MatchingService {
         lastActive: true,
         dob: true,
         city: true,
+        timezone: true,
         languages: { include: { language: true } },
         interests: { include: { topic: true } },
       },
       take: 200,
     });
 
-    const myTopicIds = new Set(me.interests.map((i) => i.topicId));
     const likedMap = await this.getLikedMap(userId);
+    const ranked = scoreAndRankCandidates(me, candidates, likedMap);
 
-    // MATCH_SCORE = lang_complement (chính) + shared_topic_count (phụ) + intent_alignment (cộng)
-    const scored = candidates.map((c) => {
-      const sharedTopicCount = c.interests.filter((i) => myTopicIds.has(i.topicId)).length;
-      const intentAlignment = Boolean(me.intent && c.intent && me.intent === c.intent);
-      const total = 10 + sharedTopicCount + (intentAlignment ? 1 : 0);
-      const likedInfo = likedMap.get(c.id);
-      return {
-        user: c,
-        score: { langComplement: true, sharedTopicCount, intentAlignment, total },
-        liked: Boolean(likedInfo),
-        conversationId: likedInfo?.conversationId ?? null,
-        // why-matched (US-10 AC2)
-        whyMatched: {
-          sharedTopics: c.interests
-            .filter((i) => myTopicIds.has(i.topicId))
-            .map((i) => i.topic.name),
-        },
-      };
-    });
+    // Lọc SAU khi đã xếp hạng: thứ tự và thành phần gợi ý không đổi giữa hai gói.
+    const picked = applyAdvancedFilter(ranked, filter?.advanced);
 
-    type Scored = (typeof scored)[number];
-
-    // Bậc nới lỏng — dừng ngay khi gom đủ SUGGESTIONS_MIN
-    const levelDesired = me.matchPreference?.levelDesired ?? null;
-    const matchesLevel = (c: Scored) =>
-      !levelDesired ||
-      c.user.languages.some(
-        (l) => l.role === LanguageRole.learning && l.level === levelDesired,
-      );
-    const tiers: ((c: Scored) => boolean)[] = [
-      (c) => c.score.sharedTopicCount > 0 && matchesLevel(c), // chặt: topic chung + đúng level
-      (c) => matchesLevel(c), // (1) bỏ lọc topic chung
-      () => true, // (2) nới level mong muốn
-    ];
-
-    const picked: Scored[] = [];
-    const pickedIds = new Set<number>();
-    for (const tier of tiers) {
-      for (const c of scored) {
-        if (pickedIds.has(c.user.id) || !tier(c)) continue;
-        picked.push(c);
-        pickedIds.add(c.user.id);
-      }
-      if (picked.length >= SUGGESTIONS_MIN) break;
-    }
-
-    // (3) bậc cuối: nếu vẫn thiếu thì bỏ ưu tiên sắp xếp theo last_active
-    const dropLastActiveOrdering = picked.length < SUGGESTIONS_MIN;
-    picked.sort((a, b) => {
-      const byScore = b.score.total - a.score.total;
-      if (byScore !== 0 || dropLastActiveOrdering) return byScore;
-      return (b.user.lastActive?.getTime() ?? 0) - (a.user.lastActive?.getTime() ?? 0);
-    });
-
-    // Pool quá nhỏ → FE hiển thị "chưa đủ đối tác phù hợp, quay lại sau" thay vì empty state
     const insufficientPool = picked.length < SUGGESTIONS_MIN;
     const offset = Math.max(0, filter?.offset ?? 0);
     return {
       items: picked.slice(offset, offset + SUGGESTIONS_PAGE_SIZE),
       total: picked.length,
+      unfilteredTotal: ranked.length,
       insufficientPool,
     };
   }
@@ -201,12 +181,27 @@ export class MatchingService {
   // Logic mới (đã chốt lại): chỉ cần 1 người thích là mở CONVERSATION ngay,
   // không chờ mutual; nếu 2 bên cùng thích thì match chuyển mutual.
   async like(userId: number, targetId: number) {
-    if (userId === targetId) throw new BadRequestException(this.i18n.t('translation.matching.noSelfLike', { lang: I18nContext.current()?.lang }));
+    if (userId === targetId)
+      throw new BadRequestException(
+        this.i18n.t('translation.matching.noSelfLike', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
 
     const target = await this.prisma.user.findUnique({
       where: { id: targetId, status: UserStatus.active },
     });
-    if (!target) throw new NotFoundException(this.i18n.t('translation.matching.userNotFound', { lang: I18nContext.current()?.lang }));
+    if (!target)
+      throw new NotFoundException(
+        this.i18n.t('translation.matching.userNotFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
+
+    // BR-45 — hạn mức Like áp dụng cho MỌI tài khoản kể cả Pro. Hạn mức này
+    // sinh ra để chống spam sau khi bỏ điều kiện mutual match (SRS §3.4);
+    // việc nó đồng thời là ranh giới gói chỉ là hệ quả.
+    await this.entitlements.assertAndConsume(userId, 'match.like');
 
     // Đã có match theo chiều nào chưa (mình→họ hoặc họ→mình)?
     const existing = await this.prisma.match.findFirst({
@@ -222,7 +217,11 @@ export class MatchingService {
     // Chưa ai thích ai → tạo match + mở hội thoại ngay
     if (!existing) {
       const match = await this.prisma.match.create({
-        data: { memberId: userId, candidateId: targetId, status: MatchStatus.liked },
+        data: {
+          memberId: userId,
+          candidateId: targetId,
+          status: MatchStatus.liked,
+        },
       });
       const [conversation] = await this.prisma.$transaction([
         this.prisma.conversation.create({ data: { matchId: match.id } }),
@@ -235,7 +234,9 @@ export class MatchingService {
 
     const conversation =
       existing.conversation ??
-      (await this.prisma.conversation.create({ data: { matchId: existing.id } }));
+      (await this.prisma.conversation.create({
+        data: { matchId: existing.id },
+      }));
 
     // Mình đã thích trước đó → idempotent
     if (existing.memberId === userId) {
@@ -265,15 +266,22 @@ export class MatchingService {
     const blocks = await this.prisma.block.findMany({
       where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
     });
-    return blocks.map((b) => (b.blockerId === userId ? b.blockedId : b.blockerId));
+    return blocks.map((b) =>
+      b.blockerId === userId ? b.blockedId : b.blockerId,
+    );
   }
 
   /** Map targetUserId → { conversationId } cho những người mình ĐÃ thích */
-  private async getLikedMap(userId: number): Promise<Map<number, { conversationId: number | null }>> {
+  private async getLikedMap(
+    userId: number,
+  ): Promise<Map<number, { conversationId: number | null }>> {
     const matches = await this.prisma.match.findMany({
       where: {
         OR: [
-          { memberId: userId, status: { in: [MatchStatus.liked, MatchStatus.mutual] } },
+          {
+            memberId: userId,
+            status: { in: [MatchStatus.liked, MatchStatus.mutual] },
+          },
           { candidateId: userId, status: MatchStatus.mutual },
         ],
       },
@@ -292,6 +300,9 @@ export class MatchingService {
   async getRelation(viewerId: number, targetId: number) {
     const likedMap = await this.getLikedMap(viewerId);
     const info = likedMap.get(targetId);
-    return { liked: Boolean(info), conversationId: info?.conversationId ?? null };
+    return {
+      liked: Boolean(info),
+      conversationId: info?.conversationId ?? null,
+    };
   }
 }

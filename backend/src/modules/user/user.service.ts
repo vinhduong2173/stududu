@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { LanguageRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -41,7 +45,12 @@ export class UserService {
         matchPreference: true,
       },
     });
-    if (!user) throw new NotFoundException(this.i18n.t('translation.user.notFound', { lang: I18nContext.current()?.lang }));
+    if (!user)
+      throw new NotFoundException(
+        this.i18n.t('translation.user.notFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     return user;
   }
 
@@ -64,7 +73,12 @@ export class UserService {
         interests: { include: { topic: true } },
       },
     });
-    if (!user) throw new NotFoundException(this.i18n.t('translation.user.lockedOrNotExist', { lang: I18nContext.current()?.lang }));
+    if (!user)
+      throw new NotFoundException(
+        this.i18n.t('translation.user.lockedOrNotExist', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     return user;
   }
 
@@ -72,7 +86,10 @@ export class UserService {
     const { dob, ...rest } = dto;
     return this.prisma.user.update({
       where: { id: userId },
-      data: { ...rest, ...(dob !== undefined ? { dob: dob ? new Date(dob) : null } : {}) },
+      data: {
+        ...rest,
+        ...(dob !== undefined ? { dob: dob ? new Date(dob) : null } : {}),
+      },
       select: {
         id: true,
         displayName: true,
@@ -88,12 +105,27 @@ export class UserService {
 
   // US-04 — khai ngôn ngữ + trình độ (thay toàn bộ danh sách)
   async setLanguages(userId: number, dto: SetLanguagesDto) {
+    const langIds = dto.languages.map((l) => l.languageId);
+    if (new Set(langIds).size !== langIds.length) {
+      throw new BadRequestException(
+        'Không thể chọn cùng một ngôn ngữ cho nhiều vai trò khác nhau.',
+      );
+    }
+
     for (const item of dto.languages) {
       if (item.role === LanguageRole.learning && !item.level) {
-        throw new BadRequestException(this.i18n.t('translation.user.learningNeedsLevel', { lang: I18nContext.current()?.lang }));
+        throw new BadRequestException(
+          this.i18n.t('translation.user.learningNeedsLevel', {
+            lang: I18nContext.current()?.lang,
+          }),
+        );
       }
       if (item.role === LanguageRole.native && item.level) {
-        throw new BadRequestException(this.i18n.t('translation.user.nativeNoLevel', { lang: I18nContext.current()?.lang }));
+        throw new BadRequestException(
+          this.i18n.t('translation.user.nativeNoLevel', {
+            lang: I18nContext.current()?.lang,
+          }),
+        );
       }
     }
 
@@ -127,6 +159,10 @@ export class UserService {
 
   // FS-27/BR-14 — thống kê giờ chat: cắt phiên khi idle > 30 phút, tính lại khi đọc
   // (không cache — cùng triết lý MATCH_SCORE), bỏ qua hội thoại đã block nhau
+  //
+  // BR-24 — cộng thêm thời lượng cuộc gọi thoại. Đây là ngoại lệ có chủ đích của
+  // BR-14: thời lượng cuộc gọi KHÔNG suy ra được từ tin nhắn nên bắt buộc phải
+  // lưu (CallSession.durationSec), xem audio-call-design.md mục 6.
   async getChatStats(userId: number) {
     const IDLE_MS = 30 * 60 * 1000;
 
@@ -147,11 +183,15 @@ export class UserService {
 
     let totalMs = 0;
     let conversationCount = 0;
+    const countedConversationIds: number[] = [];
     for (const conv of conversations) {
       const partnerId =
-        conv.match.memberId === userId ? conv.match.candidateId : conv.match.memberId;
+        conv.match.memberId === userId
+          ? conv.match.candidateId
+          : conv.match.memberId;
       if (blockedWith.has(partnerId)) continue;
       conversationCount += 1;
+      countedConversationIds.push(conv.id);
 
       const times = conv.messages.map((m) => m.sentAt.getTime());
       if (times.length === 0) continue;
@@ -167,6 +207,16 @@ export class UserService {
       totalMs += prev - sessionStart;
     }
 
+    // BR-24 — chỉ cuộc gọi đã kết thúc bình thường mới tính (nhỡ/từ chối = 0 giây)
+    const callTime = await this.prisma.callSession.aggregate({
+      where: {
+        conversationId: { in: countedConversationIds },
+        status: 'ended',
+      },
+      _sum: { durationSec: true },
+    });
+    totalMs += (callTime._sum.durationSec ?? 0) * 1000;
+
     return {
       totalChatHours: Math.round((totalMs / 3_600_000) * 10) / 10,
       conversationCount,
@@ -176,17 +226,34 @@ export class UserService {
   // Đổi mật khẩu trong Cài đặt — yêu cầu xác nhận mật khẩu hiện tại
   async changePassword(userId: number, dto: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException(this.i18n.t('translation.user.notFound', { lang: I18nContext.current()?.lang }));
+    if (!user)
+      throw new NotFoundException(
+        this.i18n.t('translation.user.notFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
 
     if (!user.passwordHash) {
-      throw new BadRequestException(this.i18n.t('translation.user.wrongCurrentPassword', { lang: I18nContext.current()?.lang }));
+      throw new BadRequestException(
+        this.i18n.t('translation.user.wrongCurrentPassword', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     }
 
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
-    if (!valid) throw new BadRequestException(this.i18n.t('translation.user.wrongCurrentPassword', { lang: I18nContext.current()?.lang }));
+    if (!valid)
+      throw new BadRequestException(
+        this.i18n.t('translation.user.wrongCurrentPassword', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
     return { success: true };
   }
 

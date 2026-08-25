@@ -13,12 +13,22 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { JwtPayload } from '../../common/types/jwt-payload';
-import { SaveWordDto, UpdateLibraryWordDto } from './dto/save-word.dto';
+import {
+  SaveWordDto,
+  UpdateLibraryWordDto,
+  UpdateWordStatusDto,
+} from './dto/save-word.dto';
 import { VocabularyService } from './vocabulary.service';
 
 @Controller('vocabulary')
 export class VocabularyController {
   constructor(private readonly vocabularyService: VocabularyService) {}
+
+  // FS-23 — tra từ vựng (dịch + từ điển + thư viện từ)
+  @Get('lookup')
+  lookup(@Query('term') term: string, @Query('target') target?: string) {
+    return this.vocabularyService.lookup(term, target);
+  }
 
   // FS-23 — lưu từ (từ chat hoặc thêm tay)
   @Post('save-word')
@@ -29,13 +39,31 @@ export class VocabularyController {
 
   @Get('my-words')
   @UseGuards(JwtAuthGuard)
-  myWords(@CurrentUser() user: JwtPayload) {
-    return this.vocabularyService.myWords(user.sub);
+  myWords(
+    @CurrentUser() user: JwtPayload,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.vocabularyService.myWords(user.sub, status, search);
+  }
+
+  // Cập nhật trạng thái từ vựng (learning ↔ mastered)
+  @Patch('my-words/:id/status')
+  @UseGuards(JwtAuthGuard)
+  updateWordStatus(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateWordStatusDto,
+  ) {
+    return this.vocabularyService.updateWordStatus(user.sub, id, dto.status);
   }
 
   @Delete('my-words/:id')
   @UseGuards(JwtAuthGuard)
-  removeSavedWord(@CurrentUser() user: JwtPayload, @Param('id', ParseIntPipe) id: number) {
+  removeSavedWord(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     return this.vocabularyService.removeSavedWord(user.sub, id);
   }
 
@@ -54,5 +82,25 @@ export class VocabularyController {
     @Body() dto: UpdateLibraryWordDto,
   ) {
     return this.vocabularyService.updateLibraryWord(user.sub, id, dto);
+  }
+
+  // Từ vựng mới hàng ngày theo ngôn ngữ đang chọn học
+  @Get('daily-words')
+  @UseGuards(JwtAuthGuard)
+  getDailyWords(
+    @CurrentUser() user: JwtPayload,
+    @Query('target') target?: string,
+    @Query('native') native?: string,
+  ) {
+    return this.vocabularyService.getDailyWords(user.sub, target, native);
+  }
+
+  // Lấy danh sách đáp án nhiễu (distractors) ngẫu nhiên cho Quiz từ vựng
+  @Get('distractors')
+  getDistractors(
+    @Query('native') native?: string,
+    @Query('target') target?: string,
+  ) {
+    return this.vocabularyService.getDistractors(native, target);
   }
 }

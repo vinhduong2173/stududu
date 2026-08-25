@@ -1,0 +1,21 @@
+Word,Phonetic,Meaning,POS,Example,Distractor1,Distractor2,Distractor3
+天気,/てんき (tenki)/,Thời tiết,Danh từ,"きょうの てんきは どうですか。",Mùa trong năm,Bầu trời,Nhiệt độ
+雨,/あめ (ame)/,Cơn mưa / Mưa,Danh từ,"きょうは あめが ふっています。",Nắng,Tuyết,Sương mù
+晴れ,/はれ (hare)/,Trời nắng / Nắng đẹp,Danh từ,"きょうの てんきは はれです。",Trời mưa lớn,Trời u ám,Gió bão
+雪,/ゆき (yuki)/,Tuyết,Danh từ,"ふゆは ゆきが ふります。",Mây,Mưa rào,Cầu vồng
+曇り,/くもり (kumori)/,Trời nhiều mây / U ám,Danh từ,"あしたは くもりでしょう。",Nắng gắt,Tuyết tan,Sương muối
+風,/かぜ (kaze)/,Gió,Danh từ,"ごごから かぜが つよくなるでしょう。",Mưa đá,Nắng hạn,Khói bụi
+暑い,/あつい (atsui)/,Nóng (thời tiết),Tính từ,"なつは とても あついです。",Lạnh giá,Mát mẻ,Ấm áp
+寒い,/さむい (samui)/,Lạnh (thời tiết),Tính từ,"ふゆは さむいですから、コートを きましょう。",Nóng bức,Oi nồng,Ấm áp
+暖かい,/あたたかい (atatakai)/,Ấm áp (thời tiết),Tính từ,"はるは あたたかくて きもちがいいです。",Giá lạnh,Nóng nực,Mát rượi
+涼しい,/すずしい (suzushii)/,Mát mẻ (thời tiết),Tính từ,"あきは すずしくて さんぽに いきます。",Nóng bức,Băng giá,Hầm hập
+太陽,/たいよう (taiyou)/,Mặt trời,Danh từ,"あさから たいようが でています。",Mặt trăng,Ngôi sao,Đám mây
+空,/そら (sora)/,Bầu trời,Danh từ,"そらが くらいですから あめが ふるかもしれません。",Mặt đất,Biển cả,Ngọn núi
+洗濯,/せんたく (sentaku)/,Giặt giũ / Giặt quần áo,Danh từ,"きょうの うちに せんたくを します。",Nấu ăn,Rửa bát,Dọn dẹp nhà
+季節,/きせつ (kisetsu)/,Mùa / Thời tiết theo mùa,Danh từ,"にほんには しき（よんつの きせつ）が あります。",Thời gian,Ngày tháng,Thế kỷ
+春,/はる (haru)/,Mùa xuân,Danh từ,"はるは さくらが さきます。",Mùa hạ,Mùa thu,Mùa đông
+夏,/なつ (natsu)/,Mùa hè / Mùa hạ,Danh từ,"なつに うみへ いきました。",Mùa đông,Mùa xuân,Mùa thu
+秋,/あき (aki)/,Mùa thu,Danh từ,"あきは もみじが きれいです。",Mùa hè,Mùa đông,Mùa xuân
+冬,/ふゆ (fuyu)/,Mùa đông,Danh từ,"ふゆは ゆきが ふって さむいです。",Mùa xuân,Mùa hè,Mùa thu
+コート,/こーと (kooto)/,Áo khoác / Áo ấm,Danh từ,"さむいですから、コートを きましょう。",Áo sơ mi,Quần đùi,Giày thể thao
+台風,/たいふう (taifuu)/,Bão / Bão nhiệt đới,Danh từ,"たいふうが きますから いえに いましょう。",Sương mù,Nắng ráo,Tuyết nhẹ

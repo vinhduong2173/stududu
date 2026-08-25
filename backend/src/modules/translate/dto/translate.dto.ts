@@ -1,6 +1,29 @@
-import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
-export const TRANSLATE_LANGS = ['auto', 'vi', 'en', 'ja', 'ko', 'zh', 'fr'] as const;
+export const TRANSLATE_LANGS = [
+  'auto',
+  'vi',
+  'en',
+  'ja',
+  'ko',
+  'zh',
+  'fr',
+  'es',
+  'de',
+  'it',
+  'ru',
+  'th',
+  'id',
+  'pt',
+  'ar',
+  'hi',
+] as const;
 
 export class TranslateDto {
   @IsString()

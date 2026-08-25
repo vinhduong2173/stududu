@@ -1,0 +1,16 @@
+<svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Earth / Globe Grid -->
+  <circle cx="100" cy="100" r="76" stroke="#1b4332" stroke-width="12" fill="none" />
+  <ellipse cx="100" cy="100" rx="36" ry="76" stroke="#1b4332" stroke-width="9" fill="none" />
+  <path d="M 28 68 Q 100 90 172 68" stroke="#1b4332" stroke-width="9" fill="none" />
+  <path d="M 28 132 Q 100 110 172 132" stroke="#1b4332" stroke-width="9" fill="none" />
+  <line x1="24" y1="100" x2="176" y2="100" stroke="#1b4332" stroke-width="9" />
+  <!-- Stylized S Curve -->
+  <path
+    d="M 148 42 C 95 18 42 52 48 95 C 54 138 152 110 144 156 C 134 194 58 188 42 156"
+    stroke="#1b4332"
+    stroke-width="24"
+    stroke-linecap="round"
+    fill="none"
+  />
+</svg>

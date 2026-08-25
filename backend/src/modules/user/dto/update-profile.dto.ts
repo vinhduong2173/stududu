@@ -18,7 +18,9 @@ export class UpdateProfileDto {
 
   // Cho phép URL http(s) hoặc data URL (ảnh chọn từ máy, đã nén phía client)
   @IsOptional()
-  @Matches(/^(https?:\/\/|data:image\/)/, { message: 'Ảnh đại diện không hợp lệ' })
+  @Matches(/^(https?:\/\/|data:image\/)/, {
+    message: 'Ảnh đại diện không hợp lệ',
+  })
   @MaxLength(500_000, { message: 'Ảnh đại diện quá lớn' })
   avatarUrl?: string;
 
@@ -32,7 +34,9 @@ export class UpdateProfileDto {
   intent?: string; // study buddy | thi cử | casual…
 
   @IsOptional()
-  @IsIn(['nam', 'nữ', 'khác'], { message: 'Giới tính không hợp lệ' })
+  @IsIn(['male', 'female', 'other', 'nam', 'nữ', 'khác', ''], {
+    message: 'Giới tính không hợp lệ',
+  })
   gender?: string;
 
   @IsOptional()

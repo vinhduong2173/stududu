@@ -1,5 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  LanguageRole,
   ModerationActionType,
   Prisma,
   ReportStatus,
@@ -33,20 +38,217 @@ export class AdminService {
       where: status ? { status } : undefined,
       include: {
         reporter: { select: { id: true, displayName: true, email: true } },
-        reported: { select: { id: true, displayName: true, email: true, status: true } },
+        reported: {
+          select: { id: true, displayName: true, email: true, status: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
   }
 
+  // Dashboard Stats cho Admin
+  async getDashboardStats() {
+    const now = new Date();
+    const startOfWeek = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - now.getDay(),
+    );
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+
+    const [
+      totalUsers,
+      usersThisWeek,
+      openReportsCount,
+      newUsersThisMonth,
+      activeConversationsToday,
+      recentReports,
+      recentUsers,
+      learningLanguagesGroup,
+      nativeLanguagesGroup,
+      countriesGroup,
+      allLanguages,
+    ] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { createdAt: { gte: startOfWeek } } }),
+      this.prisma.report.count({ where: { status: ReportStatus.open } }),
+      this.prisma.user.count({ where: { createdAt: { gte: startOfMonth } } }),
+      this.prisma.message
+        .groupBy({
+          by: ['conversationId'],
+          where: { sentAt: { gte: startOfToday } },
+        })
+        .then((res) => res.length),
+      this.prisma.report.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          reporter: { select: { id: true, displayName: true, email: true } },
+          reported: {
+            select: {
+              id: true,
+              displayName: true,
+              email: true,
+              avatarUrl: true,
+              status: true,
+            },
+          },
+        },
+      }),
+      this.prisma.user.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          displayName: true,
+          email: true,
+          avatarUrl: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.userLanguage.groupBy({
+        by: ['languageId'],
+        where: { role: LanguageRole.learning },
+        _count: { userId: true },
+        orderBy: { _count: { userId: 'desc' } },
+        take: 6,
+      }),
+      this.prisma.userLanguage.groupBy({
+        by: ['languageId'],
+        where: { role: LanguageRole.native },
+        _count: { userId: true },
+        orderBy: { _count: { userId: 'desc' } },
+        take: 6,
+      }),
+      this.prisma.user.groupBy({
+        by: ['country'],
+        where: { country: { not: null } },
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 6,
+      }),
+      this.prisma.language.findMany(),
+    ]);
+
+    const previousUsers = totalUsers - usersThisWeek;
+    const userGrowthWeeklyPercent =
+      previousUsers > 0 ? (usersThisWeek / previousUsers) * 100 : 0;
+
+    const langMap = new Map(allLanguages.map((l) => [l.id, l.name]));
+
+    const totalLearningCount = learningLanguagesGroup.reduce(
+      (sum, item) => sum + item._count.userId,
+      0,
+    );
+    const learningLanguages = learningLanguagesGroup.map((item) => {
+      const count = item._count.userId;
+      return {
+        name: langMap.get(item.languageId) || `Ngôn ngữ #${item.languageId}`,
+        count,
+        percentage:
+          totalLearningCount > 0
+            ? Number(((count / totalLearningCount) * 100).toFixed(1))
+            : 0,
+      };
+    });
+
+    const totalNativeCount = nativeLanguagesGroup.reduce(
+      (sum, item) => sum + item._count.userId,
+      0,
+    );
+    const userOrigins = nativeLanguagesGroup.map((item) => {
+      const count = item._count.userId;
+      return {
+        name: langMap.get(item.languageId) || `Ngôn ngữ #${item.languageId}`,
+        count,
+        percentage:
+          totalNativeCount > 0
+            ? Number(((count / totalNativeCount) * 100).toFixed(1))
+            : 0,
+      };
+    });
+
+    return {
+      totalUsers,
+      userGrowthWeeklyPercent: Number(userGrowthWeeklyPercent.toFixed(1)),
+      openReportsCount,
+      newUsersThisMonth,
+      activeConversationsToday,
+      recentReports,
+      recentUsers,
+      demographics: {
+        userOrigins,
+        learningLanguages,
+      },
+    };
+  }
+
+  // Quản lý danh sách Người dùng (phân trang + tìm kiếm)
+  async getUsers(page = 1, limit = 10, search?: string, status?: UserStatus) {
+    const where: Prisma.UserWhereInput = {
+      ...(status ? { status } : {}),
+      ...(search
+        ? {
+            OR: [
+              { displayName: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          avatarUrl: true,
+          role: true,
+          status: true,
+          createdAt: true,
+          _count: { select: { reportsReceived: true } },
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   updateReportStatus(reportId: number, status: ReportStatus) {
-    return this.prisma.report.update({ where: { id: reportId }, data: { status } });
+    return this.prisma.report.update({
+      where: { id: reportId },
+      data: { status },
+    });
   }
 
   // US-20 — vô hiệu hóa theo mức độ / xóa cứng khi tái phạm + ghi log kiểm duyệt
   async moderate(adminId: number, targetUserId: number, dto: ModerateDto) {
-    const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
-    if (!target) throw new NotFoundException(this.i18n.t('translation.admin.userNotFound', { lang: I18nContext.current()?.lang }));
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+    if (!target)
+      throw new NotFoundException(
+        this.i18n.t('translation.admin.userNotFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
 
     const userUpdate = this.buildUserUpdate(dto.action);
 
@@ -60,7 +262,12 @@ export class AdminService {
         data: { status: ReportStatus.reviewed },
       }),
       ...(userUpdate
-        ? [this.prisma.user.update({ where: { id: targetUserId }, data: userUpdate })]
+        ? [
+            this.prisma.user.update({
+              where: { id: targetUserId },
+              data: userUpdate,
+            }),
+          ]
         : []),
     ]);
 
@@ -86,15 +293,69 @@ export class AdminService {
         displayName: true,
         avatarUrl: true,
         bio: true,
+        intent: true,
+        gender: true,
+        dob: true,
+        city: true,
+        country: true,
+        timezone: true,
+        availableSlots: true,
         role: true,
         status: true,
         suspendedUntil: true,
         lastActive: true,
         createdAt: true,
-        _count: { select: { reportsReceived: true, reportsSent: true } },
+        languages: {
+          select: {
+            id: true,
+            role: true,
+            level: true,
+            language: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                framework: true,
+              },
+            },
+          },
+        },
+        interests: {
+          select: {
+            id: true,
+            topic: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        matchPreference: {
+          select: {
+            intent: true,
+            languageFocus: true,
+            levelDesired: true,
+          },
+        },
+        _count: {
+          select: {
+            reportsReceived: true,
+            reportsSent: true,
+            savedWords: true,
+            vocabWords: true,
+            matchesAsMember: true,
+            matchesAsCandidate: true,
+          },
+        },
       },
     });
-    if (!user) throw new NotFoundException(this.i18n.t('translation.admin.userNotFound', { lang: I18nContext.current()?.lang }));
+    if (!user)
+      throw new NotFoundException(
+        this.i18n.t('translation.admin.userNotFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
     return user;
   }
 
@@ -115,6 +376,28 @@ export class AdminService {
     return this.prisma.language.update({ where: { id }, data: dto });
   }
 
+  async deleteLanguage(id: number) {
+    const questionSetCount = await this.prisma.questionSet.count({
+      where: { languageId: id },
+    });
+    if (questionSetCount > 0) {
+      throw new BadRequestException(
+        'Không thể xóa ngôn ngữ đang có Bộ đề trắc nghiệm. Vui lòng chọn Ẩn ngôn ngữ.',
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.userSavedWord.deleteMany({
+        where: { word: { languageId: id } },
+      }),
+      this.prisma.wordLibrary.deleteMany({ where: { languageId: id } }),
+      this.prisma.userLanguage.deleteMany({ where: { languageId: id } }),
+      this.prisma.group.deleteMany({ where: { languageId: id } }),
+      this.prisma.language.delete({ where: { id } }),
+    ]);
+    return { success: true };
+  }
+
   createTopic(dto: CreateTopicDto) {
     return this.prisma.topic.create({ data: dto });
   }
@@ -123,7 +406,27 @@ export class AdminService {
     return this.prisma.topic.update({ where: { id }, data: dto });
   }
 
-  private buildUserUpdate(action: ModerationActionType): Prisma.UserUpdateInput | null {
+  async deleteTopic(id: number) {
+    const questionSetCount = await this.prisma.questionSet.count({
+      where: { topicId: id },
+    });
+    if (questionSetCount > 0) {
+      throw new BadRequestException(
+        'Không thể xóa chủ đề đang được dùng trong Bộ đề trắc nghiệm. Vui lòng chọn Ẩn chủ đề.',
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.userInterest.deleteMany({ where: { topicId: id } }),
+      this.prisma.group.deleteMany({ where: { topicId: id } }),
+      this.prisma.topic.delete({ where: { id } }),
+    ]);
+    return { success: true };
+  }
+
+  private buildUserUpdate(
+    action: ModerationActionType,
+  ): Prisma.UserUpdateInput | null {
     const suspendMs = SUSPEND_DURATIONS[action];
     if (suspendMs) {
       return {
@@ -142,5 +445,84 @@ export class AdminService {
       };
     }
     return null; // warn: chỉ ghi log
+  }
+
+  // Quản lý từ vựng đã lưu của người dùng
+  async getSavedWords(
+    page = 1,
+    limit = 10,
+    search?: string,
+    languageId?: number,
+  ) {
+    const where: Prisma.WordLibraryWhereInput = {
+      ...(languageId ? { languageId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { term: { contains: search, mode: 'insensitive' } },
+              { definition: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.wordLibrary.findMany({
+        where,
+        include: {
+          language: { select: { id: true, code: true, name: true } },
+          savedBy: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  email: true,
+                  avatarUrl: true,
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+        orderBy: [{ saveCount: 'desc' }, { createdAt: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.wordLibrary.count({ where }),
+    ]);
+
+    return {
+      items: items.map((w) => ({
+        id: w.id,
+        term: w.term,
+        language: w.language,
+        definition: w.definition,
+        partOfSpeech: w.partOfSpeech,
+        phonetic: w.phonetic,
+        example: w.example,
+        saveCount: w.saveCount,
+        isPublic: w.isPublic,
+        createdAt: w.createdAt,
+        savedBy: w.savedBy.map((s) => ({
+          user: s.user,
+          createdAt: s.createdAt,
+          source: s.source,
+          personalNote: s.personalNote,
+        })),
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async deleteWord(id: number) {
+    await this.prisma.$transaction([
+      this.prisma.userSavedWord.deleteMany({ where: { wordLibraryId: id } }),
+      this.prisma.wordLibrary.delete({ where: { id } }),
+    ]);
+    return { success: true };
   }
 }

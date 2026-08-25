@@ -52,7 +52,8 @@
     "missingScheduleInfo": "缺少预约邀请信息",
     "notInConversation": "您不在此会话中",
     "conversationNotFound": "找不到会话",
-    "blockedUser": "无法向该用户发送消息"
+    "blockedUser": "无法向该用户发送消息",
+    "callMessageNotAllowed": "通话消息由系统生成，无法手动发送"
   },
   "vocab": {
     "wordNotFound": "生词本中未找到该单词",
@@ -63,5 +64,22 @@
   },
   "common": {
     "accessDenied": "权限不足"
+  },
+  "calls": {
+    "notFound": "未找到通话",
+    "notInConversation": "只能呼叫同一会话中的用户",
+    "suspendedNoCall": "您的账号已被暂停，无法拨打电话",
+    "notYourCall": "您不属于此通话",
+    "notRinging": "此通话已不再振铃"
+  },
+  "subscription": {
+    "quotaExceeded": "You have used all {limit} of your current plan quota.",
+    "featureRequiresPro": "This feature is part of the Pro plan.",
+    "alreadyPro": "Your account is already on the Pro plan.",
+    "cannotCancel": "Only an active plan can be canceled.",
+    "cannotResume": "Your plan is not scheduled for cancellation.",
+    "cardDeclined": "Card declined. Please try another card.",
+    "checkoutNotFound": "Checkout session not found.",
+    "mockOnly": "The current payment provider does not support this action."
   }
 }

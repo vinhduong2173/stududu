@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarClock, Globe, X } from "lucide-react";
+import { CalendarClock, Globe, X, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { TIME_SLOTS, convertSlot } from "@/lib/timezones";
 
@@ -32,14 +32,16 @@ export function ScheduleChatModal({
   const [timeStr, setTimeStr] = React.useState("20:00");
   const [error, setError] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  const [prevOpen, setPrevOpen] = React.useState(false);
 
-  React.useEffect(() => {
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
       setDateStr(tomorrow.toISOString().slice(0, 10));
       setError("");
     }
-  }, [open]);
+  }
 
   if (!open) return null;
 
@@ -122,18 +124,21 @@ export function ScheduleChatModal({
           </div>
 
           {localPreview && !Number.isNaN(localPreview.getTime()) && (
-            <p className="text-xs text-muted">
-              🕐 Bạn mời lúc{" "}
-              <span className="font-semibold text-foreground">
-                {localPreview.toLocaleString("vi-VN", {
-                  weekday: "long",
-                  day: "2-digit",
-                  month: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>{" "}
-              — {partnerName} sẽ thấy theo múi giờ của họ. Lời mời tự hết hạn sau 48h nếu không phản hồi.
+            <p className="text-xs text-muted flex items-start gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-muted shrink-0 mt-0.5" />
+              <span>
+                Bạn mời lúc{" "}
+                <span className="font-semibold text-foreground">
+                  {localPreview.toLocaleString("vi-VN", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>{" "}
+                — {partnerName} sẽ thấy theo múi giờ của họ. Lời mời tự hết hạn sau 48h nếu không phản hồi.
+              </span>
             </p>
           )}
 

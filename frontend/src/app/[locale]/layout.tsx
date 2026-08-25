@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "../globals.css";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, getTranslations } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { notFound } from "next/navigation";
 
@@ -18,10 +18,28 @@ const jakarta = Plus_Jakarta_Sans({
   weight: ["500", "600", "700", "800"],
 });
 
-export const metadata: Metadata = {
-  title: "stududu — Luyện nói tiếng nước ngoài",
-  description: "Web trao đổi ngôn ngữ và luyện nói 1:1",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata" });
+
+  return {
+    title: t("title"),
+    description: t("description"),
+    icons: {
+      icon: [
+        { url: "/icon.svg", type: "image/svg+xml" },
+        { url: "/icon.png", type: "image/png" },
+        { url: "/favicon.ico" },
+      ],
+      shortcut: "/icon.svg",
+      apple: "/icon.svg",
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
