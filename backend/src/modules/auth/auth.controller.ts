@@ -63,8 +63,11 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Request() req: any, @Res() res: any) {
     const loginResult = await this.authService.googleLogin(req.user);
-    const frontendUrl =
-      this.config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3000';
+    const rawOrigin =
+      this.config.get<string>('FRONTEND_URL') ||
+      this.config.get<string>('CORS_ORIGIN') ||
+      'http://localhost:3000';
+    const frontendUrl = rawOrigin.split(',')[0].trim();
     const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${loginResult.tokens.accessToken}&refreshToken=${loginResult.tokens.refreshToken}`;
     return res.redirect(redirectUrl);
   }
