@@ -3,15 +3,15 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const chipVariants = cva(
-  "inline-flex items-center rounded-full px-3 py-1 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+  "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
   {
     variants: {
       variant: {
-        default: "bg-primary/10 text-primary hover:bg-primary/20",
-        secondary: "bg-secondary/10 text-secondary hover:bg-secondary/20",
-        outline: "border border-border text-foreground hover:bg-muted/10",
-        active: "bg-primary text-white shadow-sm",
-        success: "bg-success/10 text-success",
+        default: "bg-teal-50 text-teal-800 border border-teal-200/60 hover:bg-teal-100/70",
+        secondary: "bg-rose-50 text-rose-800 border border-rose-200/60 hover:bg-rose-100/70",
+        outline: "border border-border bg-surface text-foreground hover:bg-surface-2",
+        active: "bg-primary text-white border border-primary shadow-2xs",
+        success: "bg-emerald-50 text-emerald-800 border border-emerald-200/60",
       },
     },
     defaultVariants: {

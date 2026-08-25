@@ -52,7 +52,8 @@
     "missingScheduleInfo": "Fehlende Termineinladungsinformationen",
     "notInConversation": "Sie sind nicht Teil dieser Konversation",
     "conversationNotFound": "Konversation nicht gefunden",
-    "blockedUser": "Nachrichten können an diesen Benutzer nicht gesendet werden"
+    "blockedUser": "Nachrichten können an diesen Benutzer nicht gesendet werden",
+    "callMessageNotAllowed": "Anrufnachrichten werden vom System erzeugt und können nicht manuell gesendet werden"
   },
   "vocab": {
     "wordNotFound": "Wort nicht in Ihrem Notizbuch gefunden",
@@ -63,5 +64,22 @@
   },
   "common": {
     "accessDenied": "Unzureichende Berechtigungen"
+  },
+  "calls": {
+    "notFound": "Anruf nicht gefunden",
+    "notInConversation": "Du kannst nur jemanden aus derselben Unterhaltung anrufen",
+    "suspendedNoCall": "Dein Konto ist gesperrt, du kannst nicht anrufen",
+    "notYourCall": "Du bist nicht Teil dieses Anrufs",
+    "notRinging": "Dieser Anruf klingelt nicht mehr"
+  },
+  "subscription": {
+    "quotaExceeded": "You have used all {limit} of your current plan quota.",
+    "featureRequiresPro": "This feature is part of the Pro plan.",
+    "alreadyPro": "Your account is already on the Pro plan.",
+    "cannotCancel": "Only an active plan can be canceled.",
+    "cannotResume": "Your plan is not scheduled for cancellation.",
+    "cardDeclined": "Card declined. Please try another card.",
+    "checkoutNotFound": "Checkout session not found.",
+    "mockOnly": "The current payment provider does not support this action."
   }
 }

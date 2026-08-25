@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Award, Clock3, MessageCircle, X } from "lucide-react";
+import { Award, Clock3, MessageCircle, X, MessageSquare, Globe, GraduationCap, Smile } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -10,11 +10,11 @@ import { useTranslations } from "next-intl";
 /** FS-26 — Endorsement định tính (BR-13: chỉ đếm theo nhãn, KHÔNG rating/điểm trung bình)
  *  FS-27 — Thống kê giờ chat & hội thoại (BR-14: cắt phiên idle > 30 phút, tính khi đọc) */
 
-export const ENDORSEMENT_LABELS: { key: string; icon: string; name: string }[] = [
-  { key: "lang_proficiency", icon: "🗣️", name: "Ngôn ngữ chuẩn" },
-  { key: "social_knowledge", icon: "🌍", name: "Hiểu biết xã hội" },
-  { key: "niche_expertise", icon: "🎓", name: "Chuyên môn sâu" },
-  { key: "friendliness", icon: "😊", name: "Thân thiện" },
+export const ENDORSEMENT_LABELS = [
+  { key: "lang_proficiency", icon: MessageSquare, name: "Ngôn ngữ chuẩn" },
+  { key: "social_knowledge", icon: Globe, name: "Hiểu biết xã hội" },
+  { key: "niche_expertise", icon: GraduationCap, name: "Chuyên môn sâu" },
+  { key: "friendliness", icon: Smile, name: "Thân thiện" },
 ];
 
 export function EndorsementBadges({ userId, refreshKey = 0 }: { userId: number; refreshKey?: number }) {
@@ -35,14 +35,18 @@ export function EndorsementBadges({ userId, refreshKey = 0 }: { userId: number; 
       {visible.length === 0 ? (
         <p className="text-sm text-muted">{t("profile.no_endorsements")}</p>
       ) : (
-        visible.map((l) => (
-          <span
-            key={l.key}
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1 text-sm font-semibold"
-          >
-            {l.icon} {t(`profile.${l.key}`)} · {counts[l.key]}
-          </span>
-        ))
+        visible.map((l) => {
+          const Icon = l.icon;
+          return (
+            <span
+              key={l.key}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-3 py-1 text-sm font-semibold"
+            >
+              <Icon className="w-4 h-4" />
+              <span>{t(`profile.${l.key}`)} · {counts[l.key]}</span>
+            </span>
+          );
+        })
       )}
     </div>
   );
@@ -155,6 +159,7 @@ export function EndorseModal({
             {ENDORSEMENT_LABELS.map((l) => {
               const given = alreadyGiven.includes(l.key);
               const checked = selected.includes(l.key);
+              const Icon = l.icon;
               return (
                 <label
                   key={l.key}
@@ -174,8 +179,9 @@ export function EndorseModal({
                     checked={given || checked}
                     onChange={() => toggle(l.key)}
                   />
-                  <span className="text-sm font-medium text-foreground">
-                    {l.icon} {t(`profile.${l.key}`)}
+                  <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <Icon className="w-4 h-4 text-primary" />
+                    <span>{t(`profile.${l.key}`)}</span>
                     {given && <span className="text-xs text-success ml-2">{t("profile.endorse_already_given")}</span>}
                   </span>
                 </label>

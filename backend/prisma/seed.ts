@@ -15,16 +15,33 @@ const LANGUAGES = [
 ];
 
 const TOPICS = [
-  'Du lịch',
-  'Âm nhạc',
-  'Phim ảnh',
-  'Ẩm thực',
-  'Thể thao',
-  'Công nghệ',
-  'Sách',
-  'Game',
-  'Văn hóa',
-  'Thi cử (IELTS/TOEIC…)',
+  'Travel',
+  'Music',
+  'Movies',
+  'Food & Culinary',
+  'Sports',
+  'Technology',
+  'Books',
+  'Gaming',
+  'Culture',
+  'Exams (IELTS/TOEIC…)',
+];
+
+// Chủ đề TỪ VỰNG cho bộ đề — cố tình khác TOPICS ở trên (TOPICS = sở thích để
+// ghép người nói chuyện, xem question-set-design.md mục 2)
+const VOCAB_TOPICS = [
+  'Động vật',
+  'Thức ăn & đồ uống',
+  'Gia đình',
+  'Nghề nghiệp',
+  'Cơ thể & sức khoẻ',
+  'Nhà cửa & đồ dùng',
+  'Thời tiết & thiên nhiên',
+  'Giao thông & đi lại',
+  'Mua sắm & tiền bạc',
+  'Học tập & trường lớp',
+  'Cảm xúc & tính cách',
+  'Công nghệ & Internet',
 ];
 
 async function main() {
@@ -44,12 +61,20 @@ async function main() {
     });
   }
 
+  for (const name of VOCAB_TOPICS) {
+    await prisma.vocabTopic.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+
   // Seed admin account (OJT Project requirement)
   const adminEmail = 'admin@stududu.com';
   const adminPassword = 'AdminPassword123';
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-  await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {
       passwordHash: hashedPassword,
@@ -64,8 +89,50 @@ async function main() {
     },
   });
 
+  const frLang = await prisma.language.findUnique({ where: { code: 'fr' } });
+  const jaLang = await prisma.language.findUnique({ where: { code: 'ja' } });
+
+  const g1 = await prisma.group.upsert({
+    where: { slug: 'france-group' },
+    update: {},
+    create: {
+      name: 'French Study Group',
+      slug: 'france-group',
+      description: "Groupe d'étude de la langue française",
+      privacy: 'public',
+      creatorId: admin.id,
+      languageId: frLang?.id ?? null,
+      members: {
+        create: {
+          userId: admin.id,
+          role: 'owner',
+        },
+      },
+    },
+  });
+
+  const g2 = await prisma.group.upsert({
+    where: { slug: 'niji-tabi-2' },
+    update: {},
+    create: {
+      name: 'Niji Tabi 2',
+      slug: 'niji-tabi-2',
+      description: 'Japanese learning community group',
+      privacy: 'public',
+      creatorId: admin.id,
+      languageId: jaLang?.id ?? null,
+      members: {
+        create: {
+          userId: admin.id,
+          role: 'owner',
+        },
+      },
+    },
+  });
+
   console.log(`Seeded ${LANGUAGES.length} languages, ${TOPICS.length} topics.`);
   console.log(`Seeded admin account: ${adminEmail}`);
+  console.log(`Seeded groups: ${g1.name}, ${g2.name}`);
 }
 
 main()
@@ -74,4 +141,5 @@ main()
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
+
 

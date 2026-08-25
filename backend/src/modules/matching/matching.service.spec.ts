@@ -1,6 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { LanguageRole, UserStatus } from '@prisma/client';
+import { I18nService } from 'nestjs-i18n';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EntitlementsService } from '../entitlements/entitlements.service';
 import {
   MatchingService,
   SUGGESTIONS_MIN,
@@ -26,7 +28,10 @@ const me = {
 };
 
 /** Ứng viên bù trừ (dạy EN, học VI) — tùy chọn topic chung / level học VI */
-function candidate(id: number, opts: { sharedTopic?: boolean; learnLevel?: string } = {}) {
+function candidate(
+  id: number,
+  opts: { sharedTopic?: boolean; learnLevel?: string } = {},
+) {
   return {
     id,
     displayName: `User ${id}`,
@@ -54,7 +59,12 @@ function candidate(id: number, opts: { sharedTopic?: boolean; learnLevel?: strin
       },
     ],
     interests: opts.sharedTopic
-      ? [{ topicId: TOPIC_TRAVEL, topic: { id: TOPIC_TRAVEL, name: 'Du lịch' } }]
+      ? [
+          {
+            topicId: TOPIC_TRAVEL,
+            topic: { id: TOPIC_TRAVEL, name: 'Du lịch' },
+          },
+        ]
       : [],
   };
 }
@@ -69,8 +79,25 @@ async function buildService(candidates: unknown[]) {
     match: { findMany: jest.fn().mockResolvedValue([]) },
   };
 
+  const i18nMock = {
+    t: jest.fn((key: string) => key),
+  };
+
+  // EP-11 — MatchingService hỏi EntitlementsService cho `match.like` và
+  // `match.advanced_filter`. Test FS-08 không kiểm hạn mức nên luôn cho phép.
+  const entitlementsMock = {
+    assertAndConsume: jest.fn().mockResolvedValue({ allowed: true }),
+    can: jest.fn().mockResolvedValue({ allowed: true }),
+    isEnabled: jest.fn().mockResolvedValue(true),
+  };
+
   const moduleRef = await Test.createTestingModule({
-    providers: [MatchingService, { provide: PrismaService, useValue: prismaMock }],
+    providers: [
+      MatchingService,
+      { provide: PrismaService, useValue: prismaMock },
+      { provide: I18nService, useValue: i18nMock },
+      { provide: EntitlementsService, useValue: entitlementsMock },
+    ],
   }).compile();
 
   return moduleRef.get(MatchingService);
@@ -114,8 +141,8 @@ describe('MatchingService.getSuggestions (FS-08)', () => {
     for (const item of result.items) {
       expect(
         item.user.languages.some(
-          (l: { role: string; languageId: number }) =>
-            l.role === 'native' && l.languageId === EN,
+          (l: { role: string; languageId?: number; language?: { id: number } }) =>
+            l.role === 'native' && (l.languageId === EN || l.language?.id === EN),
         ),
       ).toBe(true);
     }
