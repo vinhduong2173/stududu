@@ -153,6 +153,11 @@
     "password": "パスワード",
     "password_hint": "8文字以上",
     "password_error": "パスワードは8文字以上で入力してください。",
+    "req_length": "8文字以上",
+    "req_upper": "大文字を1文字以上 (A-Z)",
+    "req_lower": "小文字を1文字以上 (a-z)",
+    "req_number": "数字を1文字以上 (0-9)",
+    "req_special": "特殊文字を1文字以上 (!@#$...)",
     "submit": "新規登録",
     "submitting": "アカウント作成中...",
     "google": "Googleで登録",
@@ -844,7 +849,6 @@
   },
   "pricing": {
     "title": "Stududu plans",
-    "loading": "Loading your plan…",
     "loading": "Loading your plan…",
     "principle": {
       "line1": "Human-to-human interaction is free forever.",
