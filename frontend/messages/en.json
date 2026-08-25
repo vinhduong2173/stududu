@@ -9,7 +9,8 @@
     "vocabulary": "Vocabulary",
     "community": "Community",
     "profile": "Profile",
-    "quiz": "Practice"
+    "quiz": "Practice",
+    "pricing": "Plans"
   },
   "menu": {
     "profile": "Profile",
@@ -29,7 +30,7 @@
     "password_mismatch": "Passwords do not match.",
     "password_success": "Password updated successfully",
     "unblock_success": "Unblocked {name}",
-    "password_hint": "Minimum 8 characters, including uppercase, lowercase, numbers, and special characters.",
+    "password_hint": "Minimum 8 characters, including both letters and numbers.",
     "curr_password_placeholder": "Current password",
     "new_password_placeholder": "New password",
     "confirm_password_placeholder": "Confirm new password",
@@ -151,13 +152,8 @@
     "select_country": "Select country",
     "email": "Mobile number or email address",
     "password": "Password",
-    "password_hint": "Minimum 8 characters, including uppercase, lowercase, numbers, and special characters",
-    "password_error": "Password must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.",
-    "req_length": "At least 8 characters",
-    "req_upper": "Uppercase letter (A-Z)",
-    "req_lower": "Lowercase letter (a-z)",
-    "req_number": "Number (0-9)",
-    "req_special": "Special character (!@#$...)",
+    "password_hint": "At least 8 characters",
+    "password_error": "Password must be at least 8 characters.",
     "submit": "Sign up",
     "submitting": "Creating account...",
     "google": "Continue with Google",
@@ -219,7 +215,13 @@
     "match_title": "It's a match!",
     "match_desc": "Awesome! You and {name} liked each other. Let's start chatting and practicing together.",
     "match_chat_now": "Message now",
-    "match_continue": "Keep discovering"
+    "match_continue": "Keep discovering",
+    "proFilter": {
+      "timezoneLabel": "Filter by timezone",
+      "timezoneAll": "All timezones",
+      "lockedHint": "Advanced filters are part of Pro. Your suggestion list stays exactly as complete as before.",
+      "lockedCta": "See Pro"
+    }
   },
   "community": {
     "title": "Community",
@@ -642,7 +644,7 @@
     "level_4": "Upper Intermediate",
     "level_5": "Fluent",
     "intent_casual": "Casual conversation",
-    "intent_exam": "Exam prep (IELTS, JLPT...)",
+    "intent_exam": "Exam prep",
     "intent_travel": "Travel",
     "intent_work": "Work",
     "empty_languages_hint": "No languages added yet. Please select a language and click 'Add' above.",
@@ -668,7 +670,11 @@
     "group_member_muted": "You have been muted in group \"{group}\".",
     "group_member_report": "New member report in group \"{group}\": {reason}",
     "group_post_report": "New post report in group \"{group}\": {reason}",
-    "schedule_reminder": "Upcoming scheduled chat in 30 minutes — get ready!"
+    "schedule_reminder": "Upcoming scheduled chat in 30 minutes — get ready!",
+    "subscription_renewal_reminder": "Your Pro plan is about to renew.",
+    "subscription_past_due": "Payment failed — you still have Pro during the grace period.",
+    "subscription_downgraded": "Your Pro plan has ended. Your data is untouched.",
+    "subscription_activated": "Your Pro plan is now active."
   },
   "topics": {
     "travel": "Travel",
@@ -680,7 +686,7 @@
     "books": "Books",
     "game": "Gaming",
     "culture": "Culture",
-    "exams": "Exams (IELTS/TOEIC...)"
+    "exams": "Exams"
   },
   "call": {
     "start_audio": "Voice call",
@@ -814,7 +820,41 @@
     "days_left": "{count} days left",
     "unlimited": "Unlimited",
     "view_results": "View Results",
-    "resume": "Resume"
+    "resume": "Resume",
+    "create_ai_title": "Create AI Quiz (Gemini)",
+    "create_ai_subtitle": "Upload a document (.pdf, .docx, .txt) or paste lesson content ➔ Gemini AI will automatically create a quiz for you!",
+    "back_to_quiz_list": "Back to Quiz List",
+    "level_cefr_label": "Level (CEFR)",
+    "question_count_select_label": "Question Count",
+    "q_count_auto": "✨ Automatically extract all questions from document",
+    "q_count_5": "5 questions (3 min quick review)",
+    "q_count_10": "10 questions (5 min standard)",
+    "q_count_15": "15 questions (10 min detailed)",
+    "q_count_20": "20 questions (15 min full set)",
+    "q_count_30": "30 questions (20 min exam)",
+    "q_count_50": "50 questions (35 min full exam)",
+    "q_count_custom": "Custom number of questions...",
+    "custom_q_count_placeholder": "Enter desired number of questions (e.g. 15, 25, 40...)",
+    "title_input_label": "Quiz Title *",
+    "title_input_placeholder": "e.g. Travel Vocabulary Review · A1",
+    "desc_input_label": "Description & Hashtags",
+    "desc_input_placeholder": "Enter quiz description or hashtags (e.g. #IELTS #Travel #Vocabulary)...",
+    "content_source_label": "Content source for AI question generation *",
+    "upload_file_btn": "Upload document (.pdf, .docx, .txt)",
+    "delete_file_btn": "Delete file",
+    "or_paste_text": "— Or paste text below —",
+    "paste_text_placeholder": "Paste reading passages, vocabulary lists, or any text for Gemini AI to generate questions...",
+    "step_creating_msg": "1. Initializing quiz shell...",
+    "step_generating_msg": "2. Gemini AI is analyzing content and generating questions...",
+    "step_importing_msg": "3. Validating and saving questions...",
+    "step_publishing_msg": "4. Publishing quiz...",
+    "step_done_msg": "AI Quiz created successfully! Redirecting to quiz...",
+    "btn_cancel": "Cancel",
+    "btn_generate_ai": "Generate Quiz with AI",
+    "btn_processing": "Processing...",
+    "err_missing_title": "Please enter a quiz title",
+    "err_missing_content": "Please upload a document file or enter lesson content for AI generation",
+    "err_ai_empty": "AI could not generate any questions from this content. Please check your document."
   },
   "challenge": {
     "title": "Challenges",
@@ -833,5 +873,133 @@
     "phase_running": "Running",
     "phase_ended": "Ended",
     "resume": "Continue"
+  },
+  "pricing": {
+    "title": "Stududu plans",
+    "loading": "Loading your plan…",
+    "principle": {
+      "line1": "Human-to-human interaction is free forever.",
+      "line2": "Only things that burn real infrastructure cost have limits."
+    },
+    "plan": {
+      "free": "Free",
+      "pro": "Pro"
+    },
+    "table": {
+      "feature": "Feature"
+    },
+    "usage": {
+      "today": "You have used {used}/{limit} today",
+      "total": "You have saved {used}/{limit} words"
+    },
+    "features": {
+      "translate_lookup": {
+        "label": "Lookup & in-chat translation",
+        "basis": "Google Translate API — billed per character",
+        "free": "30 /day",
+        "pro": "500 /day"
+      },
+      "vocabulary_save": {
+        "label": "Vocabulary notebook",
+        "basis": "Storage",
+        "free": "100 words",
+        "pro": "2,000 words"
+      },
+      "chat_image_upload": {
+        "label": "Images in chat",
+        "basis": "Images stored as base64 in the DB — real storage cost",
+        "free": "10 images/day",
+        "pro": "100 images/day"
+      },
+      "match_like": {
+        "label": "Likes",
+        "basis": "Anti-spam — the Pro cap is deliberately not unlimited",
+        "free": "10 /day",
+        "pro": "50 /day"
+      },
+      "match_advanced_filter": {
+        "label": "Advanced matching filters",
+        "basis": "Both plans see 100% of candidates — Pro only adds narrowing tools",
+        "free": "No extra filtering",
+        "pro": "Filter by timezone, level, topic"
+      }
+    },
+    "current": {
+      "title": "Current plan",
+      "free": "Stududu Free",
+      "pro": "Stududu Pro",
+      "grace": "Payment failed. You keep Pro access until {date}.",
+      "canceling": "Pro stays active until {date}.",
+      "priceNote": "Pro is {price}/month. Cancel anytime — you keep what you paid for."
+    },
+    "status": {
+      "free": "On the free plan",
+      "pending_payment": "Waiting for payment confirmation",
+      "active": "Active, renews monthly",
+      "past_due": "Renewal failed — currently in the grace period",
+      "canceling": "Canceled, access kept until the end of the paid period"
+    },
+    "cta": {
+      "upgrade": "Upgrade — {price}/month",
+      "cancel": "Cancel plan",
+      "resume": "Resume plan"
+    },
+    "quota": {
+      "title": "Daily limit reached",
+      "body": "You have used all {limit} of your current plan.",
+      "resetAt": "The limit resets at {time}.",
+      "dismiss": "Not now",
+      "seePlans": "See plans",
+      "warn": "{remaining} left today"
+    },
+    "notForSale": {
+      "title": "What Stududu deliberately does not sell",
+      "intro": "Stududu does not sell the right to talk to other people. This list is part of the product design, not an oversight.",
+      "items": {
+        "ranking": {
+          "what": "Priority placement in match suggestions",
+          "why": "If money buys ranking, MATCH_SCORE stops meaning anything."
+        },
+        "badge": {
+          "what": "A Pro badge on public profiles",
+          "why": "It creates social tiers inside a learning community."
+        },
+        "calls": {
+          "what": "Audio/video call length or count",
+          "why": "Speaking practice is the whole point of the product."
+        },
+        "messages": {
+          "what": "Number of chat messages",
+          "why": "Core loop — free forever."
+        },
+        "safety": {
+          "what": "Safety features (block, report)",
+          "why": "Selling safety to users is an ethical violation."
+        }
+      }
+    },
+    "checkout": {
+      "title": "Pay for Pro",
+      "subtitle": "Test environment — no real money moves.",
+      "cardLabel": "Visa/Mastercard number",
+      "pay": "Pay {price}",
+      "missingSession": "Missing checkout session. Please start the upgrade again from the plans page.",
+      "testCardsTitle": "Test cards",
+      "testCards": {
+        "success": "Payment succeeds",
+        "dunning": "Succeeds now, but renewal will fail",
+        "declined": "Declined by the bank"
+      },
+      "activated": "Payment succeeded. Pro is now active.",
+      "confirming": "Confirming your payment with the provider…",
+      "confirmingSlow": "Your payment was recorded but the provider has not confirmed yet. Reload in a few minutes; if Pro is still not active, contact support.",
+      "canceled": "You canceled the checkout. Nothing was charged."
+    },
+    "nav": {
+      "upgrade": "Get Pro",
+      "upgradeHint": "See the Pro plan and your current limits",
+      "manage": "Manage plan",
+      "manageHint": "You are on Stududu Pro. Review your limits and renewal."
+    }
   }
 }
