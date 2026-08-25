@@ -18,7 +18,7 @@ export function LoginHeroSection({ t }: LoginHeroSectionProps) {
   return (
     <aside className="relative hidden lg:flex flex-col justify-between p-12 text-white bg-[#0D766E]">
       <div className="relative">
-        <Logo size="md" href="/" />
+        <Logo size="md" href="/" variant="white" />
       </div>
 
       <div className="relative max-w-md my-auto">
