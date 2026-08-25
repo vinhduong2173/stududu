@@ -4,6 +4,7 @@ import * as React from "react";
 import { Link, useRouter, usePathname } from "@/i18n/routing";
 import { api, ApiError } from "@/lib/api";
 import { useLocale, useTranslations } from "next-intl";
+import { validatePassword } from "@/lib/password";
 
 export const ENGLISH_COUNTRIES = ["US", "GB", "AU", "CA", "NZ", "IE", "SG", "ZA"];
 
@@ -92,7 +93,7 @@ export function useRegister() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) {
+    if (!validatePassword(password)) {
       setError(t("register.password_error"));
       return;
     }
