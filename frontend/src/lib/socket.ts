@@ -1,3 +1,5 @@
+import { io, type Socket } from 'socket.io-client';
+
 function getSocketUrl(): string {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;

@@ -80,8 +80,10 @@ export async function apiUpload<T>(path: string, form: FormData, token?: string)
   if (!activeToken && typeof window !== "undefined") {
     activeToken = localStorage.getItem("accessToken") || undefined;
   }
+  const baseUrl = getApiUrl();
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${baseUrl}${normalizedPath}`, {
     method: "POST",
     headers: activeToken ? { Authorization: `Bearer ${activeToken}` } : undefined,
     body: form,
