@@ -50,5 +50,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=postgresql://postgres:2605@host.docker.internal:5432/stududu?schema=public
+      - DATABASE_URL=${DATABASE_URL:-postgresql://stududu:stududu_cloud_2026@169.58.135.50:5432/stududu?schema=stududu}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-change-me-access-secret-stududu-2026}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-change-me-refresh-secret-stududu-2026}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://stududu.io.vn,https://api.stududu.io.vn,http://localhost:3000}
     restart: always
