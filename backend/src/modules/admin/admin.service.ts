@@ -8,6 +8,7 @@ import {
   ModerationActionType,
   Prisma,
   ReportStatus,
+  UserRole,
   UserStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -74,10 +75,14 @@ export class AdminService {
       countriesGroup,
       allLanguages,
     ] = await Promise.all([
-      this.prisma.user.count(),
-      this.prisma.user.count({ where: { createdAt: { gte: startOfWeek } } }),
+      this.prisma.user.count({ where: { role: { not: UserRole.admin } } }),
+      this.prisma.user.count({
+        where: { role: { not: UserRole.admin }, createdAt: { gte: startOfWeek } },
+      }),
       this.prisma.report.count({ where: { status: ReportStatus.open } }),
-      this.prisma.user.count({ where: { createdAt: { gte: startOfMonth } } }),
+      this.prisma.user.count({
+        where: { role: { not: UserRole.admin }, createdAt: { gte: startOfMonth } },
+      }),
       this.prisma.message
         .groupBy({
           by: ['conversationId'],
@@ -101,6 +106,7 @@ export class AdminService {
         },
       }),
       this.prisma.user.findMany({
+        where: { role: { not: UserRole.admin } },
         take: 5,
         orderBy: { createdAt: 'desc' },
         select: {
@@ -127,7 +133,7 @@ export class AdminService {
       }),
       this.prisma.user.groupBy({
         by: ['country'],
-        where: { country: { not: null } },
+        where: { country: { not: null }, role: { not: UserRole.admin } },
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
         take: 6,
@@ -188,9 +194,10 @@ export class AdminService {
     };
   }
 
-  // Quản lý danh sách Người dùng (phân trang + tìm kiếm)
+  // Quản lý danh sách Người dùng (phân trang + tìm kiếm, không bao gồm tài khoản Admin)
   async getUsers(page = 1, limit = 10, search?: string, status?: UserStatus) {
     const where: Prisma.UserWhereInput = {
+      role: { not: UserRole.admin },
       ...(status ? { status } : {}),
       ...(search
         ? {
@@ -249,6 +256,12 @@ export class AdminService {
           lang: I18nContext.current()?.lang,
         }),
       );
+
+    if (target.role === UserRole.admin) {
+      throw new BadRequestException(
+        'Không thể thực hiện kiểm duyệt hoặc xử lý tài khoản Quản trị viên (Admin).',
+      );
+    }
 
     const userUpdate = this.buildUserUpdate(dto.action);
 

@@ -344,6 +344,24 @@ export default function GroupDetailPage() {
     }
   };
 
+  // Handle Delete Group
+  const [deletingGroup, setDeletingGroup] = React.useState(false);
+  const handleDeleteGroup = async () => {
+    if (!group) return;
+    const confirmed = window.confirm(t("groups.delete_group_confirm"));
+    if (!confirmed) return;
+
+    setDeletingGroup(true);
+    try {
+      await api(`/groups/${group.id}`, { method: "DELETE" });
+      showToast(t("groups.delete_group_success"));
+      router.push("/community?tab=groups");
+    } catch (err: any) {
+      showToast(err?.message || t("groups.delete_group_error"));
+      setDeletingGroup(false);
+    }
+  };
+
   // Handle Join / Leave
   const handleJoin = async () => {
     if (!group) return;
@@ -361,7 +379,7 @@ export default function GroupDetailPage() {
 
   const handleLeave = async () => {
     if (!group) return;
-    if (!confirm("Bạn có chắc chắn muốn rời nhóm này?")) return;
+    if (!confirm(t("groups.leave_confirm"))) return;
     setActionLoading(true);
     try {
       await api(`/groups/${group.id}/leave`, { method: "POST" });
@@ -755,8 +773,8 @@ export default function GroupDetailPage() {
                         size="md"
                       />
                       <div className="flex-1">
-                        <p className="text-xs font-bold text-foreground">Chia sẻ tin bài với nhóm</p>
-                        <p className="text-[11px] text-muted">Đăng câu hỏi, kinh nghiệm học tập hoặc ý tưởng</p>
+                        <p className="text-xs font-bold text-foreground">{t("groups.share_post_box_title")}</p>
+                        <p className="text-[11px] text-muted">{t("groups.share_post_box_sub")}</p>
                       </div>
                     </div>
 
@@ -764,7 +782,7 @@ export default function GroupDetailPage() {
                       <textarea
                         value={postDraft}
                         onChange={(e) => setPostDraft(e.target.value)}
-                        placeholder="Bạn đang muốn chia sẻ điều gì với các thành viên trong nhóm?"
+                        placeholder={t("groups.write_post_placeholder")}
                         rows={3}
                         className="w-full text-xs p-3 rounded-2xl border border-border/60 bg-muted/10 text-foreground placeholder:text-muted focus:outline-none focus:border-primary transition-all resize-none"
                       />
@@ -775,7 +793,7 @@ export default function GroupDetailPage() {
                           <button
                             type="button"
                             onClick={() => setPostImage(null)}
-                            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black transition-colors"
+                            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black transition-colors cursor-pointer"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -787,7 +805,7 @@ export default function GroupDetailPage() {
                           className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border/60 bg-muted/10 hover:bg-muted/20 text-xs font-semibold text-muted hover:text-foreground transition-colors"
                         >
                           <ImageIcon className="w-4 h-4 text-primary" />
-                          <span>Đính kèm ảnh</span>
+                          <span>{t("community.attach_image")}</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -800,17 +818,17 @@ export default function GroupDetailPage() {
                         <Button
                           type="submit"
                           disabled={posting || (!postDraft.trim() && !postImage)}
-                          className="sd-btn-gradient rounded-xl text-xs font-bold gap-2 px-5 h-9"
+                          className="sd-btn-gradient rounded-xl text-xs font-bold gap-2 px-5 h-9 cursor-pointer"
                         >
                           {posting ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Đang đăng...</span>
+                              <span>{t("groups.posting")}</span>
                             </>
                           ) : (
                             <>
                               <Send className="w-4 h-4" />
-                              <span>Đăng bài</span>
+                              <span>{t("groups.post_btn")}</span>
                             </>
                           )}
                         </Button>
@@ -819,9 +837,9 @@ export default function GroupDetailPage() {
                   </div>
                 ) : (
                   <div className="p-6 rounded-3xl bg-muted/10 border border-dashed border-border text-center space-y-2">
-                    <p className="text-xs font-bold text-foreground">Bạn chưa phải là thành viên của nhóm</p>
+                    <p className="text-xs font-bold text-foreground">{t("groups.private_desc")}</p>
                     <p className="text-xs text-muted max-w-sm mx-auto">
-                      Hãy tham gia nhóm để đăng bài chia sẻ, thảo luận và tương tác cùng các thành viên khác!
+                      {t("groups.groups_subtitle")}
                     </p>
                   </div>
                 )}
@@ -829,14 +847,13 @@ export default function GroupDetailPage() {
                 {/* Group Feed Posts List */}
                 <div className="space-y-4">
                   <h3 className="text-sm font-bold text-foreground flex items-center justify-between px-1">
-                    <span>Bài viết trong nhóm ({posts.length})</span>
+                    <span>{t("groups.posts_title", { count: posts.length })}</span>
                   </h3>
 
                   {posts.length === 0 ? (
                     <div className="p-12 text-center bg-surface rounded-3xl border border-border space-y-2">
                       <MessageSquare className="w-10 h-10 text-muted/40 mx-auto mb-2" />
-                      <p className="text-sm font-bold text-foreground">Chưa có bài viết nào</p>
-                      <p className="text-xs text-muted">Hãy là người đầu tiên đăng bài trong nhóm này!</p>
+                      <p className="text-sm font-bold text-foreground">{t("groups.empty_posts")}</p>
                     </div>
                   ) : (
                     posts.map((p) => (
@@ -1076,32 +1093,32 @@ export default function GroupDetailPage() {
                 <div className="bg-surface rounded-3xl border border-border shadow-xs p-5 space-y-3.5">
                   <div className="flex items-center justify-between border-b border-border/60 pb-3">
                     <h3 className="text-sm font-bold text-foreground font-display">
-                      Giới thiệu nhóm
+                      {t("groups.group_about_title")}
                     </h3>
                     <button
                       onClick={() => setActiveTab("about")}
-                      className="text-xs font-semibold text-primary hover:underline"
+                      className="text-xs font-semibold text-primary hover:underline cursor-pointer"
                     >
-                      Xem thêm
+                      {t("groups.tab_about")}
                     </button>
                   </div>
 
                   <p className="text-xs text-foreground/80 leading-relaxed line-clamp-3">
-                    {group.description || "Nhóm chưa có mô tả chi tiết."}
+                    {group.description || t("groups.not_specified")}
                   </p>
 
                   <div className="space-y-2 pt-2 border-t border-border/50 text-xs text-muted">
                     <div className="flex items-center justify-between">
-                      <span>Quyền riêng tư:</span>
-                      <strong className="text-foreground font-bold">{group.privacy === "private" ? "Riêng tư" : "Công khai"}</strong>
+                      <span>{t("groups.privacy_label")}:</span>
+                      <strong className="text-foreground font-bold">{group.privacy === "private" ? t("groups.private") : t("groups.public")}</strong>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>Thành viên:</span>
-                      <strong className="text-foreground font-bold">{group.memberCount} thành viên</strong>
+                      <span>{t("groups.tab_members")}:</span>
+                      <strong className="text-foreground font-bold">{t("groups.members_count", { count: group.memberCount })}</strong>
                     </div>
                     {group.language && (
                       <div className="flex items-center justify-between">
-                        <span>Ngôn ngữ:</span>
+                        <span>{t("groups.language")}:</span>
                         <strong className="text-foreground font-bold">{group.language.name}</strong>
                       </div>
                     )}
@@ -1112,10 +1129,10 @@ export default function GroupDetailPage() {
                 <div className="bg-surface rounded-3xl border border-border shadow-xs p-5 space-y-3">
                   <h3 className="text-sm font-bold text-foreground font-display flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-primary" />
-                    <span>Luyện tập hiệu quả</span>
+                    <span>{t("groups.effective_practice_title")}</span>
                   </h3>
                   <p className="text-xs text-muted leading-relaxed">
-                    Hãy tích cực chia sẻ bài viết, câu hỏi hoặc kinh nghiệm để cùng nhau nâng cao kỹ năng ngôn ngữ mỗi ngày!
+                    {t("groups.effective_practice_desc")}
                   </p>
                 </div>
               </div>
@@ -1144,11 +1161,13 @@ export default function GroupDetailPage() {
               loadingPendingPosts={loadingPendingPosts}
               joinRequests={joinRequests}
               loadingRequests={loadingRequests}
+              deletingGroup={deletingGroup}
               onTogglePostApproval={handleTogglePostApprovalSetting}
               onApprovePost={handleApprovePendingPost}
               onRejectPost={handleRejectPendingPost}
               onApproveRequest={handleApproveRequest}
               onRejectRequest={handleRejectRequest}
+              onDeleteGroup={handleDeleteGroup}
             />
           )}
         </div>
@@ -1163,8 +1182,8 @@ export default function GroupDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-surface border border-border rounded-3xl p-6 w-full max-w-lg space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <h3 className="text-sm font-bold text-foreground">Chỉnh sửa bài viết</h3>
-              <button onClick={() => setEditingPost(null)} className="text-muted hover:text-foreground">
+              <h3 className="text-sm font-bold text-foreground">{t("community.edit")}</h3>
+              <button onClick={() => setEditingPost(null)} className="text-muted hover:text-foreground cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1180,7 +1199,7 @@ export default function GroupDetailPage() {
               <div className="relative rounded-2xl overflow-hidden border border-border max-h-52 w-full bg-black/5">
                 <img src={editImage} alt="Attachment" className="w-full h-full object-contain max-h-48" />
                 <div className="absolute top-2 right-2 flex items-center gap-1.5">
-                  <label className="cursor-pointer bg-black/60 hover:bg-black text-white p-1.5 rounded-full transition-colors" title="Đổi ảnh">
+                  <label className="cursor-pointer bg-black/60 hover:bg-black text-white p-1.5 rounded-full transition-colors" title={t("community.change_image")}>
                     <ImageIcon className="w-3.5 h-3.5" />
                     <input
                       type="file"
@@ -1194,8 +1213,8 @@ export default function GroupDetailPage() {
                     type="button"
                     onClick={() => setEditImage(null)}
                     disabled={updatingPost}
-                    className="bg-black/60 hover:bg-black text-white p-1.5 rounded-full transition-colors"
-                    title="Xóa ảnh"
+                    className="bg-black/60 hover:bg-black text-white p-1.5 rounded-full transition-colors cursor-pointer"
+                    title={t("community.delete_image")}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -1204,7 +1223,7 @@ export default function GroupDetailPage() {
             ) : (
               <label className="cursor-pointer inline-flex items-center gap-2 text-xs font-semibold text-muted hover:text-foreground transition-colors border border-dashed border-border/80 rounded-2xl px-3.5 py-2 hover:bg-muted/10">
                 <ImageIcon className="w-4 h-4 text-primary" />
-                <span>Đính kèm / Thêm ảnh bài viết</span>
+                <span>{t("community.attach_image")}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -1216,8 +1235,8 @@ export default function GroupDetailPage() {
             )}
 
             <div className="flex items-center justify-end gap-3 pt-2">
-              <Button variant="outline" size="sm" onClick={() => setEditingPost(null)} className="rounded-xl text-xs">
-                Hủy
+              <Button variant="outline" size="sm" onClick={() => setEditingPost(null)} className="rounded-xl text-xs cursor-pointer">
+                {t("common.cancel")}
               </Button>
               <Button
                 size="sm"

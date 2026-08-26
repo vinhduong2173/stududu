@@ -49,10 +49,10 @@ export function RegisterLocationFields({
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-muted ml-1">{t("register.surname")}</label>
+          <label className="text-xs font-semibold text-muted ml-1">{t("register.last_name") || t("register.surname")}</label>
           <Input
             type="text"
-            placeholder={t("register.surname")}
+            placeholder={t("register.last_name") || t("register.surname")}
             required
             value={lastName}
             onChange={(e) => {

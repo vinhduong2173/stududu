@@ -11,9 +11,21 @@ interface RegisterHeroColumnProps {
 
 export function RegisterHeroColumn({ t }: RegisterHeroColumnProps) {
   const highlights = [
-    { icon: HeartHandshake, title: "100% Tương hỗ", desc: "Không cần mua credit hay trả phí" },
-    { icon: Zap, title: "Luyện phản xạ nhanh", desc: "Đàm thoại trực tiếp cùng người bản xứ" },
-    { icon: ShieldCheck, title: "Cộng đồng an toàn", desc: "Hệ thống kiểm duyệt & đánh giá tin cậy" },
+    {
+      icon: HeartHandshake,
+      title: t("register.hero_feature_1_title") || "100% Tương hỗ",
+      desc: t("register.hero_feature_1_desc") || "Không cần mua credit hay trả phí",
+    },
+    {
+      icon: Zap,
+      title: t("register.hero_feature_2_title") || "Luyện phản xạ nhanh",
+      desc: t("register.hero_feature_2_desc") || "Đàm thoại trực tiếp cùng người bản xứ",
+    },
+    {
+      icon: ShieldCheck,
+      title: t("register.hero_feature_3_title") || "Cộng đồng an toàn",
+      desc: t("register.hero_feature_3_desc") || "Hệ thống kiểm duyệt & đánh giá tin cậy",
+    },
   ];
 
   return (
@@ -31,7 +43,7 @@ export function RegisterHeroColumn({ t }: RegisterHeroColumnProps) {
       <div className="relative max-w-md my-auto space-y-6">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-white text-xs font-bold border border-white/20">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Tham gia cùng +10.000 người học</span>
+          <span>{t("register.hero_badge") || "Tham gia cùng +10.000 người học"}</span>
         </div>
 
         <h1 className="text-3xl xl:text-4xl font-extrabold font-display leading-[1.15] tracking-tight text-white">
@@ -51,8 +63,8 @@ export function RegisterHeroColumn({ t }: RegisterHeroColumnProps) {
               <Avatar fallback="A" size="sm" className="ring-2 ring-white/40" />
             </div>
             <div className="text-xs text-white">
-              <span className="font-bold block">Kết nối khắp thế giới</span>
-              <span className="text-[10px] text-teal-200">Anh · Nhật · Hàn · Pháp · Đức · Tây Ban Nha</span>
+              <span className="font-bold block">{t("register.hero_community_card_title") || "Kết nối khắp thế giới"}</span>
+              <span className="text-[10px] text-teal-200">{t("register.hero_community_card_desc") || "Anh · Nhật · Hàn · Pháp · Đức · Tây Ban Nha"}</span>
             </div>
           </div>
         </div>

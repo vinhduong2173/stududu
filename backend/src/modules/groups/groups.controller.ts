@@ -265,4 +265,13 @@ export class GroupsController {
   ) {
     return this.groupsService.rejectGroupPost(idOrSlug, postId, user.sub);
   }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  deleteGroup(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') idOrSlug: string,
+  ) {
+    return this.groupsService.deleteGroup(idOrSlug, user.sub);
+  }
 }

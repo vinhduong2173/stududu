@@ -14,13 +14,18 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { GroupItem } from "@/components/features/GroupModals";
+import { useTranslations, useLocale } from "next-intl";
+import { getLanguageInfo, LanguageFlag } from "@/lib/languages";
 
 interface GroupAboutTabProps {
   group: GroupItem;
 }
 
 export function GroupAboutTab({ group }: GroupAboutTabProps) {
+  const t = useTranslations("groups");
+  const locale = useLocale();
   const isPrivate = group.privacy === "private";
+  const langInfo = group.language ? getLanguageInfo(group.language.code, group.language.name, locale) : null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -30,40 +35,45 @@ export function GroupAboutTab({ group }: GroupAboutTabProps) {
         <div className="bg-surface rounded-3xl border border-border p-6 shadow-sm space-y-4">
           <h2 className="text-lg font-bold text-foreground font-display flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-primary" />
-            <span>Giới thiệu về nhóm</span>
+            <span>{t("group_about_title")}</span>
           </h2>
 
           <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap bg-surface-2/50 p-4 rounded-2xl border border-border/50">
-            {group.description || "Nhóm chưa có phần mô tả chi tiết."}
+            {group.description || t("not_specified")}
           </div>
         </div>
+
+        {/* Target Language Feature Card */}
+        {group.language && langInfo && (
+          <div className="bg-surface rounded-3xl border border-border p-6 shadow-sm space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                <LanguageFlag code={group.language.code} className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground font-display">
+                  {t("language_label", { name: langInfo.displayName })}
+                </h3>
+                <p className="text-xs text-muted">
+                  {langInfo.nativeName}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Group Guidelines / Rules */}
         <div className="bg-surface rounded-3xl border border-border p-6 shadow-sm space-y-4">
           <h2 className="text-lg font-bold text-foreground font-display flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-amber-500" />
-            <span>Quy tắc cộng đồng trong nhóm</span>
+            <span>{t("effective_practice_title")}</span>
           </h2>
 
           <div className="space-y-3 text-xs text-foreground/80">
-            <div className="p-3 rounded-2xl bg-surface-2/40 border border-border/40 space-y-1">
-              <p className="font-bold text-foreground">1. Tôn trọng và văn minh</p>
+            <div className="p-3.5 rounded-2xl bg-surface-2/40 border border-border/40 space-y-1">
+              <p className="font-bold text-foreground">1. Active participation</p>
               <p className="text-muted leading-relaxed">
-                Luôn giữ thái độ tôn trọng, hỗ trợ các bạn cùng học và không phân biệt đối xử.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-surface-2/40 border border-border/40 space-y-1">
-              <p className="font-bold text-foreground">2. Tập trung vào trao đổi ngôn ngữ</p>
-              <p className="text-muted leading-relaxed">
-                Chia sẻ các chủ đề học tập, luyện tập phát âm, đặt câu hỏi ngữ pháp hoặc từ vựng.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-surface-2/40 border border-border/40 space-y-1">
-              <p className="font-bold text-foreground">3. Không spam hoặc quảng cáo trái phép</p>
-              <p className="text-muted leading-relaxed">
-                Mọi hành vi spam tin nhắn hoặc đăng bài quảng cáo thương mại sẽ bị loại khỏi nhóm.
+                {t("effective_practice_desc")}
               </p>
             </div>
           </div>
@@ -75,7 +85,7 @@ export function GroupAboutTab({ group }: GroupAboutTabProps) {
         {/* Privacy & Visibility */}
         <div className="bg-surface rounded-3xl border border-border p-6 shadow-sm space-y-4">
           <h3 className="text-base font-bold text-foreground font-display">
-            Quyền riêng tư & Hiển thị
+            {t("privacy_label")}
           </h3>
 
           <div className="flex items-start gap-3">
@@ -84,12 +94,10 @@ export function GroupAboutTab({ group }: GroupAboutTabProps) {
             </div>
             <div>
               <p className="text-xs font-bold text-foreground">
-                {isPrivate ? "Nhóm Riêng tư" : "Nhóm Công khai"}
+                {isPrivate ? t("private") : t("public")}
               </p>
               <p className="text-xs text-muted leading-relaxed mt-0.5">
-                {isPrivate
-                  ? "Chỉ thành viên mới có thể xem ai thuộc nhóm và xem những gì họ đăng."
-                  : "Bất kỳ ai cũng có thể nhìn thấy mọi người trong nhóm và những gì họ đăng."}
+                {isPrivate ? t("private_desc") : t("public_desc")}
               </p>
             </div>
           </div>
@@ -99,9 +107,9 @@ export function GroupAboutTab({ group }: GroupAboutTabProps) {
               <Calendar className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <p className="text-xs font-bold text-foreground">Lịch sử nhóm</p>
+              <p className="text-xs font-bold text-foreground">{t("created_by", { name: group.creator.displayName })}</p>
               <p className="text-xs text-muted leading-relaxed mt-0.5">
-                Thành lập vào ngày {new Date(group.createdAt).toLocaleDateString("vi-VN")}
+                {new Date(group.createdAt).toLocaleDateString(locale)}
               </p>
             </div>
           </div>
@@ -110,7 +118,7 @@ export function GroupAboutTab({ group }: GroupAboutTabProps) {
         {/* Creator Info */}
         <div className="bg-surface rounded-3xl border border-border p-6 shadow-sm space-y-4">
           <h3 className="text-base font-bold text-foreground font-display">
-            Người sáng lập nhóm
+            Creator
           </h3>
 
           <Link
@@ -126,7 +134,7 @@ export function GroupAboutTab({ group }: GroupAboutTabProps) {
               <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
                 {group.creator.displayName}
               </p>
-              <p className="text-xs text-muted font-medium">Quản trị viên / Creator</p>
+              <p className="text-xs text-muted font-medium">{t("created_by", { name: "" })}</p>
             </div>
           </Link>
         </div>

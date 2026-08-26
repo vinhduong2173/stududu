@@ -11,10 +11,12 @@ import {
   ToggleLeft,
   ToggleRight,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { GroupItem } from "@/components/features/GroupModals";
+import { useTranslations, useLocale } from "next-intl";
 
 export type JoinRequest = {
   id: number;
@@ -32,11 +34,13 @@ interface GroupModerationTabProps {
   loadingPendingPosts: boolean;
   joinRequests: JoinRequest[];
   loadingRequests: boolean;
+  deletingGroup?: boolean;
   onTogglePostApproval: () => void;
   onApprovePost: (id: number) => void;
   onRejectPost: (id: number) => void;
   onApproveRequest: (req: JoinRequest) => void;
   onRejectRequest: (req: JoinRequest) => void;
+  onDeleteGroup: () => void;
 }
 
 export function GroupModerationTab({
@@ -45,12 +49,17 @@ export function GroupModerationTab({
   loadingPendingPosts,
   joinRequests,
   loadingRequests,
+  deletingGroup,
   onTogglePostApproval,
   onApprovePost,
   onRejectPost,
   onApproveRequest,
   onRejectRequest,
+  onDeleteGroup,
 }: GroupModerationTabProps) {
+  const t = useTranslations("groups");
+  const locale = useLocale();
+
   return (
     <div className="space-y-6">
       {/* Settings Card: Post Approval Toggle */}
@@ -58,17 +67,17 @@ export function GroupModerationTab({
         <div>
           <h3 className="text-base font-bold text-foreground font-display flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-primary" />
-            <span>Kiểm duyệt bài viết thành viên</span>
+            <span>{t("post_approval_title")}</span>
           </h3>
           <p className="text-xs text-muted mt-0.5">
-            Khi bật tính năng này, mọi bài viết của thành viên phải được Quản trị viên phê duyệt trước khi công khai.
+            {t("post_approval_desc")}
           </p>
         </div>
 
         <button
           onClick={onTogglePostApproval}
           className="shrink-0 p-1 text-primary hover:opacity-80 transition-opacity cursor-pointer"
-          title={group.postApprovalRequired ? "Đang bật duyệt bài" : "Đang tắt duyệt bài"}
+          title={group.postApprovalRequired ? t("post_approval_enabled_tip") : t("post_approval_disabled_tip")}
         >
           {group.postApprovalRequired ? (
             <ToggleRight className="w-9 h-9 text-emerald-500 fill-emerald-500/20" />
@@ -85,7 +94,7 @@ export function GroupModerationTab({
           <div className="flex items-center justify-between pb-3 border-b border-border/80">
             <h3 className="text-base font-bold text-foreground font-display flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
-              <span>Bài viết chờ duyệt</span>
+              <span>{t("pending_posts_title")}</span>
             </h3>
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
               {pendingPosts.length}
@@ -95,11 +104,11 @@ export function GroupModerationTab({
           {loadingPendingPosts ? (
             <div className="py-8 text-center text-xs text-muted">
               <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
-              Đang tải bài viết...
+              {t("loading_posts")}
             </div>
           ) : pendingPosts.length === 0 ? (
             <div className="py-8 text-center text-xs text-muted italic">
-              Không có bài viết nào đang chờ duyệt.
+              {t("no_pending_posts")}
             </div>
           ) : (
             <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
@@ -117,7 +126,7 @@ export function GroupModerationTab({
                     <div>
                       <p className="text-xs font-bold text-foreground">{post.user.displayName}</p>
                       <p className="text-[10px] text-muted">
-                        {new Date(post.createdAt).toLocaleDateString("vi-VN")}
+                        {new Date(post.createdAt).toLocaleDateString(locale)}
                       </p>
                     </div>
                   </div>
@@ -141,18 +150,18 @@ export function GroupModerationTab({
                       size="sm"
                       variant="ghost"
                       onClick={() => onRejectPost(post.id)}
-                      className="text-xs text-rose-500 hover:bg-rose-500/10 gap-1 h-8 px-3 rounded-lg"
+                      className="text-xs text-rose-500 hover:bg-rose-500/10 gap-1 h-8 px-3 rounded-lg cursor-pointer"
                     >
                       <XCircle className="w-3.5 h-3.5" />
-                      <span>Từ chối</span>
+                      <span>{t("reject")}</span>
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => onApprovePost(post.id)}
-                      className="sd-btn-gradient text-xs font-bold gap-1 h-8 px-3 rounded-lg text-white"
+                      className="sd-btn-gradient text-xs font-bold gap-1 h-8 px-3 rounded-lg text-white cursor-pointer"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Phê duyệt</span>
+                      <span>{t("approve")}</span>
                     </Button>
                   </div>
                 </div>
@@ -166,7 +175,7 @@ export function GroupModerationTab({
           <div className="flex items-center justify-between pb-3 border-b border-border/80">
             <h3 className="text-base font-bold text-foreground font-display flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-primary" />
-              <span>Yêu cầu gia nhập nhóm</span>
+              <span>{t("pending_requests_title")}</span>
             </h3>
             <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
               {joinRequests.length}
@@ -176,11 +185,11 @@ export function GroupModerationTab({
           {loadingRequests ? (
             <div className="py-8 text-center text-xs text-muted">
               <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
-              Đang tải yêu cầu...
+              {t("loading_requests")}
             </div>
           ) : joinRequests.length === 0 ? (
             <div className="py-8 text-center text-xs text-muted italic">
-              Không có yêu cầu gia nhập nào đang chờ phê duyệt.
+              {t("no_pending_requests")}
             </div>
           ) : (
             <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
@@ -203,7 +212,7 @@ export function GroupModerationTab({
                         {req.user.displayName}
                       </p>
                       <p className="text-[11px] text-muted">
-                        Yêu cầu lúc {new Date(req.createdAt).toLocaleDateString("vi-VN")}
+                        {t("requested_at", { date: new Date(req.createdAt).toLocaleDateString(locale) })}
                       </p>
                     </div>
                   </Link>
@@ -213,16 +222,16 @@ export function GroupModerationTab({
                       size="sm"
                       variant="ghost"
                       onClick={() => onRejectRequest(req)}
-                      className="text-xs text-rose-500 hover:bg-rose-500/10 h-8 px-2.5 rounded-lg"
+                      className="text-xs text-rose-500 hover:bg-rose-500/10 h-8 px-2.5 rounded-lg cursor-pointer"
                     >
-                      Từ chối
+                      {t("reject")}
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => onApproveRequest(req)}
-                      className="sd-btn-gradient text-xs font-bold h-8 px-3 rounded-lg text-white"
+                      className="sd-btn-gradient text-xs font-bold h-8 px-3 rounded-lg text-white cursor-pointer"
                     >
-                      Duyệt
+                      {t("approve")}
                     </Button>
                   </div>
                 </div>
@@ -230,6 +239,28 @@ export function GroupModerationTab({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Delete Group Action */}
+      <div className="pt-4 flex items-center justify-end">
+        <Button
+          variant="outline"
+          onClick={onDeleteGroup}
+          disabled={deletingGroup}
+          className="rounded-full text-xs font-bold gap-2 text-rose-500 border-rose-500/30 hover:bg-rose-500/10 hover:border-rose-500 h-10 px-5 cursor-pointer transition-all"
+        >
+          {deletingGroup ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>{t("deleting_group")}</span>
+            </>
+          ) : (
+            <>
+              <Trash2 className="w-4 h-4" />
+              <span>{t("delete_group_btn")}</span>
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );

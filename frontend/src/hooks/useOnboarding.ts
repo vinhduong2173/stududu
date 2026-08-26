@@ -17,9 +17,16 @@ export function useOnboarding() {
   const locale = useLocale();
   const router = useRouter();
 
-  const [step, setStep] = React.useState(1);
+  const [step, setStepState] = React.useState(1);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
+
+  const setStep = (nextStep: number) => {
+    setStepState(nextStep);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("onboarding_current_step", nextStep.toString());
+    }
+  };
 
   // Step 1: Languages
   const [availableLanguages, setAvailableLanguages] = React.useState<Language[]>([]);
@@ -40,6 +47,16 @@ export function useOnboarding() {
   const [country, setCountry] = React.useState("VN");
 
   React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedStep = sessionStorage.getItem("onboarding_current_step");
+      if (savedStep) {
+        const parsed = parseInt(savedStep, 10);
+        if (parsed >= 1 && parsed <= 3) {
+          setStepState(parsed);
+        }
+      }
+    }
+
     api<Language[]>("/languages").then(setAvailableLanguages).catch(console.error);
     api<Topic[]>("/topics").then(setAvailableTopics).catch(console.error);
     api<any>("/users/me")
@@ -48,6 +65,34 @@ export function useOnboarding() {
         if (me.intent) setIntent(me.intent);
         if (me.city) setCity(me.city);
         if (me.country) setCountry(me.country);
+
+        if (Array.isArray(me.languages) && me.languages.length > 0) {
+          const loadedLangs: UserLanguageItem[] = me.languages.map((ul: any) => ({
+            languageId: ul.languageId,
+            role: ul.role,
+            level: ul.level || undefined,
+          }));
+          setMyLanguages(loadedLangs);
+        }
+
+        if (Array.isArray(me.interests) && me.interests.length > 0) {
+          const loadedTopics = me.interests.map((ui: any) => ui.topicId || ui.topic?.id).filter(Boolean);
+          setSelectedTopics(loadedTopics);
+        }
+
+        if (typeof window !== "undefined" && !sessionStorage.getItem("onboarding_current_step")) {
+          const hasTeach = me.languages?.some((l: any) => l.role === "native" || l.role === "fluent");
+          const hasLearn = me.languages?.some((l: any) => l.role === "learning");
+          const hasInterests = Array.isArray(me.interests) && me.interests.length > 0;
+
+          if (hasTeach && hasLearn) {
+            if (hasInterests) {
+              setStep(3);
+            } else {
+              setStep(2);
+            }
+          }
+        }
       })
       .catch(() => {});
   }, []);
@@ -136,6 +181,9 @@ export function useOnboarding() {
         },
       });
       await api("/users/me/preference", { method: "PUT", body: { intent } });
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("onboarding_current_step");
+      }
       router.push("/discover");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : tDisc("error_generic"));

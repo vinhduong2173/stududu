@@ -20,6 +20,8 @@ import {
 import { Button } from "@/components/ui/Button";
 import { GroupItem } from "@/components/features/GroupModals";
 import { cn } from "@/lib/utils";
+import { useTranslations, useLocale } from "next-intl";
+import { getLanguageInfo, LanguageFlag } from "@/lib/languages";
 
 export type GroupTabType = "discussion" | "about" | "members" | "moderation";
 
@@ -46,8 +48,12 @@ export function GroupHeroHeader({
   onLeave,
   onShare,
 }: GroupHeroHeaderProps) {
+  const t = useTranslations("groups");
+  const locale = useLocale();
   const router = useRouter();
   const isPrivate = group.privacy === "private";
+
+  const langInfo = group.language ? getLanguageInfo(group.language.code, group.language.name, locale) : null;
 
   return (
     <div className="space-y-4">
@@ -58,16 +64,16 @@ export function GroupHeroHeader({
           className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-border bg-surface hover:bg-surface-2 text-xs font-bold text-foreground transition-all shadow-2xs cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4 text-primary" />
-          <span>Quay lại danh sách nhóm</span>
+          <span>{t("back_to_list")}</span>
         </button>
 
         <button
           onClick={onShare}
           className="p-2 sm:px-3.5 sm:py-2 rounded-full border border-border bg-surface hover:bg-surface-2 text-xs font-semibold text-muted hover:text-foreground transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
-          title="Chia sẻ nhóm"
+          title={t("share")}
         >
           <Share2 className="w-4 h-4" />
-          <span className="hidden sm:inline">Chia sẻ</span>
+          <span className="hidden sm:inline">{t("share")}</span>
         </button>
       </div>
 
@@ -123,16 +129,19 @@ export function GroupHeroHeader({
                     ) : (
                       <Globe className="w-3.5 h-3.5 text-primary" />
                     )}
-                    <span>{isPrivate ? "Nhóm Riêng tư" : "Nhóm Công khai"}</span>
+                    <span>{isPrivate ? t("private") : t("public")}</span>
                   </span>
                   <span>·</span>
                   <span className="flex items-center gap-1">
-                    <strong className="text-foreground font-bold">{group.memberCount}</strong> thành viên
+                    {t("members_count", { count: group.memberCount })}
                   </span>
-                  {group.language && (
+                  {group.language && langInfo && (
                     <>
                       <span>·</span>
-                      <span>{group.language.name}</span>
+                      <span className="inline-flex items-center gap-1 text-primary font-semibold bg-primary/10 px-2.5 py-0.5 rounded-full text-xs">
+                        <LanguageFlag code={group.language.code} className="w-3.5 h-3.5" />
+                        <span>{langInfo.displayName}</span>
+                      </span>
                     </>
                   )}
                 </div>
@@ -146,10 +155,10 @@ export function GroupHeroHeader({
                   variant="outline"
                   onClick={onLeave}
                   disabled={actionLoading}
-                  className="rounded-full text-xs font-bold gap-2 text-rose-500 border-rose-500/30 hover:bg-rose-500/10 h-10 px-5"
+                  className="rounded-full text-xs font-bold gap-2 text-rose-500 border-rose-500/30 hover:bg-rose-500/10 h-10 px-5 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Rời nhóm</span>
+                  <span>{t("leave")}</span>
                 </Button>
               ) : group.userContext.hasPendingRequest ? (
                 <Button
@@ -157,16 +166,16 @@ export function GroupHeroHeader({
                   className="rounded-full text-xs font-bold gap-2 bg-amber-500/20 text-amber-600 border border-amber-500/30 h-10 px-5"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Đã gửi yêu cầu</span>
+                  <span>{t("request_pending")}</span>
                 </Button>
               ) : (
                 <Button
                   onClick={onJoin}
                   disabled={actionLoading}
-                  className="sd-btn-gradient rounded-full text-xs font-bold gap-2 shadow-sm h-10 px-6"
+                  className="sd-btn-gradient rounded-full text-xs font-bold gap-2 shadow-sm h-10 px-6 cursor-pointer"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>Tham gia nhóm</span>
+                  <span>{t("join")}</span>
                 </Button>
               )}
             </div>
@@ -179,12 +188,12 @@ export function GroupHeroHeader({
               className={cn(
                 "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer",
                 activeTab === "discussion"
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-primary/10 text-primary font-extrabold"
                   : "text-muted hover:text-foreground hover:bg-surface-2"
               )}
             >
               <MessageSquare className="w-4 h-4" />
-              <span>Thảo luận</span>
+              <span>{t("tab_discussion")}</span>
             </button>
 
             <button
@@ -192,12 +201,12 @@ export function GroupHeroHeader({
               className={cn(
                 "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer",
                 activeTab === "about"
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-primary/10 text-primary font-extrabold"
                   : "text-muted hover:text-foreground hover:bg-surface-2"
               )}
             >
               <FileText className="w-4 h-4" />
-              <span>Giới thiệu</span>
+              <span>{t("tab_about")}</span>
             </button>
 
             <button
@@ -205,12 +214,12 @@ export function GroupHeroHeader({
               className={cn(
                 "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer",
                 activeTab === "members"
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-primary/10 text-primary font-extrabold"
                   : "text-muted hover:text-foreground hover:bg-surface-2"
               )}
             >
               <Users className="w-4 h-4" />
-              <span>Thành viên</span>
+              <span>{t("tab_members")}</span>
               <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-muted/20 text-muted">
                 {group.memberCount}
               </span>
@@ -222,12 +231,12 @@ export function GroupHeroHeader({
                 className={cn(
                   "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer",
                   activeTab === "moderation"
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-primary/10 text-primary font-extrabold"
                     : "text-muted hover:text-foreground hover:bg-surface-2"
                 )}
               >
                 <ShieldCheck className="w-4 h-4" />
-                <span>Quản trị & Duyệt bài</span>
+                <span>{t("tab_moderation")}</span>
                 {pendingCount > 0 && (
                   <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-extrabold">
                     {pendingCount}

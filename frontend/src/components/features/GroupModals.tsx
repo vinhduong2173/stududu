@@ -27,6 +27,8 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useTranslations, useLocale } from "next-intl";
+import { getLanguageInfo, LanguageFlag } from "@/lib/languages";
 
 export type GroupItem = {
   id: number;
@@ -77,20 +79,35 @@ export function CreateGroupModal({
   onClose,
   onSuccess,
 }: CreateGroupModalProps) {
+  const t = useTranslations("groups");
+  const locale = useLocale();
+
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [privacy, setPrivacy] = React.useState<"public" | "private">("public");
-  const [avatarUrl, setAvatarUrl] = React.useState("");
-  const [coverUrl, setCoverUrl] = React.useState("");
+  const [languageId, setLanguageId] = React.useState<string>("");
+  const [availableLanguages, setAvailableLanguages] = React.useState<
+    { id: number; code: string; name: string }[]
+  >([]);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      api<{ id: number; code: string; name: string }[]>("/languages")
+        .then((res) => {
+          if (Array.isArray(res)) setAvailableLanguages(res);
+        })
+        .catch(console.error);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError("Vui lòng nhập tên nhóm");
+      setError(t("error_name_required"));
       return;
     }
 
@@ -103,8 +120,7 @@ export function CreateGroupModal({
           name: name.trim(),
           description: description.trim() || undefined,
           privacy,
-          avatarUrl: avatarUrl.trim() || undefined,
-          coverUrl: coverUrl.trim() || undefined,
+          languageId: languageId ? parseInt(languageId, 10) : undefined,
         },
       });
       onSuccess(res);
@@ -113,10 +129,9 @@ export function CreateGroupModal({
       setName("");
       setDescription("");
       setPrivacy("public");
-      setAvatarUrl("");
-      setCoverUrl("");
+      setLanguageId("");
     } catch (err: any) {
-      setError(err?.message || "Không thể tạo nhóm. Vui lòng thử lại.");
+      setError(err?.message || t("error_create_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -133,16 +148,16 @@ export function CreateGroupModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-foreground font-display">
-                Tạo nhóm cộng đồng mới
+                {t("modal_create_title")}
               </h2>
               <p className="text-xs text-muted">
-                Xây dựng câu lạc bộ học tập & trao đổi ngôn ngữ
+                {t("modal_create_subtitle")}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-muted hover:text-foreground hover:bg-muted/20 transition-colors"
+            className="p-2 rounded-xl text-muted hover:text-foreground hover:bg-muted/20 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -160,56 +175,81 @@ export function CreateGroupModal({
           {/* Group Name */}
           <div>
             <label className="block text-xs font-bold text-foreground mb-1.5">
-              Tên nhóm <span className="text-rose-500">*</span>
+              {t("name_label")} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Hội Luyện Nói Tiếng Anh C1"
+              placeholder={t("name_placeholder")}
               maxLength={100}
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/10 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-2xs"
               required
             />
+          </div>
+
+          {/* Language Selection Dropdown */}
+          <div>
+            <label className="block text-xs font-bold text-foreground mb-1">
+              {t("language_focus_label")}
+            </label>
+            <p className="text-[11px] text-muted mb-2">
+              {t("language_focus_desc")}
+            </p>
+            <select
+              value={languageId}
+              onChange={(e) => setLanguageId(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm font-medium text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-2xs"
+            >
+              <option value="">{t("select_language")}</option>
+              {availableLanguages.map((lang) => {
+                const info = getLanguageInfo(lang.code, lang.name, locale);
+                return (
+                  <option key={lang.id} value={lang.id}>
+                    {info.flagEmoji} {info.displayName} ({info.nativeName})
+                  </option>
+                );
+              })}
+            </select>
           </div>
 
           {/* Description */}
           <div>
             <label className="block text-xs font-bold text-foreground mb-1.5">
-              Mô tả nhóm
+              {t("desc_label")}
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Chia sẻ mục tiêu, hoạt động chính của nhóm..."
+              placeholder={t("desc_placeholder")}
               rows={3}
               maxLength={1000}
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/10 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+              className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none shadow-2xs"
             />
           </div>
 
           {/* Privacy Choice */}
           <div>
             <label className="block text-xs font-bold text-foreground mb-1.5">
-              Quyền riêng tư
+              {t("privacy_label")}
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setPrivacy("public")}
                 className={cn(
-                  "p-3.5 rounded-2xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer",
+                  "p-3.5 rounded-2xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer shadow-2xs",
                   privacy === "public"
                     ? "border-primary bg-primary/10 ring-2 ring-primary/20"
-                    : "border-border bg-muted/10 hover:border-border/80"
+                    : "border-border bg-white hover:border-border/80"
                 )}
               >
                 <div className="flex items-center gap-2 font-bold text-xs text-foreground">
                   <Globe className="w-4 h-4 text-primary" />
-                  <span>Công khai</span>
+                  <span>{t("public")}</span>
                 </div>
                 <span className="text-[11px] text-muted leading-tight">
-                  Ai cũng có thể tìm thấy và xem nội dung nhóm
+                  {t("public_desc")}
                 </span>
               </button>
 
@@ -217,49 +257,21 @@ export function CreateGroupModal({
                 type="button"
                 onClick={() => setPrivacy("private")}
                 className={cn(
-                  "p-3.5 rounded-2xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer",
+                  "p-3.5 rounded-2xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer shadow-2xs",
                   privacy === "private"
                     ? "border-primary bg-primary/10 ring-2 ring-primary/20"
-                    : "border-border bg-muted/10 hover:border-border/80"
+                    : "border-border bg-white hover:border-border/80"
                 )}
               >
                 <div className="flex items-center gap-2 font-bold text-xs text-foreground">
                   <Lock className="w-4 h-4 text-pink-500" />
-                  <span>Riêng tư</span>
+                  <span>{t("private")}</span>
                 </div>
                 <span className="text-[11px] text-muted leading-tight">
-                  Cần sự phê duyệt của Admin để gia nhập nhóm
+                  {t("private_desc")}
                 </span>
               </button>
             </div>
-          </div>
-
-          {/* Avatar URL (Optional) */}
-          <div>
-            <label className="block text-xs font-bold text-foreground mb-1.5">
-              URL Ảnh đại diện nhóm (tùy chọn)
-            </label>
-            <input
-              type="url"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="https://example.com/avatar.jpg"
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/10 text-xs text-foreground focus:outline-none focus:border-primary transition-all"
-            />
-          </div>
-
-          {/* Cover URL (Optional) */}
-          <div>
-            <label className="block text-xs font-bold text-foreground mb-1.5">
-              URL Ảnh bìa nhóm (tùy chọn)
-            </label>
-            <input
-              type="url"
-              value={coverUrl}
-              onChange={(e) => setCoverUrl(e.target.value)}
-              placeholder="https://example.com/cover.jpg"
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-muted/10 text-xs text-foreground focus:outline-none focus:border-primary transition-all"
-            />
           </div>
 
           {/* Action buttons */}
@@ -270,22 +282,22 @@ export function CreateGroupModal({
               onClick={onClose}
               className="rounded-xl text-xs"
             >
-              Hủy
+              {t("cancel")}
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="sd-btn-gradient rounded-xl text-xs font-bold gap-2"
+              className="sd-btn-gradient rounded-xl text-xs font-bold gap-2 cursor-pointer shadow-sm"
             >
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Đang tạo...</span>
+                  <span>{t("creating")}</span>
                 </>
               ) : (
                 <>
                   <Plus className="w-4 h-4" />
-                  <span>Tạo nhóm</span>
+                  <span>{t("create_btn")}</span>
                 </>
               )}
             </Button>
@@ -311,6 +323,9 @@ export function GroupDetailModal({
   onClose,
   onGroupUpdated,
 }: GroupDetailModalProps) {
+  const t = useTranslations("groups");
+  const locale = useLocale();
+
   const [group, setGroup] = React.useState<GroupItem | null>(null);
   const [posts, setPosts] = React.useState<GroupPost[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -355,7 +370,7 @@ export function GroupDetailModal({
       await fetchDetails();
       onGroupUpdated?.();
     } catch (err: any) {
-      alert(err?.message || "Không thể tham gia nhóm");
+      alert(err?.message || "Failed to join group");
     } finally {
       setActionLoading(false);
     }
@@ -364,14 +379,14 @@ export function GroupDetailModal({
   // Handle Leave Group
   const handleLeave = async () => {
     if (!group) return;
-    if (!confirm("Bạn có chắc chắn muốn rời nhóm này?")) return;
+    if (!confirm(t("leave_confirm"))) return;
     setActionLoading(true);
     try {
       await api(`/groups/${group.id}/leave`, { method: "POST" });
       await fetchDetails();
       onGroupUpdated?.();
     } catch (err: any) {
-      alert(err?.message || "Không thể rời nhóm");
+      alert(err?.message || "Failed to leave group");
     } finally {
       setActionLoading(false);
     }
@@ -392,7 +407,7 @@ export function GroupDetailModal({
       const postsRes = await api<GroupPost[]>(`/groups/${group.id}/posts`);
       setPosts(postsRes);
     } catch (err: any) {
-      alert(err?.message || "Không thể đăng bài");
+      alert(err?.message || "Failed to post");
     } finally {
       setPosting(false);
     }
@@ -405,7 +420,7 @@ export function GroupDetailModal({
         {loading ? (
           <div className="p-12 flex flex-col items-center justify-center space-y-3">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-xs font-semibold text-muted">Đang tải thông tin nhóm...</p>
+            <p className="text-xs font-semibold text-muted">{t("loading_groups")}</p>
           </div>
         ) : group ? (
           <div className="flex flex-col h-full overflow-y-auto">
@@ -423,7 +438,7 @@ export function GroupDetailModal({
               {/* Close Button */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-2 rounded-full bg-surface/80 hover:bg-surface text-foreground shadow-md backdrop-blur-xs transition-colors z-10"
+                className="absolute top-4 right-4 p-2 rounded-full bg-surface/80 hover:bg-surface text-foreground shadow-md backdrop-blur-xs transition-colors z-10 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -453,25 +468,28 @@ export function GroupDetailModal({
                     {group.privacy === "private" ? (
                       <span className="text-xs px-2.5 py-0.5 rounded-full bg-pink-500/10 text-pink-500 font-semibold border border-pink-500/20 flex items-center gap-1">
                         <Lock className="w-3 h-3" />
-                        Riêng tư
+                        {t("private")}
                       </span>
                     ) : (
                       <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold border border-primary/20 flex items-center gap-1">
                         <Globe className="w-3 h-3" />
-                        Công khai
+                        {t("public")}
                       </span>
                     )}
                   </h2>
 
-                  <div className="flex items-center gap-3 text-xs text-muted mt-1 font-medium">
-                    <span className="flex items-center gap-1">
+                  <div className="flex items-center gap-3 text-xs text-muted mt-1.5 font-medium flex-wrap">
+                    <span className="flex items-center gap-1 font-semibold text-foreground/80">
                       <Users className="w-3.5 h-3.5 text-primary" />
-                      {group.memberCount} thành viên
+                      {t("members_count", { count: group.memberCount })}
                     </span>
                     {group.language && (
-                      <span>· Ngôn ngữ: {group.language.name}</span>
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                        <LanguageFlag code={group.language.code} className="w-3.5 h-3.5" />
+                        {getLanguageInfo(group.language.code, group.language.name, locale).displayName}
+                      </span>
                     )}
-                    <span>· Tạo bởi: {group.creator.displayName}</span>
+                    <span>· {t("created_by", { name: group.creator.displayName })}</span>
                   </div>
                 </div>
 
@@ -480,10 +498,10 @@ export function GroupDetailModal({
                   <Link
                     href={`/groups/${group.id}`}
                     onClick={onClose}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold transition-all"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold transition-all"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Xem trang nhóm</span>
+                    <span>{t("view_page")}</span>
                   </Link>
 
                   {group.userContext.isMember ? (
@@ -492,10 +510,10 @@ export function GroupDetailModal({
                       variant="outline"
                       onClick={handleLeave}
                       disabled={actionLoading}
-                      className="rounded-xl text-xs font-semibold gap-1.5 text-rose-500 border-rose-500/30 hover:bg-rose-500/10"
+                      className="rounded-xl text-xs font-semibold gap-1.5 text-rose-500 border-rose-500/30 hover:bg-rose-500/10 cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
-                      <span>Rời nhóm</span>
+                      <span>{t("leave")}</span>
                     </Button>
                   ) : group.userContext.hasPendingRequest ? (
                     <Button
@@ -503,17 +521,17 @@ export function GroupDetailModal({
                       disabled
                       className="rounded-xl text-xs font-semibold gap-1.5 bg-warning/20 text-warning border border-warning/30"
                     >
-                      <span>Đã gửi yêu cầu</span>
+                      <span>{t("request_pending")}</span>
                     </Button>
                   ) : (
                     <Button
                       size="sm"
                       onClick={handleJoin}
                       disabled={actionLoading}
-                      className="sd-btn-gradient rounded-xl text-xs font-semibold gap-1.5 shadow-sm"
+                      className="sd-btn-gradient rounded-xl text-xs font-bold gap-1.5 shadow-sm cursor-pointer"
                     >
                       <UserPlus className="w-3.5 h-3.5" />
-                      <span>Tham gia nhóm</span>
+                      <span>{t("join")}</span>
                     </Button>
                   )}
                 </div>
@@ -529,7 +547,7 @@ export function GroupDetailModal({
               {/* Group Posts Section */}
               <div className="space-y-4 pt-2 border-t border-border/60">
                 <h3 className="text-sm font-bold text-foreground flex items-center justify-between">
-                  <span>Bài viết trong nhóm ({posts.length})</span>
+                  <span>{t("posts_title", { count: posts.length })}</span>
                 </h3>
 
                 {/* Create Post Input (only if member) */}
@@ -541,7 +559,7 @@ export function GroupDetailModal({
                     <textarea
                       value={postDraft}
                       onChange={(e) => setPostDraft(e.target.value)}
-                      placeholder="Viết bài đăng chia sẻ với các thành viên trong nhóm..."
+                      placeholder={t("write_post_placeholder")}
                       rows={2}
                       className="w-full text-xs bg-transparent text-foreground placeholder:text-muted focus:outline-none resize-none"
                     />
@@ -557,7 +575,7 @@ export function GroupDetailModal({
                         ) : (
                           <Send className="w-3.5 h-3.5" />
                         )}
-                        <span>Đăng bài</span>
+                        <span>{t("post_btn")}</span>
                       </Button>
                     </div>
                   </form>
@@ -566,7 +584,7 @@ export function GroupDetailModal({
                 {/* Group Feed Posts List */}
                 {posts.length === 0 ? (
                   <div className="p-8 text-center bg-muted/5 rounded-2xl border border-dashed border-border text-xs text-muted">
-                    Chưa có bài viết nào trong nhóm này.
+                    {t("empty_posts")}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -586,7 +604,7 @@ export function GroupDetailModal({
                               {p.user.displayName}
                             </p>
                             <p className="text-[10px] text-muted mt-0.5">
-                              {new Date(p.createdAt).toLocaleDateString("vi-VN")}
+                              {new Date(p.createdAt).toLocaleDateString(locale)}
                             </p>
                           </div>
                         </div>
@@ -615,7 +633,7 @@ export function GroupDetailModal({
           </div>
         ) : (
           <div className="p-12 text-center text-xs text-rose-500">
-            Không thể tải thông tin nhóm.
+            {t("error_create_failed")}
           </div>
         )}
       </div>

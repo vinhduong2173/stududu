@@ -39,7 +39,6 @@ import { api } from "@/lib/api";
 import { ReportDialog, useToast } from "@/components/features/TrustDialogs";
 import {
   CreateGroupModal,
-  GroupDetailModal,
   GroupItem,
 } from "@/components/features/GroupModals";
 import { GroupListItem } from "@/components/features/GroupListItem";
@@ -50,7 +49,7 @@ import { LearnerSet } from "@/lib/questionSets";
 import { getLanguageInfo } from "@/lib/languages";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 type FeedPost = {
   id: number;
@@ -171,6 +170,7 @@ function timeAgo(iso: string, t: any): string {
 export default function CommunityPage() {
   const t = useTranslations();
   const locale = useLocale();
+  const router = useRouter();
   const { show: showToast, toast } = useToast();
 
   const searchParams = useSearchParams();
@@ -192,7 +192,6 @@ export default function CommunityPage() {
   const [groupSearchQuery, setGroupSearchQuery] = React.useState("");
   const [loadingGroups, setLoadingGroups] = React.useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = React.useState(false);
-  const [selectedGroupIdOrSlug, setSelectedGroupIdOrSlug] = React.useState<number | string | null>(null);
 
   const filteredGroups = React.useMemo(() => {
     if (!groupSearchQuery.trim()) return realGroups;
@@ -1291,10 +1290,10 @@ export default function CommunityPage() {
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-foreground font-display">
-                      {t("community.groups_title") || "Nhóm ngôn ngữ & Học tập"}
+                      {t("groups.groups_title")}
                     </h2>
                     <p className="text-xs text-muted">
-                      Tham gia các câu lạc bộ hoặc tạo nhóm riêng để luyện tập cùng bạn học
+                      {t("groups.groups_subtitle")}
                     </p>
                   </div>
                 </div>
@@ -1305,7 +1304,7 @@ export default function CommunityPage() {
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                     <input
                       type="text"
-                      placeholder="Tìm kiếm nhóm..."
+                      placeholder={t("groups.search_placeholder")}
                       value={groupSearchQuery}
                       onChange={(e) => setGroupSearchQuery(e.target.value)}
                       className="w-full h-10 rounded-full border border-border bg-surface pl-9.5 pr-3 text-xs sm:text-sm font-medium text-foreground placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-2xs"
@@ -1314,45 +1313,45 @@ export default function CommunityPage() {
 
                   <Button
                     onClick={() => setShowCreateGroupModal(true)}
-                    className="sd-btn-gradient rounded-full text-xs sm:text-sm font-bold gap-1.5 shadow-xs shrink-0 h-10 px-4"
+                    className="sd-btn-gradient rounded-full text-xs sm:text-sm font-bold gap-1.5 shadow-xs shrink-0 h-10 px-4 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Tạo nhóm mới</span>
+                    <span>{t("groups.create_group")}</span>
                   </Button>
                 </div>
               </div>
 
               {loadingGroups ? (
-                <div className="py-12 text-center text-xs text-muted">
-                  Đang tải danh sách nhóm...
+                <div className="py-12 text-center text-xs text-muted font-medium">
+                  {t("groups.loading_groups")}
                 </div>
               ) : filteredGroups.length === 0 ? (
                 realGroups.length === 0 ? (
                   <div className="py-12 text-center space-y-3 bg-muted/5 rounded-2xl border border-dashed border-border/70 p-6">
                     <Users className="w-10 h-10 text-muted mx-auto" />
-                    <p className="text-xs font-semibold text-muted">Chưa có nhóm nào được tạo</p>
+                    <p className="text-xs font-semibold text-muted">{t("groups.empty_groups_title")}</p>
                     <Button
                       size="sm"
                       onClick={() => setShowCreateGroupModal(true)}
-                      className="sd-btn-gradient rounded-full text-xs font-bold gap-1.5"
+                      className="sd-btn-gradient rounded-full text-xs font-bold gap-1.5 cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Tạo nhóm đầu tiên</span>
+                      <span>{t("groups.create_first_group")}</span>
                     </Button>
                   </div>
                 ) : (
                   <div className="py-10 text-center space-y-2 bg-surface rounded-2xl border border-dashed border-border/70 p-6">
                     <Search className="w-8 h-8 text-muted mx-auto opacity-60" />
                     <p className="text-xs font-semibold text-muted">
-                      Không tìm thấy nhóm phù hợp với từ khóa &ldquo;{groupSearchQuery}&rdquo;
+                      {t("groups.empty_search_title", { query: groupSearchQuery })}
                     </p>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => setGroupSearchQuery("")}
-                      className="text-xs text-primary font-bold"
+                      className="text-xs text-primary font-bold cursor-pointer"
                     >
-                      Xóa tìm kiếm
+                      {t("groups.clear_search")}
                     </Button>
                   </div>
                 )
@@ -1362,7 +1361,6 @@ export default function CommunityPage() {
                     <GroupListItem
                       key={g.id}
                       group={g}
-                      onOpenInfo={(id) => setSelectedGroupIdOrSlug(id)}
                     />
                   ))}
                 </div>
@@ -1500,8 +1498,8 @@ export default function CommunityPage() {
                   <button
                     onClick={() => setEditImage(null)}
                     disabled={updatingPost}
-                    className="absolute top-1.5 right-1.5 bg-background/80 backdrop-blur-sm text-foreground p-1 rounded-full hover:bg-background transition-all shadow-sm"
-                    title={t("community.delete_image") || "Xóa ảnh"}
+                    className="absolute top-1.5 right-1.5 bg-background/80 backdrop-blur-sm text-foreground p-1 rounded-full hover:bg-background transition-all shadow-sm cursor-pointer"
+                    title={t("community.delete_image")}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -1566,15 +1564,8 @@ export default function CommunityPage() {
         onClose={() => setShowCreateGroupModal(false)}
         onSuccess={(newGroup) => {
           fetchRealGroups();
-          setSelectedGroupIdOrSlug(newGroup.id);
+          router.push(`/groups/${newGroup.id}`);
         }}
-      />
-
-      {/* Group Detail Modal */}
-      <GroupDetailModal
-        groupIdOrSlug={selectedGroupIdOrSlug}
-        onClose={() => setSelectedGroupIdOrSlug(null)}
-        onGroupUpdated={fetchRealGroups}
       />
 
       {toast}

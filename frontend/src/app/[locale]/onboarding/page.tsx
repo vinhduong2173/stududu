@@ -18,9 +18,9 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-background py-8 sm:py-12 px-4 sm:px-6 relative flex flex-col items-center justify-center text-foreground">
       {/* Top Bar: Logo & Language Switcher */}
-      <div className="w-full max-w-2xl flex items-center justify-between mb-6 px-1">
+      <div className="w-full max-w-2xl flex items-center justify-between mb-6 px-1 relative z-30">
         <Logo size="md" href="/" />
-        <div className="bg-white/80 backdrop-blur-sm rounded-full p-0.5 border border-border/70 shadow-2xs">
+        <div className="bg-white/80 backdrop-blur-sm rounded-full p-0.5 border border-border/70 shadow-2xs relative z-30">
           <LanguageSwitcher />
         </div>
       </div>

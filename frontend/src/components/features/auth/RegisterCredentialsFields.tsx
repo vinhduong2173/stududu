@@ -32,7 +32,8 @@ export function RegisterCredentialsFields({
         <label className="text-xs font-semibold text-muted ml-1">{t("register.email")}</label>
         <Input
           type="email"
-          placeholder={t("register.email")}
+          autoComplete="off"
+          placeholder="name@example.com"
           required
           value={email}
           onChange={(e) => {
@@ -47,6 +48,7 @@ export function RegisterCredentialsFields({
         <label className="text-xs font-semibold text-muted ml-1">{t("register.password")}</label>
         <Input
           type="password"
+          autoComplete="new-password"
           placeholder={t("register.password")}
           required
           value={password}

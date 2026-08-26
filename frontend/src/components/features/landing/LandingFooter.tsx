@@ -24,10 +24,10 @@ export function LandingFooter() {
             {t("eyebrow")}
           </Link>
           <Link href="/terms" className="hover:text-primary transition-colors">
-            Điều khoản sử dụng
+            {t("footer_terms")}
           </Link>
           <Link href="/privacy" className="hover:text-primary transition-colors">
-            Chính sách bảo mật
+            {t("footer_privacy")}
           </Link>
         </div>
 

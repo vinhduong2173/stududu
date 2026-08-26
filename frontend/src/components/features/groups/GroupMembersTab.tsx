@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { useTranslations, useLocale } from "next-intl";
 
 export type MemberType = {
   id: number;
@@ -42,6 +43,8 @@ export function GroupMembersTab({
   onToggleAdminRole,
   onRemoveMember,
 }: GroupMembersTabProps) {
+  const t = useTranslations("groups");
+  const locale = useLocale();
   const [searchQuery, setSearchQuery] = React.useState("");
 
   const filteredMembers = React.useMemo(() => {
@@ -66,10 +69,10 @@ export function GroupMembersTab({
         <div>
           <h2 className="text-lg font-bold text-foreground font-display flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            <span>Thành viên trong nhóm</span>
+            <span>{t("members_in_group")}</span>
           </h2>
           <p className="text-xs text-muted">
-            Tổng cộng <strong>{members.length}</strong> thành viên
+            {t("total_members", { count: members.length })}
           </p>
         </div>
 
@@ -78,7 +81,7 @@ export function GroupMembersTab({
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
           <input
             type="text"
-            placeholder="Tìm thành viên..."
+            placeholder={t("search_members_placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-10 rounded-full border border-border bg-surface pl-9.5 pr-3 text-xs sm:text-sm font-medium text-foreground placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-2xs"
@@ -89,11 +92,11 @@ export function GroupMembersTab({
       {loading ? (
         <div className="py-12 flex flex-col items-center justify-center space-y-2">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          <p className="text-xs text-muted font-medium">Đang tải danh sách thành viên...</p>
+          <p className="text-xs text-muted font-medium">{t("loading_members")}</p>
         </div>
       ) : filteredMembers.length === 0 ? (
         <div className="py-12 text-center text-xs text-muted font-medium">
-          Không tìm thấy thành viên nào phù hợp với &ldquo;{searchQuery}&rdquo;
+          {t("no_matching_members", { query: searchQuery })}
         </div>
       ) : (
         <div className="space-y-6">
@@ -101,7 +104,7 @@ export function GroupMembersTab({
           {admins.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-muted uppercase tracking-wider">
-                Quản trị viên & Người kiểm duyệt ({admins.length})
+                {t("admins_and_moderators", { count: admins.length })}
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -125,17 +128,17 @@ export function GroupMembersTab({
                             {m.user.displayName}
                           </p>
                           {m.isCreator ? (
-                            <span title="Người tạo nhóm" className="text-amber-500 shrink-0">
+                            <span title={t("creator_badge")} className="text-amber-500 shrink-0">
                               <Crown className="w-3.5 h-3.5 fill-amber-500" />
                             </span>
                           ) : (
-                            <span title="Quản trị viên" className="text-primary shrink-0">
+                            <span title={t("admin_badge")} className="text-primary shrink-0">
                               <ShieldCheck className="w-3.5 h-3.5" />
                             </span>
                           )}
                         </div>
                         <p className="text-[11px] text-muted">
-                          {m.isCreator ? "Người tạo nhóm" : "Quản trị viên"}
+                          {m.isCreator ? t("creator_badge") : t("admin_badge")}
                         </p>
                       </div>
                     </Link>
@@ -144,7 +147,7 @@ export function GroupMembersTab({
                       href={`/profile/${m.userId}`}
                       className="px-3 py-1.5 rounded-xl text-xs font-bold bg-surface border border-border hover:bg-surface-2 text-foreground transition-all shadow-2xs shrink-0"
                     >
-                      Xem hồ sơ
+                      {t("view_profile")}
                     </Link>
                   </div>
                 ))}
@@ -155,11 +158,11 @@ export function GroupMembersTab({
           {/* Section: All Members */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-muted uppercase tracking-wider">
-              Thành viên ({regularMembers.length})
+              {t("all_members", { count: regularMembers.length })}
             </h3>
 
             {regularMembers.length === 0 ? (
-              <p className="text-xs text-muted italic">Chưa có thành viên thông thường khác.</p>
+              <p className="text-xs text-muted italic">{t("no_regular_members")}</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {regularMembers.map((m) => (
@@ -181,7 +184,7 @@ export function GroupMembersTab({
                           {m.user.displayName}
                         </p>
                         <p className="text-[11px] text-muted">
-                          Tham gia {new Date(m.joinedAt).toLocaleDateString("vi-VN")}
+                          {t("joined_date", { date: new Date(m.joinedAt).toLocaleDateString(locale) })}
                         </p>
                       </div>
                     </Link>
@@ -191,13 +194,13 @@ export function GroupMembersTab({
                         href={`/profile/${m.userId}`}
                         className="px-3 py-1.5 rounded-xl text-xs font-bold bg-surface border border-border hover:bg-surface-2 text-foreground transition-all shadow-2xs"
                       >
-                        Xem hồ sơ
+                        {t("view_profile")}
                       </Link>
 
                       {isAdmin && onToggleAdminRole && (
                         <button
                           onClick={() => onToggleAdminRole(m)}
-                          title="Chỉ định làm Quản trị viên"
+                          title={t("make_admin")}
                           className="p-1.5 rounded-xl border border-border bg-surface hover:bg-primary/10 hover:border-primary/40 text-muted hover:text-primary transition-all cursor-pointer"
                         >
                           <ShieldCheck className="w-4 h-4" />
@@ -207,7 +210,7 @@ export function GroupMembersTab({
                       {isAdmin && onRemoveMember && (
                         <button
                           onClick={() => onRemoveMember(m)}
-                          title="Xóa khỏi nhóm"
+                          title={t("remove_member")}
                           className="p-1.5 rounded-xl border border-border bg-surface hover:bg-rose-500/10 hover:border-rose-500/40 text-muted hover:text-rose-500 transition-all cursor-pointer"
                         >
                           <UserX className="w-4 h-4" />

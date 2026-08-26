@@ -90,11 +90,11 @@ export function HeroChatPreview() {
             <span className="font-bold text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-200">
               木漏れ日
             </span>
-            <span className="text-muted">Komorebi (ánh nắng qua kẽ lá)</span>
+            <span className="text-muted">{t("hero_chat_vocab_meaning")}</span>
           </div>
           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200/70">
             <BookmarkCheck className="w-3 h-3" />
-            Đã lưu
+            {t("hero_chat_vocab_saved")}
           </span>
         </div>
       </div>

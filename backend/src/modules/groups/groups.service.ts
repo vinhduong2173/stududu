@@ -1041,4 +1041,34 @@ export class GroupsService {
 
     return { message: 'Đã gửi báo cáo thành viên thành công', reportId: report.id };
   }
+
+  async deleteGroup(idOrSlug: string | number, userId: number) {
+    const isId = typeof idOrSlug === 'number' || !isNaN(Number(idOrSlug));
+    const group = await this.prisma.group.findUnique({
+      where: isId ? { id: Number(idOrSlug) } : { slug: String(idOrSlug) },
+    });
+    if (!group) throw new NotFoundException('Không tìm thấy nhóm');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    const isSystemAdmin = user?.role === 'admin';
+    const isCreator = group.creatorId === userId;
+
+    let isGroupOwner = false;
+    const member = await this.prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId: group.id, userId } },
+    });
+    if (member && member.role === GroupMemberRole.owner && member.status === GroupMemberStatus.active) {
+      isGroupOwner = true;
+    }
+
+    if (!isCreator && !isGroupOwner && !isSystemAdmin) {
+      throw new ForbiddenException('Chỉ người tạo nhóm hoặc quản trị viên mới có quyền xóa nhóm');
+    }
+
+    await this.prisma.group.delete({
+      where: { id: group.id },
+    });
+
+    return { message: 'Đã xóa nhóm thành công', deletedGroupId: group.id };
+  }
 }

@@ -48,6 +48,22 @@ export function AdminUserModerationCard({
   submitting,
   onModerate,
 }: AdminUserModerationCardProps) {
+  if (user.role === "admin") {
+    return (
+      <section className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
+          <ShieldAlert className="h-5 w-5 text-primary" /> Quyền Quản trị viên
+        </h2>
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground space-y-2">
+          <p className="font-semibold text-primary">Tài khoản Quản trị viên hệ thống (Admin)</p>
+          <p className="text-muted text-xs leading-relaxed">
+            Tài khoản này có vai trò Quản trị viên cao cấp. Hệ thống không áp dụng các chế tài kiểm duyệt hoặc xóa tài khoản đối với Admin để đảm bảo an toàn vận hành.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   const suspendCount = violations.filter((v) => v.action === "suspend_3d" || v.action === "suspend_1w").length;
   const suggestion =
     suspendCount === 0
