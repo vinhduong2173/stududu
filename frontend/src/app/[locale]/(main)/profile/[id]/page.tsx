@@ -1,443 +1,150 @@
 "use client";
 
 import * as React from "react";
-import { useParams } from "next/navigation";
-import { useRouter } from "@/i18n/routing";
-import { Avatar } from "@/components/ui/Avatar";
-import { Chip } from "@/components/ui/Chip";
-import { Button } from "@/components/ui/Button";
-import {
-  Heart,
-  ArrowLeft,
-  MoreHorizontal,
-  Flag,
-  ShieldBan,
-  MessageCircle,
-  MapPin,
-  FileText,
-  User,
-  Clock,
-  Award,
-  Sparkles,
-  MessageSquare,
-} from "lucide-react";
-import { api } from "@/lib/api";
-import { ageFromDob, cn } from "@/lib/utils";
-import { ReportDialog, BlockDialog, useToast } from "@/components/features/TrustDialogs";
-import { LanguagesCard } from "@/components/features/LanguagesCard";
-import { ProfileAvailabilityCard } from "@/components/features/profile/ProfileAvailabilityCard";
 import { MatchModal } from "@/components/features/MatchModal";
+import { ReportDialog, BlockDialog } from "@/components/features/TrustDialogs";
+import { EndorseModal } from "@/components/features/Endorsements";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import {
-  EndorseModal,
-  EndorsementBadges,
-  ChatStats,
-} from "@/components/features/Endorsements";
-import { useTranslations } from "next-intl";
-import { getTopicTranslation, getIntentTranslation, getGenderTranslation } from "@/lib/i18nHelper";
-import { PostCard, FeedPost } from "@/components/features/PostCard";
+  OtherUserProfileHeader,
+  OtherUserSidebar,
+  UserProfilePostsFeed,
+  ProfileFloatingActionBar,
+} from "@/components/features/profile";
 
 export default function ProfilePage() {
-  const params = useParams();
-  const router = useRouter();
-  const t = useTranslations("profile");
-  const tDisc = useTranslations("discover");
-  const tRoot = useTranslations();
-  const id = typeof params.id === "string" ? parseInt(params.id) : 0;
+  const p = useUserProfile();
 
-  const [user, setUser] = React.useState<any>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState("");
-  const [menuOpen, setMenuOpen] = React.useState(false);
-  const [reportOpen, setReportOpen] = React.useState(false);
-  const [blockOpen, setBlockOpen] = React.useState(false);
-  const [matchOpen, setMatchOpen] = React.useState(false);
-  const [endorseOpen, setEndorseOpen] = React.useState(false);
-  const [endorseRefresh, setEndorseRefresh] = React.useState(0);
-  const [liked, setLiked] = React.useState(false);
-  const [conversationId, setConversationId] = React.useState<number | null>(null);
-  const [isLikeHovered, setIsLikeHovered] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<"posts" | "about">("posts");
-  const [userPosts, setUserPosts] = React.useState<FeedPost[]>([]);
-  const [currentUser, setCurrentUser] = React.useState<{ id: number; displayName: string } | null>(null);
-  const [reportTarget, setReportTarget] = React.useState<FeedPost | null>(null);
-  const { show: showToast, toast } = useToast();
+  if (p.loading) {
+    return (
+      <div className="flex min-h-[60vh] justify-center items-center p-12">
+        <div className="animate-spin h-10 w-10 border-4 border-primary/20 border-t-primary rounded-full" />
+      </div>
+    );
+  }
 
-  React.useEffect(() => {
-    if (id) fetchProfile();
-  }, [id]);
-
-  const fetchProfile = async () => {
-    setLoading(true);
-    try {
-      const [data, relation, postsData, meData] = await Promise.all([
-        api<any>(`/users/${id}`),
-        api<{ liked: boolean; conversationId: number | null }>(`/matching/relation/${id}`),
-        api<FeedPost[]>(`/community/feed?userId=${id}&targetUserId=${id}`).catch(() => []),
-        api<any>(`/users/me`).catch(() => null),
-      ]);
-      setUser(data);
-      setLiked(relation.liked);
-      setConversationId(relation.conversationId);
-      setUserPosts(postsData);
-      if (meData) setCurrentUser({ id: meData.id, displayName: meData.displayName });
-    } catch (err: any) {
-      setError(err.message || t("loading_error_other"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-
-  // Logic mới: thích là mở hội thoại ngay; đã thích → nút chuyển "Nhắn tin"
-  const handleLike = async () => {
-    try {
-      const result = await api<{ mutual: boolean; conversation: { id: number } | null }>(
-        `/matching/like/${id}`,
-        { method: "POST" },
-      );
-      setLiked(true);
-      setConversationId(result.conversation?.id ?? null);
-      if (result.mutual) {
-        setMatchOpen(true); // 2 bên cùng thích → mừng match (US-13)
-      } else {
-        showToast(t("like_success_toast", { name: user.displayName }));
-      }
-    } catch (err: any) {
-      showToast(err.message || tDisc("error_generic") || "Error");
-    }
-  };
-
-  const handleUnlike = async () => {
-    try {
-      await api(`/matching/like/${id}`, { method: "DELETE" });
-      setLiked(false);
-      setConversationId(null);
-      showToast(tDisc("card_unliked_toast", { name: user.displayName }) || "Unliked");
-    } catch (err: any) {
-      showToast(err.message || "Failed to unlike");
-    }
-  };
-
-  if (loading) return <div className="flex justify-center p-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
-  if (error || !user) return <div className="p-8 text-center text-error">{error || t("user_not_found")}</div>;
-
-  const isOnline = user.lastActive ? new Date(user.lastActive).getTime() > Date.now() - 5 * 60 * 1000 : false;
-  const teachLangs = user.languages.filter((l: any) => l.role === "native" || l.role === "fluent");
-  const learnLangs = user.languages.filter((l: any) => l.role === "learning");
+  if (p.error || !p.user) {
+    return (
+      <div className="p-12 text-center text-rose-700 font-semibold text-sm">
+        {p.error || p.t("user_not_found")}
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 pb-24">
-      <div className="sticky top-0 bg-background/80 backdrop-blur-md z-10 flex items-center justify-between p-4">
-        <button onClick={() => router.back()} className="p-2 hover:bg-muted/10 rounded-full transition-colors">
-          <ArrowLeft className="w-6 h-6 text-foreground" />
-        </button>
-        <div className="relative">
-          <button
-            className="p-2 hover:bg-muted/10 rounded-full transition-colors"
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <MoreHorizontal className="w-6 h-6 text-foreground" />
-          </button>
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-12 z-20 w-48 rounded-2xl border border-border bg-surface shadow-xl py-2 animate-in fade-in zoom-in-95 duration-150">
-                <button
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
-                  onClick={() => { setMenuOpen(false); setReportOpen(true); }}
-                >
-                  <Flag className="h-4 w-4 text-warning" /> {t("report")}
-                </button>
-                <button
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-error hover:bg-error/5"
-                  onClick={() => { setMenuOpen(false); setBlockOpen(true); }}
-                >
-                  <ShieldBan className="h-4 w-4" /> {t("block")}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
+    <div className="w-full pb-28">
+      {/* Dialogs */}
       <MatchModal
-        isOpen={matchOpen}
+        isOpen={p.matchOpen}
         onClose={() => {
-          setMatchOpen(false);
-          router.push("/discover");
+          p.setMatchOpen(false);
+          p.router.push("/discover");
         }}
-        partnerName={user.displayName}
-        partnerAvatar={user.avatarUrl}
-        conversationId={conversationId ?? undefined}
+        partnerName={p.user.displayName}
+        partnerAvatar={p.user.avatarUrl}
+        conversationId={p.conversationId ?? undefined}
       />
+
       <EndorseModal
-        open={endorseOpen}
-        onClose={() => setEndorseOpen(false)}
-        targetId={id}
-        targetName={user.displayName}
+        open={p.endorseOpen}
+        onClose={() => p.setEndorseOpen(false)}
+        targetId={p.id}
+        targetName={p.user.displayName}
         onDone={() => {
-          setEndorseRefresh((v) => v + 1);
-          showToast(t("endorse_success_toast"));
+          p.setEndorseRefresh((v) => v + 1);
+          p.showToast(p.t("endorse_success_toast"));
         }}
       />
+
       <ReportDialog
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        targetId={id}
-        targetName={user.displayName}
-        onDone={() => showToast(t("report_success_toast"))}
+        open={p.reportOpen}
+        onClose={() => p.setReportOpen(false)}
+        targetId={p.id}
+        targetName={p.user.displayName}
+        onDone={() => p.showToast(p.t("report_success_toast"))}
       />
+
       <BlockDialog
-        open={blockOpen}
-        onClose={() => setBlockOpen(false)}
-        targetId={id}
-        targetName={user.displayName}
-        onDone={() => { showToast(t("block_success_toast", { name: user.displayName })); router.push("/discover"); }}
+        open={p.blockOpen}
+        onClose={() => p.setBlockOpen(false)}
+        targetId={p.id}
+        targetName={p.user.displayName}
+        onDone={() => {
+          p.showToast(p.t("block_success_toast", { name: p.user.displayName }));
+          p.router.push("/discover");
+        }}
       />
-      {toast}
 
-      <div className="p-4 md:p-8">
-        {/* Header — cover banner + avatar đè mép */}
-        <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-8">
-          <div className="sd-cover relative h-32 md:h-44">
-            <div className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-          </div>
-          <div className="px-6 pb-6">
-            <div className="-mt-12 mb-4 inline-block rounded-full ring-4 ring-surface bg-surface">
-              <Avatar src={user.avatarUrl} fallback={user.displayName.charAt(0)} size="xl" online={isOnline} className="shadow-lg" />
-            </div>
-            <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">
-              {user.displayName}
-              {ageFromDob(user.dob) !== null && (
-                <span className="font-medium text-muted">, {ageFromDob(user.dob)}</span>
-              )}
-            </h1>
-            <p className="text-muted mt-1 flex items-center gap-1.5">
-              <span className={`inline-block h-2 w-2 rounded-full ${isOnline ? "bg-success" : "bg-muted"}`} />
-              {isOnline ? tDisc("card_online") : tDisc("card_recent")}
-              {user.city && (
-                <span className="inline-flex items-center gap-0.5">
-                  · <MapPin className="w-4 h-4" /> {[user.city, user.country].filter(Boolean).join(", ")}
-                </span>
-              )}
-              {user.gender && <span>· {getGenderTranslation(user.gender, tRoot)}</span>}
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-8 bg-surface rounded-3xl p-6 shadow-sm border border-border">
-
-          {/* FS-26/27 — trust signals: ghi nhận định tính + giờ luyện tập */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Award className="w-5 h-5 text-primary" />
-                <span>{t("trust_activity_other")}</span>
-              </h2>
-              {conversationId && (
-                <button
-                  onClick={() => setEndorseOpen(true)}
-                  className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                >
-                  <Award className="w-4 h-4" /> {t("endorse_btn")}
-                </button>
-              )}
-            </div>
-            <div className="space-y-3">
-              <EndorsementBadges userId={id} refreshKey={endorseRefresh} />
-              <ChatStats userId={id} />
-            </div>
-          </div>
-
-          <div className="border-t border-border pt-2">
-            <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1">
-              <button
-                onClick={() => setActiveTab("posts")}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
-                  activeTab === "posts"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted hover:text-foreground hover:bg-surface-2"
-                )}
-              >
-                <FileText className="w-4 h-4" />
-                <span>{t("tab_posts")}</span>
-              </button>
-              <button
-                onClick={() => setActiveTab("about")}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
-                  activeTab === "about"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted hover:text-foreground hover:bg-surface-2"
-                )}
-              >
-                <User className="w-4 h-4" />
-                <span>{t("tab_about")}</span>
-              </button>
-            </nav>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className={cn(
-          "lg:col-span-5 space-y-6",
-          activeTab === "posts" && "block",
-          activeTab === "about" && "block lg:col-span-12"
-        )}>
-          {(activeTab === "posts" || activeTab === "about") && (
-            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
-              <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
-                <User className="w-5 h-5 text-primary" />
-                <span>{t("intro")}</span>
-              </h2>
-              <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm italic bg-surface-2/60 p-4 rounded-2xl border border-border/50 mb-4">
-                {user.bio ? `"${user.bio}"` : t("no_intro_other")}
-              </p>
-              {user.intent && (
-                <div className="mb-3">
-                  <span className="font-semibold text-muted text-xs block uppercase mb-1">{t("intent")}</span>
-                  <Chip variant="outline" className="text-sm font-medium py-1">
-                    {getIntentTranslation(user.intent, tRoot)}
-                  </Chip>
-                </div>
-              )}
-            </div>
-          )}
-          {(activeTab === "posts" || activeTab === "about") && (
-            <LanguagesCard languages={user.languages || []} />
-          )}
-
-          {(activeTab === "posts" || activeTab === "about") && (
-            <ProfileAvailabilityCard
-              availableSlots={user.availableSlots}
-              timezone={user.timezone}
-            />
-          )}
-
-          {(activeTab === "posts" || activeTab === "about") && user.interests && user.interests.length > 0 && (
-            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary" />
-                <span>{t("interests")}</span>
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {user.interests.map((i: any) => (
-                  <Chip key={i.id} variant="outline" className="text-sm py-1">
-                    {getTopicTranslation(i.topic.name, tRoot)}
-                  </Chip>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column — User Posts Feed */}
-        <div className={cn(
-          "lg:col-span-7 space-y-6",
-          activeTab === "posts" && "block",
-          activeTab === "about" && "hidden"
-        )}>
-          {activeTab === "posts" && (
-            <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-primary" />
-                  <span>{t("posts_title")}</span>
-                </span>
-                <span className="text-xs text-muted font-normal">{t("posts_count", { count: userPosts.length })}</span>
-              </h2>
-
-              {userPosts.length === 0 ? (
-                <div className="text-center py-10 border border-dashed border-border rounded-2xl bg-surface-2/40">
-                  <FileText className="w-10 h-10 text-muted mx-auto mb-2 opacity-50" />
-                  <p className="text-sm font-semibold text-foreground">{t("no_posts_other", { name: user.displayName })}</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {userPosts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      currentUser={currentUser}
-                      onPostUpdated={(updated) =>
-                        setUserPosts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
-                      }
-                      onPostDeleted={(postId) =>
-                        setUserPosts((prev) => prev.filter((p) => p.id !== postId))
-                      }
-                      onReportPost={(p) => setReportTarget(p)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {reportTarget && (
+      {p.reportTarget && (
         <ReportDialog
-          open={!!reportTarget}
-          onClose={() => setReportTarget(null)}
-          targetId={reportTarget.id}
-          targetName={reportTarget.user.displayName}
-          onDone={() => showToast(t("report_success_toast"))}
+          open={!!p.reportTarget}
+          onClose={() => p.setReportTarget(null)}
+          targetId={p.reportTarget.id}
+          targetName={p.reportTarget.user.displayName}
+          onDone={() => p.showToast(p.t("report_success_toast"))}
         />
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 md:left-[max(0px,calc(50%-36rem))] md:right-[max(0px,calc(50%-36rem))] p-4 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
-        <div className="flex gap-4 pointer-events-auto">
-          {liked ? (
-            <>
-              <div className="flex-1 h-14 relative" onMouseEnter={() => setIsLikeHovered(true)} onMouseLeave={() => setIsLikeHovered(false)}>
-                <Button
-                  variant="ghost"
-                  onClick={handleUnlike}
-                  className={cn(
-                    "w-full h-full rounded-2xl border-2 transition-all duration-200 font-bold",
-                    isLikeHovered
-                      ? "border-rose-300 bg-rose-100/70 text-rose-700 dark:bg-rose-900/30 dark:border-rose-700 dark:text-rose-300"
-                      : "border-rose-200 bg-rose-50/90 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300 shadow-sm"
-                  )}
-                >
-                  <Heart
-                    className={cn(
-                      "w-6 h-6 mr-2 transition-transform duration-200",
-                      isLikeHovered
-                        ? "fill-none text-rose-600"
-                        : "fill-rose-500 text-rose-500 scale-105"
-                    )}
-                  />
-                  {isLikeHovered ? tDisc("card_unlike") : tDisc("card_liked")}
-                </Button>
-              </div>
-              <Button
-                variant="default"
-                className="flex-1 h-14 rounded-2xl shadow-lg transition-transform hover:scale-[1.02] font-bold"
-                onClick={() =>
-                  router.push(conversationId ? `/inbox?conversation=${conversationId}` : "/inbox")
-                }
-              >
-                <MessageCircle className="w-6 h-6 mr-2" />
-                {t("message_btn")}
-              </Button>
-            </>
-          ) : (
-            <Button
-              variant="ghost"
-              className="flex-1 h-14 rounded-2xl border-2 border-rose-400/80 bg-surface text-rose-600 hover:bg-rose-50 hover:border-rose-500 dark:bg-surface-2 dark:border-rose-500/80 dark:text-rose-400 dark:hover:bg-rose-950/30 shadow-md transition-all hover:scale-[1.01] font-bold text-base"
-              onClick={handleLike}
-            >
-              <Heart className="w-6 h-6 mr-2 fill-none stroke-[2.2] text-rose-500" />
-              {tDisc("card_like")}
-            </Button>
-          )}
+      {p.toast}
+
+      {/* Header Banner & Centered Info */}
+      <OtherUserProfileHeader
+        user={p.user}
+        liked={p.liked}
+        conversationId={p.conversationId}
+        menuOpen={p.menuOpen}
+        setMenuOpen={p.setMenuOpen}
+        setReportOpen={p.setReportOpen}
+        setBlockOpen={p.setBlockOpen}
+        setEndorseOpen={p.setEndorseOpen}
+        handleLike={p.handleLike}
+        router={p.router}
+        t={p.t}
+        tDisc={p.tDisc}
+        tRoot={p.tRoot}
+      />
+
+      {/* Grid Layout Container */}
+      <div className="w-full max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column — Trust, Bio, Languages, Availability, Interests */}
+          <div className="lg:col-span-5">
+            <OtherUserSidebar
+              user={p.user}
+              conversationId={p.conversationId}
+              endorseRefresh={p.endorseRefresh}
+              setEndorseOpen={p.setEndorseOpen}
+              t={p.t}
+              tRoot={p.tRoot}
+            />
+          </div>
+
+          {/* Right Column — Community Posts Feed */}
+          <div className="lg:col-span-7 space-y-6">
+            <UserProfilePostsFeed
+              userPosts={p.userPosts}
+              setUserPosts={p.setUserPosts}
+              currentUser={p.currentUser}
+              setReportTarget={p.setReportTarget}
+              userName={p.user.displayName}
+              t={p.t}
+            />
+          </div>
         </div>
       </div>
+
+      {/* Bottom Floating Bar */}
+      <ProfileFloatingActionBar
+        liked={p.liked}
+        conversationId={p.conversationId}
+        isLikeHovered={p.isLikeHovered}
+        setIsLikeHovered={p.setIsLikeHovered}
+        handleLike={p.handleLike}
+        handleUnlike={p.handleUnlike}
+        router={p.router}
+        t={p.t}
+        tDisc={p.tDisc}
+      />
     </div>
   );
 }

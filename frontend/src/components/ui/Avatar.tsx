@@ -1,47 +1,80 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
-  src?: string;
-  fallback: string;
+export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
+  src?: string | null;
+  fallback?: string;
   online?: boolean;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
 }
 
 const sizeClasses = {
   sm: "h-8 w-8 text-xs",
-  md: "h-12 w-12 text-base",
+  md: "h-11 w-11 text-base",
   lg: "h-16 w-16 text-lg",
   xl: "h-24 w-24 text-2xl",
-}
+  "2xl": "h-28 w-28 sm:h-32 sm:w-32 text-3xl",
+};
 
 const dotClasses = {
   sm: "h-2.5 w-2.5 border-2",
   md: "h-3.5 w-3.5 border-2",
   lg: "h-4 w-4 border-2",
   xl: "h-5 w-5 border-4",
-}
+  "2xl": "h-6 w-6 border-4",
+};
 
-export function Avatar({ src, fallback, online, size = "md", className, ...props }: AvatarProps) {
+export function Avatar({
+  src,
+  fallback,
+  online,
+  size = "md",
+  className,
+  ...props
+}: AvatarProps) {
+  const [imgError, setImgError] = React.useState(false);
+
+  React.useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
+  const showImage = Boolean(src) && !imgError;
+
   return (
-    <div className={cn("relative inline-flex shrink-0 select-none rounded-full", className)} {...props}>
-      <div 
+    <div
+      className={cn(
+        "relative inline-flex shrink-0 select-none rounded-full items-center justify-center",
+        sizeClasses[size],
+        className,
+      )}
+      {...props}
+    >
+      <div
         className={cn(
-          "relative flex shrink-0 overflow-hidden rounded-full items-center justify-center bg-teal-600 text-white font-bold shadow-2xs",
-          sizeClasses[size]
+          "relative flex h-full w-full shrink-0 overflow-hidden rounded-full items-center justify-center",
         )}
       >
-        {src ? (
-          <img src={src} alt="Avatar" className="aspect-square h-full w-full object-cover" />
+        {showImage ? (
+          <img
+            src={src!}
+            alt={fallback || "Avatar"}
+            onError={() => setImgError(true)}
+            className="aspect-square h-full w-full object-cover"
+          />
         ) : (
-          <span className="font-display font-semibold uppercase">{fallback}</span>
+          <img
+            src="/images/default-avatar.jpg"
+            alt={fallback || "Avatar"}
+            className="aspect-square h-full w-full object-cover"
+          />
         )}
       </div>
+
       {online !== undefined && (
-        <span 
+        <span
           className={cn(
             "absolute bottom-0 right-0 flex items-center justify-center rounded-full border-2 border-surface",
-            dotClasses[size]
+            dotClasses[size],
           )}
         >
           {online ? (
@@ -55,5 +88,5 @@ export function Avatar({ src, fallback, online, size = "md", className, ...props
         </span>
       )}
     </div>
-  )
+  );
 }

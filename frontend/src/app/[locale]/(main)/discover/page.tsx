@@ -7,16 +7,17 @@ import { useDiscover } from "@/hooks/useDiscover";
 import { DiscoverHeader } from "@/components/features/discover/DiscoverHeader";
 import { DiscoverGrid } from "@/components/features/discover/DiscoverGrid";
 import { DiscoverFilterModal } from "@/components/features/discover/DiscoverFilterModal";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 export default function DiscoverPage() {
   const d = useDiscover();
 
   if (d.loading) {
     return (
-      <div className="flex h-full items-center justify-center p-12">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="h-10 w-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-4" />
-          <p className="text-muted text-sm font-medium">{d.t("discover.loading_search")}</p>
+      <div className="flex min-h-[60vh] items-center justify-center p-12">
+        <div className="flex flex-col items-center text-center">
+          <div className="h-11 w-11 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-4" />
+          <p className="text-muted text-sm font-semibold animate-pulse">{d.t("discover.loading_search")}</p>
         </div>
       </div>
     );
@@ -24,10 +25,14 @@ export default function DiscoverPage() {
 
   if (d.error) {
     return (
-      <div className="flex h-full items-center justify-center p-8">
-        <div className="bg-error/10 p-6 rounded-2xl max-w-md text-center">
-          <p className="text-error mb-4 font-semibold text-sm">{d.error}</p>
-          <Button onClick={() => d.fetchCandidates()}>{d.t("common.retry")}</Button>
+      <div className="flex min-h-[60vh] items-center justify-center p-8">
+        <div className="bg-rose-50 border border-rose-200/90 p-6 sm:p-8 rounded-3xl max-w-md text-center shadow-card">
+          <AlertCircle className="w-10 h-10 text-rose-600 mx-auto mb-3" />
+          <p className="text-rose-900 mb-5 font-bold text-sm leading-relaxed">{d.error}</p>
+          <Button className="sd-btn-gradient rounded-full px-6 font-bold gap-2 shadow-card" onClick={() => d.fetchCandidates()}>
+            <RefreshCw className="w-4 h-4" />
+            <span>{d.t("common.retry")}</span>
+          </Button>
         </div>
       </div>
     );
@@ -70,6 +75,10 @@ export default function DiscoverPage() {
         onClose={() => d.setFilterModalOpen(false)}
         levelFilter={d.levelFilter}
         setLevelFilter={d.setLevelFilter}
+        ageRange={d.ageRange}
+        setAgeRange={d.setAgeRange}
+        genderFilter={d.genderFilter}
+        setGenderFilter={d.setGenderFilter}
         topics={d.topics}
         activeTopics={d.activeTopics}
         setActiveTopics={d.setActiveTopics}

@@ -1,7 +1,7 @@
 // typeof-guard: file này còn được bundle ngoài Next (design-sync) — nơi không có `process`
 const API_URL =
   (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined) ??
-  'http://localhost:3001';
+  'https://api.stududu.io.vn';
 
 export class ApiError extends Error {
   constructor(
@@ -38,7 +38,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   if (!res.ok) {
     const data = (await res.json().catch(() => null)) as { message?: string | string[] } | null;
     const message = Array.isArray(data?.message) ? data.message.join(', ') : data?.message;
-    
+
     if (res.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
@@ -50,7 +50,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
         window.location.href = `/${currentLocale}/login`;
       }
     }
-    
+
     throw new ApiError(res.status, message ?? res.statusText);
   }
 

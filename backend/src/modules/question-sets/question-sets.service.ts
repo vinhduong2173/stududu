@@ -161,32 +161,25 @@ export class QuestionSetsService {
     });
     if (!language) throw new NotFoundException('Không tìm thấy ngôn ngữ');
 
-    try {
-      return await this.prisma.questionSet.create({
-        data: {
-          languageId: dto.languageId,
-          topicId: dto.topicId,
-          framework: dto.framework,
-          level: dto.level,
-          levelOrder: levelOrderOf(dto.level),
-          title: dto.title,
-          description: dto.description,
-          contentLanguage: dto.contentLanguage ?? 'vi',
-          createdById: adminId,
-        },
-      });
-    } catch (err) {
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === 'P2002'
-      ) {
-        throw new ConflictException(
-          'Đã có bộ đề cho đúng (ngôn ngữ × chủ đề × trình độ) này. ' +
-            'Mỗi tổ hợp chỉ được một bộ đề.',
-        );
-      }
-      throw err;
-    }
+    return await this.prisma.questionSet.create({
+      data: {
+        languageId: dto.languageId,
+        topicId: dto.topicId,
+        framework: dto.framework,
+        level: dto.level,
+        levelOrder: levelOrderOf(dto.level),
+        title: dto.title,
+        description: dto.description,
+        timePerQuestionSec: dto.timePerQuestionSec ?? 15,
+        maxAttempts: dto.maxAttempts,
+        startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+        endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
+        contentLanguage: dto.contentLanguage ?? 'vi',
+        status: SetStatus.published,
+        publishedAt: new Date(),
+        createdById: adminId,
+      },
+    });
   }
 
   async getSet(id: number) {
@@ -208,31 +201,25 @@ export class QuestionSetsService {
   async updateSet(adminId: number, id: number, dto: UpdateQuestionSetDto) {
     await this.getSet(id);
     const { startsAt, endsAt, ...restDto } = dto;
-    try {
-      return await this.prisma.questionSet.update({
-        where: { id },
-        data: {
-          ...restDto,
-          ...(startsAt !== undefined ? { startsAt: startsAt ? new Date(startsAt) : null } : {}),
-          ...(endsAt !== undefined ? { endsAt: endsAt ? new Date(endsAt) : null } : {}),
-          ...(dto.level ? { levelOrder: levelOrderOf(dto.level) } : {}),
-          updatedById: adminId,
-        },
-      });
-    } catch (err) {
-      // Đổi `level` có thể đụng @@unique([languageId, topicId, level]) — không bắt
-      // ở đây thì lỗi Prisma thô lọt ra thành 500 khó hiểu
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === 'P2002'
-      ) {
-        throw new ConflictException(
-          'Đã có bộ đề khác cho đúng (ngôn ngữ × chủ đề × trình độ) này. ' +
-            'Mỗi tổ hợp chỉ được một bộ đề.',
-        );
-      }
-      throw err;
+    if (dto.topicId) {
+      await this.getVocabTopicOrThrow(dto.topicId);
     }
+    if (dto.languageId) {
+      const language = await this.prisma.language.findUnique({
+        where: { id: dto.languageId },
+      });
+      if (!language) throw new NotFoundException('Không tìm thấy ngôn ngữ');
+    }
+    return await this.prisma.questionSet.update({
+      where: { id },
+      data: {
+        ...restDto,
+        ...(startsAt !== undefined ? { startsAt: startsAt ? new Date(startsAt) : null } : {}),
+        ...(endsAt !== undefined ? { endsAt: endsAt ? new Date(endsAt) : null } : {}),
+        ...(dto.level ? { levelOrder: levelOrderOf(dto.level) } : {}),
+        updatedById: adminId,
+      },
+    });
   }
 
   // ===== Sinh câu hỏi bằng AI (chỉ dry-run, KHÔNG tự lưu — BR-48) =====
@@ -572,20 +559,13 @@ export class QuestionSetsService {
   }
 
   async publish(adminId: number, setId: number) {
-    const gate = await this.getPublishGate(setId);
-    if (!gate.hasEnoughQuestions) {
+    const set = await this.getSet(setId);
+    const activeCount = set.questions.filter(
+      (q) => q.status === QuestionStatus.active,
+    ).length;
+    if (activeCount === 0) {
       throw new BadRequestException(
-        `Bộ đề chưa đủ câu (hiện có ${gate.activeCount}/${REQUIRED_QUESTION_COUNT} câu). Cần đúng ${REQUIRED_QUESTION_COUNT} câu mới xuất bản được.`,
-      );
-    }
-    if (gate.trialOutdated) {
-      throw new BadRequestException(
-        'Nội dung bộ đề đã đổi câu hỏi kể từ lần làm thử cuối. Vui lòng làm thử lại trước khi xuất bản.',
-      );
-    }
-    if (!gate.hasAdminTrial) {
-      throw new BadRequestException(
-        'Admin phải làm thử bộ đề (đạt ít nhất 1 lần) mới được xuất bản.',
+        'Bộ đề cần có ít nhất 1 câu hỏi để xuất bản.',
       );
     }
 

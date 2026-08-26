@@ -39,7 +39,7 @@ export function AdminSidebar({ adminUser, openReportsCount, onCloseMobile }: Adm
     { name: "Người dùng", href: "/admin/users", icon: Users, exact: false },
     { name: "Từ vựng đã lưu", href: "/admin/vocabulary", icon: BookOpen, exact: false },
     { name: "Danh mục", href: "/admin/catalog", icon: ListTree, exact: false },
-    { name: "Quản lý Bộ đề", href: "/admin/question-sets", icon: FileText, exact: false },
+    { name: "Quản lý Bộ đề", href: "/admin/quizzes", icon: FileText, exact: false },
   ];
 
   return (

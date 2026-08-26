@@ -1,8 +1,11 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -42,5 +45,22 @@ export class ChatController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.chatService.markRead(user.sub, id);
+  }
+
+  @Patch('messages/:id')
+  editMessage(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+    @Body('content') content: string,
+  ) {
+    return this.chatService.editMessage(user.sub, id, content);
+  }
+
+  @Delete('messages/:id')
+  deleteMessage(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.chatService.deleteMessage(user.sub, id);
   }
 }

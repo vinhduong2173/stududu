@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { COUNTRIES } from "@/hooks/useRegister";
+import { RegisterLocationFields } from "./RegisterLocationFields";
+import { RegisterProfileDetails } from "./RegisterProfileDetails";
+import { RegisterCredentialsFields } from "./RegisterCredentialsFields";
 
 interface RegisterFormFieldsProps {
   t: any;
@@ -38,213 +38,51 @@ interface RegisterFormFieldsProps {
   years: string[];
 }
 
-export function RegisterFormFields({
-  t,
-  firstName,
-  setFirstName,
-  lastName,
-  setLastName,
-  country,
-  handleCountryChange,
-  city,
-  setCity,
-  intent,
-  setIntent,
-  day,
-  setDay,
-  month,
-  setMonth,
-  year,
-  setYear,
-  gender,
-  setGender,
-  email,
-  setEmail,
-  password,
-  setPassword,
-  saveDraft,
-  handleRegister,
-  loading,
-  isPending,
-  days,
-  months,
-  years,
-}: RegisterFormFieldsProps) {
+export function RegisterFormFields(props: RegisterFormFieldsProps) {
   return (
-    <form onSubmit={handleRegister} className="flex flex-col gap-4">
-      {/* Họ & Tên */}
-      <div className="flex gap-3">
-        <Input
-          type="text"
-          placeholder={t("register.first_name")}
-          required
-          value={firstName}
-          onChange={(e) => {
-            setFirstName(e.target.value);
-            saveDraft({ firstName: e.target.value });
-          }}
-        />
-        <Input
-          type="text"
-          placeholder={t("register.surname")}
-          required
-          value={lastName}
-          onChange={(e) => {
-            setLastName(e.target.value);
-            saveDraft({ lastName: e.target.value });
-          }}
-        />
-      </div>
-
-      {/* Quốc gia / Quê quán & Nơi sinh sống */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-muted ml-1">{t("register.country") || "Quốc gia / Quê quán"}</label>
-          <select
-            className="flex h-12 w-full rounded-xl border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary font-medium text-foreground"
-            value={country}
-            onChange={(e) => handleCountryChange(e.target.value)}
-            disabled={isPending}
-          >
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.flag} {c.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-muted ml-1">{t("profile.lives_in") || "Nơi sinh sống"}</label>
-          <Input
-            type="text"
-            placeholder={t("profile.city_placeholder") || "Ví dụ: Hà Nội, Tokyo..."}
-            value={city}
-            onChange={(e) => {
-              setCity(e.target.value);
-              saveDraft({ city: e.target.value });
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Mục tiêu học ngôn ngữ */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-muted ml-1">{t("onboarding.intent_label") || "Mục tiêu khi học ngôn ngữ"}</label>
-        <select
-          className="flex h-12 w-full rounded-xl border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary font-medium text-foreground"
-          value={intent}
-          onChange={(e) => {
-            setIntent(e.target.value);
-            saveDraft({ intent: e.target.value });
-          }}
-        >
-          <option value="Giao tiếp casual">{t("onboarding.intent_casual") || "Giao tiếp & Kết bạn (Casual)"}</option>
-          <option value="Thi cử">{t("onboarding.intent_exam") || "Luyện thi chứng chỉ"}</option>
-          <option value="Du lịch">{t("onboarding.intent_travel") || "Du lịch & Trải nghiệm văn hóa"}</option>
-          <option value="Làm việc">{t("onboarding.intent_work") || "Công việc & Định cư"}</option>
-        </select>
-      </div>
-
-      {/* Ngày tháng năm sinh */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-muted ml-1">{t("register.dob")}</label>
-        <div className="grid grid-cols-3 gap-2">
-          <select
-            className="flex h-11 rounded-xl border border-border bg-background px-3 py-1 text-sm outline-none focus:border-primary font-medium text-foreground"
-            value={day}
-            onChange={(e) => {
-              setDay(e.target.value);
-              saveDraft({ day: e.target.value });
-            }}
-          >
-            <option value="">{t("register.day")}</option>
-            {days.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="flex h-11 rounded-xl border border-border bg-background px-3 py-1 text-sm outline-none focus:border-primary font-medium text-foreground"
-            value={month}
-            onChange={(e) => {
-              setMonth(e.target.value);
-              saveDraft({ month: e.target.value });
-            }}
-          >
-            <option value="">{t("register.month")}</option>
-            {months.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="flex h-11 rounded-xl border border-border bg-background px-3 py-1 text-sm outline-none focus:border-primary font-medium text-foreground"
-            value={year}
-            onChange={(e) => {
-              setYear(e.target.value);
-              saveDraft({ year: e.target.value });
-            }}
-          >
-            <option value="">{t("register.year")}</option>
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Giới tính */}
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-muted ml-1">{t("register.gender")}</label>
-        <select
-          className="flex h-12 w-full rounded-xl border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary font-medium text-foreground"
-          value={gender}
-          onChange={(e) => {
-            setGender(e.target.value);
-            saveDraft({ gender: e.target.value });
-          }}
-        >
-          <option value="">{t("register.gender_placeholder")}</option>
-          <option value="female">{t("register.gender_female")}</option>
-          <option value="male">{t("register.gender_male")}</option>
-          <option value="custom">{t("register.gender_custom")}</option>
-        </select>
-      </div>
-
-      {/* Email */}
-      <Input
-        type="email"
-        placeholder={t("register.email")}
-        required
-        value={email}
-        onChange={(e) => {
-          setEmail(e.target.value);
-          saveDraft({ email: e.target.value });
-        }}
+    <form onSubmit={props.handleRegister} className="flex flex-col gap-4">
+      <RegisterLocationFields
+        t={props.t}
+        firstName={props.firstName}
+        setFirstName={props.setFirstName}
+        lastName={props.lastName}
+        setLastName={props.setLastName}
+        country={props.country}
+        handleCountryChange={props.handleCountryChange}
+        city={props.city}
+        setCity={props.setCity}
+        saveDraft={props.saveDraft}
+        isPending={props.isPending}
       />
 
-      {/* Mật khẩu */}
-      <div className="flex flex-col gap-1">
-        <Input
-          type="password"
-          placeholder={t("register.password")}
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <span className="text-xs text-muted ml-1">{t("register.password_hint")}</span>
-      </div>
+      <RegisterProfileDetails
+        t={props.t}
+        intent={props.intent}
+        setIntent={props.setIntent}
+        day={props.day}
+        setDay={props.setDay}
+        month={props.month}
+        setMonth={props.setMonth}
+        year={props.year}
+        setYear={props.setYear}
+        gender={props.gender}
+        setGender={props.setGender}
+        saveDraft={props.saveDraft}
+        days={props.days}
+        months={props.months}
+        years={props.years}
+      />
 
-      <Button type="submit" disabled={loading || isPending} className="sd-btn-gradient mt-2 h-12 text-sm font-bold rounded-full">
-        {loading ? t("register.submitting") : t("register.submit")}
-      </Button>
+      <RegisterCredentialsFields
+        t={props.t}
+        email={props.email}
+        setEmail={props.setEmail}
+        password={props.password}
+        setPassword={props.setPassword}
+        saveDraft={props.saveDraft}
+        loading={props.loading}
+        isPending={props.isPending}
+      />
     </form>
   );
 }

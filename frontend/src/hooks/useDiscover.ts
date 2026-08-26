@@ -16,7 +16,22 @@ export type MatchResult = {
 export type Topic = { id: number; name: string };
 export type SortKey = "best" | "recent";
 export type LevelFilter = "all" | "native" | "fluent";
+export type AgeRangeFilter = "all" | "16-22" | "23-30" | "31-45" | "45+";
+export type GenderFilter = "all" | "male" | "female" | "other";
 export type DiscoverTab = "suggest" | "all";
+
+export function calculateAge(dob?: string | null): number | null {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age >= 0 ? age : null;
+}
 
 export type SuggestionsResponse = {
   items: MatchResult[];
@@ -43,11 +58,15 @@ export function useDiscover() {
   const [activeTopics, setActiveTopics] = React.useState<string[]>([]);
   const [onlineOnly, setOnlineOnly] = React.useState(false);
   const [levelFilter, setLevelFilter] = React.useState<LevelFilter>("all");
+  const [ageRange, setAgeRange] = React.useState<AgeRangeFilter>("all");
+  const [genderFilter, setGenderFilter] = React.useState<GenderFilter>("all");
   const [sort, setSort] = React.useState<SortKey>("best");
   const [filterModalOpen, setFilterModalOpen] = React.useState(false);
 
   const activeFilterCount =
     (levelFilter !== "all" ? 1 : 0) +
+    (ageRange !== "all" ? 1 : 0) +
+    (genderFilter !== "all" ? 1 : 0) +
     activeTopics.length +
     (onlineOnly ? 1 : 0);
 
@@ -156,6 +175,8 @@ export function useDiscover() {
     setActiveTopics([]);
     setOnlineOnly(false);
     setLevelFilter("all");
+    setAgeRange("all");
+    setGenderFilter("all");
   };
 
   const source = tab === "suggest" ? candidates : allMembers;
@@ -165,6 +186,19 @@ export function useDiscover() {
       if (levelFilter !== "all") {
         const hasRole = c.user.languages?.some((l: any) => l.role === levelFilter);
         if (!hasRole) return false;
+      }
+      if (ageRange !== "all") {
+        const age = calculateAge(c.user.dob);
+        if (age === null) return false;
+        if (ageRange === "16-22" && (age < 16 || age > 22)) return false;
+        if (ageRange === "23-30" && (age < 23 || age > 30)) return false;
+        if (ageRange === "31-45" && (age < 31 || age > 45)) return false;
+        if (ageRange === "45+" && age < 45) return false;
+      }
+      if (genderFilter !== "all") {
+        if (!c.user.gender || c.user.gender.toLowerCase() !== genderFilter.toLowerCase()) {
+          return false;
+        }
       }
       if (activeTopics.length > 0) {
         const theirTopics: string[] = c.user.interests?.map((i: any) => i.topic.name) ?? [];
@@ -212,6 +246,10 @@ export function useDiscover() {
     setOnlineOnly,
     levelFilter,
     setLevelFilter,
+    ageRange,
+    setAgeRange,
+    genderFilter,
+    setGenderFilter,
     sort,
     setSort,
     filterModalOpen,

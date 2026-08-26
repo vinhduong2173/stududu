@@ -43,7 +43,27 @@ export default function QuizAttemptPage() {
 
     const query = challengeId ? `?challengeId=${challengeId}` : "";
     api<AttemptStart>(`/question-sets/${setId}/attempts${query}`, { method: "POST" })
-      .then(setAttempt)
+      .then((data) => {
+        if (typeof window !== "undefined") {
+          const localStr = localStorage.getItem("stududu_custom_quiz_sets");
+          if (localStr) {
+            try {
+              const list = JSON.parse(localStr);
+              const found = list.find(
+                (item: any) =>
+                  String(item.id) === String(setId) ||
+                  item.title?.toLowerCase() === data.set.title?.toLowerCase()
+              );
+              if (found && found.timePerQuestionSec) {
+                data.set.timePerQuestionSec = found.timePerQuestionSec;
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+        setAttempt(data);
+      })
       .catch((e: ApiError) => setError(e.message))
       .finally(() => setLoading(false));
   }, [setId, challengeId]);

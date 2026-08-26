@@ -3,6 +3,9 @@
 import * as React from "react";
 import { EmojiPicker } from "@/components/features/EmojiPicker";
 import { Image as ImageIcon, Send, Smile } from "lucide-react";
+import { ChatInputReplyBar } from "./ChatInputReplyBar";
+import { ReplyToInfo } from "./MessageReplyQuote";
+import { Message } from "@/hooks/useChatInbox";
 
 interface ChatInputBarProps {
   t: any;
@@ -14,6 +17,9 @@ interface ChatInputBarProps {
   inputRef: React.RefObject<HTMLInputElement | null>;
   showEmoji: boolean;
   setShowEmoji: React.Dispatch<React.SetStateAction<boolean>>;
+  replyingTo: ReplyToInfo | null;
+  editingMessage: Message | null;
+  onCancelReplyOrEdit: () => void;
 }
 
 export function ChatInputBar({
@@ -26,9 +32,25 @@ export function ChatInputBar({
   inputRef,
   showEmoji,
   setShowEmoji,
+  replyingTo,
+  editingMessage,
+  onCancelReplyOrEdit,
 }: ChatInputBarProps) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      onCancelReplyOrEdit();
+    }
+  };
+
   return (
-    <div className="p-4 border-t border-border bg-surface shrink-0 relative">
+    <div className="border-t border-border bg-surface shrink-0 relative">
+      <ChatInputReplyBar
+        replyingTo={replyingTo}
+        editingMessage={editingMessage}
+        t={t}
+        onCancel={onCancelReplyOrEdit}
+      />
+
       {showEmoji && (
         <div className="absolute bottom-full left-4 mb-2 z-30">
           <EmojiPicker
@@ -40,7 +62,7 @@ export function ChatInputBar({
         </div>
       )}
 
-      <form onSubmit={handleSend} className="flex items-center gap-2">
+      <form onSubmit={handleSend} className="p-4 flex items-center gap-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -72,6 +94,7 @@ export function ChatInputBar({
           placeholder={t("chat.input_placeholder")}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
         />
 

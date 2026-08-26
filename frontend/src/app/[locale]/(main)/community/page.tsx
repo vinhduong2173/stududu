@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import {
   Flag,
   Heart,
@@ -30,6 +30,8 @@ import {
   Lock,
   Volume2,
   Search,
+  Shield,
+  FileText,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -272,28 +274,56 @@ export default function CommunityPage() {
   // Test sets state for Events tab
   const [eventTests, setEventTests] = React.useState<TestSetItem[]>([]);
 
-  React.useEffect(() => {
-    // 1. Read custom quiz sets created by Admin in /admin/quizzes/create
+  const fetchEventTests = React.useCallback(async () => {
+    // 1. Read custom quiz sets created by Admin in /admin/quizzes/create or edit
     const savedLocalStr = typeof window !== "undefined" ? localStorage.getItem("stududu_custom_quiz_sets") : null;
     let localTestItems: TestSetItem[] = [];
     if (savedLocalStr) {
       try {
         const parsed = JSON.parse(savedLocalStr);
         if (Array.isArray(parsed)) {
-          localTestItems = parsed.map((item: any, idx: number) => ({
-            id: isNaN(Number(item.id)) ? 9000 + idx : Number(item.id),
-            title: item.title,
-            languageCode: item.language?.toLowerCase().includes("nhật") ? "ja" : "en",
-            languageName: item.language || "English",
-            countryCode: item.language?.toLowerCase().includes("nhật") ? "JP" : "GB",
-            framework: "CEFR",
-            level: item.level || "A1",
-            questionCount: item.wordCount || 15,
-            timePerQuestion: "15s/câu",
-            takerCount: 150 + idx * 25,
-            status: "not_started" as const,
-            expiryText: "Còn 3 ngày",
-          }));
+          const now = new Date();
+          localTestItems = parsed.map((item: any, idx: number) => {
+            let isExpired = false;
+            let isNotStarted = false;
+            let diffDays: number | null = null;
+            let expiryText = "Không giới hạn";
+
+            if (item.startsAt && new Date(item.startsAt) > now) {
+              isNotStarted = true;
+              expiryText = "Sắp mở";
+            } else if (item.endsAt) {
+              const endsDate = new Date(item.endsAt);
+              if (endsDate < now) {
+                isExpired = true;
+                expiryText = "Đã kết thúc";
+              } else {
+                diffDays = Math.ceil((endsDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                expiryText = diffDays > 0 ? `Còn ${diffDays} ngày` : "Hết hạn hôm nay";
+              }
+            }
+
+            const timeSec = item.timePerQuestionSec || 15;
+
+            return {
+              id: isNaN(Number(item.id)) ? 9000 + idx : Number(item.id),
+              title: item.title,
+              languageCode: item.language?.toLowerCase().includes("nhật") ? "ja" : "en",
+              languageName: item.language || "English",
+              countryCode: item.language?.toLowerCase().includes("nhật") ? "JP" : "GB",
+              framework: "CEFR",
+              level: item.level || "A1",
+              questionCount: item.wordCount || 20,
+              timePerQuestionSec: timeSec,
+              timePerQuestion: `${timeSec}s/câu`,
+              takerCount: item.takerCount ?? 0,
+              status: "not_started" as const,
+              diffDays,
+              expiryText,
+              isExpired,
+              isNotStarted,
+            };
+          });
         }
       } catch {
         // ignore
@@ -301,56 +331,65 @@ export default function CommunityPage() {
     }
 
     // 2. Fetch published question sets from Backend API
-    api<LearnerSet[]>("/question-sets")
-      .then((sets) => {
-        const apiMapped: TestSetItem[] = Array.isArray(sets)
-          ? sets.map((s: any) => {
-              const hasAttempt = !!s.lastAttempt;
-              const isFinished = hasAttempt && !!s.lastAttempt?.finishedAt;
-              let status: "not_started" | "completed" | "in_progress" = "not_started";
-              if (isFinished) status = "completed";
-              else if (hasAttempt) status = "in_progress";
-              const totalCount = s.lastAttempt?.totalCount || s.questionCount || 10;
-              const correctCount = s.lastAttempt?.correctCount ?? 0;
-              const calculatedScore = totalCount > 0 ? Math.round((correctCount / totalCount) * 1000) : 0;
-              const attemptScore = s.lastAttempt?.score ?? s.score ?? calculatedScore;
+    try {
+      const sets = await api<LearnerSet[]>("/question-sets");
+      const apiMapped: TestSetItem[] = Array.isArray(sets)
+        ? sets.map((s: any) => {
+            const hasAttempt = !!s.lastAttempt;
+            const isFinished = hasAttempt && !!s.lastAttempt?.finishedAt;
+            let status: "not_started" | "completed" | "in_progress" = "not_started";
+            if (isFinished) status = "completed";
+            else if (hasAttempt) status = "in_progress";
+            const totalCount = s.lastAttempt?.totalCount || s.questionCount || 20;
+            const correctCount = s.lastAttempt?.correctCount ?? 0;
+            const calculatedScore = totalCount > 0 ? Math.round((correctCount / totalCount) * 1000) : 0;
+            const attemptScore = s.lastAttempt?.score ?? s.score ?? calculatedScore;
 
-              return {
-                id: s.id,
-                title: s.title,
-                languageCode: s.language?.code || "en",
-                languageName: s.language?.name || "English",
-                framework: s.framework,
-                level: s.level,
-                questionCount: s.questionCount || s._count?.questions || 10,
-                timePerQuestionSec: s.timePerQuestionSec || 15,
-                takerCount: s.takerCount ?? 0,
-                status,
-                score: isFinished ? attemptScore : undefined,
-                correctCount: isFinished ? correctCount : undefined,
-                totalCount,
-                currentQuestion: hasAttempt && !isFinished ? 1 : undefined,
-                diffDays: s.diffDays ?? null,
-                expiryText: s.expiryText,
-                isExpired: !!s.isExpired,
-                isLimitReached: !!s.isLimitReached,
-                isNotStarted: !!s.isNotStarted,
-              };
-            })
-          : [];
+            return {
+              id: s.id,
+              title: s.title,
+              languageCode: s.language?.code || "en",
+              languageName: s.language?.name || "English",
+              framework: s.framework,
+              level: s.level,
+              questionCount: s.questionCount || s._count?.questions || 20,
+              timePerQuestionSec: s.timePerQuestionSec || 15,
+              timePerQuestion: s.timePerQuestion || `${s.timePerQuestionSec || 15}s/câu`,
+              takerCount: s.takerCount ?? 0,
+              status,
+              score: isFinished ? attemptScore : undefined,
+              correctCount: isFinished ? correctCount : undefined,
+              totalCount,
+              currentQuestion: hasAttempt && !isFinished ? 1 : undefined,
+              diffDays: s.diffDays ?? null,
+              expiryText: s.expiryText,
+              isExpired: !!s.isExpired,
+              isLimitReached: !!s.isLimitReached,
+              isNotStarted: !!s.isNotStarted,
+            };
+          })
+        : [];
 
-        const combined = [...apiMapped];
-        for (const localItem of localTestItems) {
-          if (!combined.some((c) => c.title.toLowerCase() === localItem.title.toLowerCase() || c.id === localItem.id)) {
-            combined.push(localItem);
-          }
+      const combined = [...apiMapped];
+      for (const localItem of localTestItems) {
+        const matchIndex = combined.findIndex(
+          (c) => c.id === localItem.id || c.title.toLowerCase() === localItem.title.toLowerCase()
+        );
+        if (matchIndex >= 0) {
+          combined[matchIndex] = { ...combined[matchIndex], ...localItem };
+        } else {
+          combined.push(localItem);
         }
-        setEventTests(combined);
-      })
-      .catch(() => {
-        setEventTests(localTestItems);
-      });
+      }
+      setEventTests(combined);
+    } catch {
+      setEventTests(localTestItems);
+    }
   }, []);
+
+  React.useEffect(() => {
+    void fetchEventTests();
+  }, [fetchEventTests, activeTab]);
 
   const fetchRealGroups = React.useCallback(async () => {
     setLoadingGroups(true);
@@ -454,7 +493,7 @@ export default function CommunityPage() {
   const [replyToComment, setReplyToComment] = React.useState<CommentType | null>(null);
 
   // Post management states
-  const [currentUser, setCurrentUser] = React.useState<{ id: number; displayName: string } | null>(null);
+  const [currentUser, setCurrentUser] = React.useState<{ id: number; displayName: string; avatarUrl?: string | null } | null>(null);
   const [activeMenuPostId, setActiveMenuPostId] = React.useState<number | null>(null);
   const [editingPost, setEditingPost] = React.useState<FeedPost | null>(null);
   const [editDraft, setEditDraft] = React.useState("");
@@ -471,7 +510,7 @@ export default function CommunityPage() {
       .finally(() => setLoading(false));
 
     // Load current user info
-    api<{ id: number; displayName: string }>("/users/me")
+    api<{ id: number; displayName: string; avatarUrl?: string | null }>("/users/me")
       .then(setCurrentUser)
       .catch(console.error);
 
@@ -516,12 +555,6 @@ export default function CommunityPage() {
     } finally {
       setPosting(false);
     }
-  };
-
-  const handleAddTopicChip = (chipLabel: string) => {
-    const prefix = `[${chipLabel}] `;
-    if (draft.startsWith(prefix)) return;
-    setDraft((prev) => (prev ? `${prefix}${prev}` : prefix));
   };
 
   const handleDeletePost = async (postId: number) => {
@@ -806,56 +839,114 @@ export default function CommunityPage() {
   );
 
   return (
-    <div className="w-full max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 pb-16">
-      {/* 3 Column Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_400px] xl:grid-cols-[260px_1fr_440px] 2xl:grid-cols-[280px_1fr_480px] gap-6 xl:gap-8 items-start">
-        
-        {/* LEFT COLUMN: Sidebar Navigation */}
-        <aside className="bg-surface rounded-2xl border border-border/80 shadow-card p-2 sticky top-20">
-          <nav className="space-y-1">
-            <button
-              onClick={() => setActiveTab("feed")}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer",
-                activeTab === "feed"
-                  ? "bg-primary text-white shadow-xs"
-                  : "text-muted hover:text-foreground hover:bg-surface-2"
-              )}
+    <div className="w-full flex min-h-[calc(100vh-4rem)]">
+      {/* LEFT COLUMN: Facebook-style full-height sticky taskbar */}
+      <aside className="w-64 xl:w-72 2xl:w-80 shrink-0 h-[calc(100vh-4rem)] sticky top-0 border-r border-border/80 bg-surface/90 backdrop-blur-sm p-3.5 flex flex-col justify-between overflow-y-auto z-10">
+        <div className="space-y-1">
+          {/* User Profile Shortcut */}
+          {currentUser && (
+            <Link
+              href="/profile/me"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-foreground hover:bg-surface-2 transition-colors mb-2 group"
             >
-              <MessageSquare className="w-4 h-4" />
-              <span>{t("community.tab_feed") || "Bảng tin"}</span>
-            </button>
+              <Avatar
+                src={currentUser.avatarUrl ?? undefined}
+                fallback={currentUser.displayName?.charAt(0) ?? "?"}
+                size="sm"
+                className="h-8 w-8 text-xs shrink-0"
+              />
+              <span className="truncate group-hover:text-primary transition-colors">
+                {currentUser.displayName}
+              </span>
+            </Link>
+          )}
 
-            <button
-              onClick={() => setActiveTab("groups")}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer",
-                activeTab === "groups"
-                  ? "bg-primary text-white shadow-xs"
-                  : "text-muted hover:text-foreground hover:bg-surface-2"
-              )}
+          <button
+            onClick={() => setActiveTab("feed")}
+            className={cn(
+              "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer",
+              activeTab === "feed"
+                ? "bg-primary text-white shadow-xs"
+                : "text-muted hover:text-foreground hover:bg-surface-2"
+            )}
+          >
+            <MessageSquare className="w-4 h-4 shrink-0" />
+            <span>{t("community.tab_feed") || "Bảng tin"}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("groups")}
+            className={cn(
+              "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer",
+              activeTab === "groups"
+                ? "bg-primary text-white shadow-xs"
+                : "text-muted hover:text-foreground hover:bg-surface-2"
+            )}
+          >
+            <Users className="w-4 h-4 shrink-0" />
+            <span>{t("community.tab_groups") || "Nhóm ngôn ngữ"}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("events")}
+            className={cn(
+              "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer",
+              activeTab === "events"
+                ? "bg-primary text-white shadow-xs"
+                : "text-muted hover:text-foreground hover:bg-surface-2"
+            )}
+          >
+            <Calendar className="w-4 h-4 shrink-0" />
+            <span>{t("community.tab_events") || "Sự kiện"}</span>
+          </button>
+
+          <div className="border-t border-border/60 my-3 pt-3 space-y-1">
+            <Link
+              href="/about"
+              className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium text-muted hover:text-foreground hover:bg-surface-2 transition-colors text-left"
             >
-              <Users className="w-4 h-4" />
-              <span>{t("community.tab_groups") || "Nhóm ngôn ngữ"}</span>
-            </button>
+              <Globe className="w-4 h-4 shrink-0 text-teal-600 dark:text-teal-400" />
+              <span>{t("about.title")}</span>
+            </Link>
 
-            <button
-              onClick={() => setActiveTab("events")}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer",
-                activeTab === "events"
-                  ? "bg-primary text-white shadow-xs"
-                  : "text-muted hover:text-foreground hover:bg-surface-2"
-              )}
+            <Link
+              href="/guidelines"
+              className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium text-muted hover:text-foreground hover:bg-surface-2 transition-colors text-left"
             >
-              <Calendar className="w-4 h-4" />
-              <span>{t("community.tab_events") || "Sự kiện"}</span>
-            </button>
-          </nav>
-        </aside>
+              <Shield className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>{t("guidelines.title")}</span>
+            </Link>
 
-        {/* MIDDLE COLUMN: Main Content Area */}
-        <main className="space-y-5">
+            <Link
+              href="/terms"
+              className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium text-muted hover:text-foreground hover:bg-surface-2 transition-colors text-left"
+            >
+              <FileText className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+              <span>{t("terms.title")}</span>
+            </Link>
+
+            <Link
+              href="/privacy"
+              className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium text-muted hover:text-foreground hover:bg-surface-2 transition-colors text-left"
+            >
+              <Lock className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span>{t("privacy.title")}</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Minimal Copyright at Bottom */}
+        <div className="px-3 pt-4 text-[11px] text-muted/50 border-t border-border/40">
+          <p>Stududu © 2026</p>
+        </div>
+      </aside>
+
+      {/* CENTER & RIGHT CONTENT AREA */}
+      <div className="flex-1 min-w-0 flex justify-center py-6 px-4 sm:px-6 lg:px-8 pb-16">
+        <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px] gap-6 xl:gap-8 items-start">
+          
+          {/* MIDDLE COLUMN: Main Content Area */}
+          <main className="space-y-5 min-w-0">
           {/* Header Section inside middle column */}
           <div className="px-1 py-1 mb-1">
             <h1 className="text-xl md:text-2xl font-bold text-foreground font-display flex items-center gap-2 tracking-tight">
@@ -890,36 +981,6 @@ export default function CommunityPage() {
                     </button>
                   </div>
                 )}
-
-                {/* Topic Quick Chips */}
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => handleAddTopicChip(t("community.tag_partner") || "Tìm đối tác")}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-violet-200/80 bg-violet-50 text-violet-700 hover:bg-violet-100/80 transition-colors cursor-pointer"
-                  >
-                    <Users className="w-3.5 h-3.5" />
-                    <span>{t("community.tag_partner") || "Tìm đối tác"}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleAddTopicChip(t("community.tag_milestone") || "Khoe thành tích")}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-pink-200/80 bg-pink-50 text-pink-700 hover:bg-pink-100/80 transition-colors cursor-pointer"
-                  >
-                    <Trophy className="w-3.5 h-3.5" />
-                    <span>{t("community.tag_milestone") || "Khoe thành tích"}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleAddTopicChip(t("community.tag_question") || "Hỏi luyện tập")}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border border-amber-200/80 bg-amber-50 text-amber-800 hover:bg-amber-100/80 transition-colors cursor-pointer"
-                  >
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    <span>{t("community.tag_question") || "Hỏi luyện tập"}</span>
-                  </button>
-                </div>
 
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/60">
                   <div className="flex items-center gap-2">
@@ -1339,24 +1400,25 @@ export default function CommunityPage() {
           )}
         </main>
 
-        {/* RIGHT COLUMN: Right Rail Widgets */}
-        <aside className="space-y-6 sticky top-20">
-          <DailyVocabCard
-            dailyWordsData={dailyWordsData}
-            vocabIndex={vocabIndex}
-            savingVocab={savingVocab}
-            dailyTargetLang={dailyTargetLang}
-            onTargetLangChange={(code) => {
-              setDailyTargetLang(code);
-              fetchDailyWords(code);
-            }}
-            onPrev={handlePrevVocab}
-            onNext={handleNextVocab}
-            onSave={handleSaveCurrentVocab}
-            onPlayAudio={handlePlayAudio}
-          />
-        </aside>
+          {/* RIGHT COLUMN: Right Rail Widgets */}
+          <aside className="space-y-6 sticky top-6 hidden lg:block">
+            <DailyVocabCard
+              dailyWordsData={dailyWordsData}
+              vocabIndex={vocabIndex}
+              savingVocab={savingVocab}
+              dailyTargetLang={dailyTargetLang}
+              onTargetLangChange={(code) => {
+                setDailyTargetLang(code);
+                fetchDailyWords(code);
+              }}
+              onPrev={handlePrevVocab}
+              onNext={handleNextVocab}
+              onSave={handleSaveCurrentVocab}
+              onPlayAudio={handlePlayAudio}
+            />
+          </aside>
 
+        </div>
       </div>
 
       {/* Report dialog */}

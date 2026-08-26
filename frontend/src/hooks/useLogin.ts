@@ -71,8 +71,10 @@ export function useLogin() {
       } else {
         router.push(me.languages.length === 0 ? "/onboarding" : "/discover", { locale: targetLocale });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err instanceof Error && err.message) {
         setError(err.message);
       } else {
         setError(t("common.error_generic"));

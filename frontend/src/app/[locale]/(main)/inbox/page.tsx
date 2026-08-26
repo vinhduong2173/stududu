@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
-import { BookOpen, MessageSquare, Lightbulb, Search } from "lucide-react";
+import { MessageSquare, Lightbulb, Search } from "lucide-react";
 import { ReportDialog, BlockDialog } from "@/components/features/TrustDialogs";
-import { WordSaveModal } from "@/components/features/WordSaveModal";
 import { TranslationModal } from "@/components/features/TranslationModal";
 import { ScheduleChatModal } from "@/components/features/ScheduleChatModal";
 import { CancelScheduleModal } from "@/components/features/CancelScheduleModal";
@@ -66,29 +66,8 @@ function InboxContent() {
             {/* DANH SÁCH TIN NHẮN */}
             <div
               ref={c.messagesContainerRef}
-              onMouseUp={c.handleTextSelection}
               className="flex-1 overflow-y-auto p-4 relative"
             >
-              {/* Nút lưu từ nổi khi bôi đen text */}
-              {c.selectionSave && (
-                <div
-                  style={{ top: `${c.selectionSave.top}px`, left: `${c.selectionSave.left}px` }}
-                  className="absolute z-30 animate-in fade-in zoom-in-95 duration-150"
-                >
-                  <Button
-                    size="sm"
-                    className="sd-btn-gradient shadow-xl text-xs gap-1.5 rounded-full py-1.5 px-3"
-                    onClick={() => {
-                      c.setWordSaveTarget(c.selectionSave!.text);
-                      c.setSelectionSave(null);
-                    }}
-                  >
-                    <BookOpen className="h-3.5 w-3.5" />
-                    Lưu từ &quot;{c.selectionSave.text.length > 15 ? c.selectionSave.text.slice(0, 15) + "..." : c.selectionSave.text}&quot;
-                  </Button>
-                </div>
-              )}
-
               {c.loadingMessages ? (
                 <div className="flex h-full items-center justify-center text-sm text-muted">
                   {c.t("chat.loading_messages")}
@@ -135,18 +114,20 @@ function InboxContent() {
                     m={m}
                     meId={c.me?.id ?? 0}
                     partnerName={c.selected!.partner.displayName}
-                    myTimezone={c.me?.timezone}
-                    partnerTimezone={c.selected!.partner.timezone}
                     handleTranslate={c.handleTranslate}
                     showTranslationFor={c.showTranslationFor}
                     translations={c.translations}
                     translating={c.translating}
-                    setWordSaveTarget={c.setWordSaveTarget}
                     reactionPickerFor={c.reactionPickerFor}
                     setReactionPickerFor={c.setReactionPickerFor}
                     handleToggleReaction={c.handleToggleReaction}
                     respondScheduleRequest={c.respondScheduleRequest}
                     openCancelDialog={c.openCancelDialog}
+                    onReply={c.handleReply}
+                    onEdit={c.handleStartEdit}
+                    onDelete={c.handleDeleteMessage}
+                    onScrollToMessage={c.scrollToMessage}
+                    isHighlighted={c.highlightedMsgId === m.id}
                   />
                 ))
               )}
@@ -163,6 +144,9 @@ function InboxContent() {
               inputRef={c.inputRef}
               showEmoji={c.showEmoji}
               setShowEmoji={c.setShowEmoji}
+              replyingTo={c.replyingTo}
+              editingMessage={c.editingMessage}
+              onCancelReplyOrEdit={c.handleCancelReplyOrEdit}
             />
           </>
         ) : (
@@ -176,13 +160,13 @@ function InboxContent() {
             <p className="text-xs text-muted mb-4 leading-relaxed">
               {c.t("chat.select_chat_subtitle")}
             </p>
-            <a
+            <Link
               href="/discover"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-white sd-btn-gradient px-4 py-2 rounded-full shadow-xs hover:opacity-95 transition-all"
             >
               <Search className="w-3.5 h-3.5" />
-              <span>Khám phá bạn học mới</span>
-            </a>
+              <span>{c.t("chat.discover_new_partners") || c.t("chat.go_discover")}</span>
+            </Link>
           </div>
         )}
       </main>
@@ -206,15 +190,6 @@ function InboxContent() {
           open={c.translationOpen}
           onClose={() => c.setTranslationOpen(false)}
           initialText={c.translationInitialText}
-        />
-      )}
-
-      {c.wordSaveTarget && (
-        <WordSaveModal
-          open={!!c.wordSaveTarget}
-          onClose={() => c.setWordSaveTarget(null)}
-          initialWord={c.wordSaveTarget}
-          source="chat"
         />
       )}
 

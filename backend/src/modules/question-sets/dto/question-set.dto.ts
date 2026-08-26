@@ -72,6 +72,14 @@ export class CreateQuestionSetDto {
 
 export class UpdateQuestionSetDto {
   @IsOptional()
+  @IsInt()
+  languageId?: number;
+
+  @IsOptional()
+  @IsInt()
+  topicId?: number;
+
+  @IsOptional()
   @IsString()
   @MaxLength(150)
   title?: string;
@@ -136,8 +144,8 @@ export class QuestionPayloadDto {
   prompt!: string;
 
   @IsArray()
-  @ArrayMinSize(4, { message: 'Phải có đúng 4 đáp án' })
-  @ArrayMaxSize(4, { message: 'Phải có đúng 4 đáp án' })
+  @ArrayMinSize(2, { message: 'Phải có từ 2 đến 4 đáp án' })
+  @ArrayMaxSize(4, { message: 'Phải có từ 2 đến 4 đáp án' })
   @IsString({ each: true })
   options!: string[];
 

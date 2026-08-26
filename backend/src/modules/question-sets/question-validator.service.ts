@@ -43,7 +43,8 @@ export interface DryRunResult {
   rows: DryRunRow[];
 }
 
-const OPTION_COUNT = 4;
+const MIN_OPTION_COUNT = 2;
+const MAX_OPTION_COUNT = 4;
 const MAX_PROMPT_LEN = 1000;
 const MAX_OPTION_LEN = 300;
 const MAX_PASSAGE_LEN = 2000;
@@ -170,9 +171,9 @@ export class QuestionValidatorService {
       return null;
     }
     const options = value.map((o) => (typeof o === 'string' ? o.trim() : ''));
-    if (options.length !== OPTION_COUNT) {
+    if (options.length < MIN_OPTION_COUNT || options.length > MAX_OPTION_COUNT) {
       errors.push(
-        `Phải có đúng ${OPTION_COUNT} đáp án (đang có ${options.length})`,
+        `Phải có từ ${MIN_OPTION_COUNT} đến ${MAX_OPTION_COUNT} đáp án (đang có ${options.length})`,
       );
       return null;
     }
@@ -198,8 +199,9 @@ export class QuestionValidatorService {
     errors: string[],
   ): number | null {
     const index = typeof value === 'number' ? value : Number(value);
-    if (!Number.isInteger(index) || index < 0 || index >= OPTION_COUNT) {
-      errors.push(`Vị trí đáp án đúng phải là số từ 0 đến ${OPTION_COUNT - 1}`);
+    const maxIdx = options ? options.length - 1 : MAX_OPTION_COUNT - 1;
+    if (!Number.isInteger(index) || index < 0 || index > maxIdx) {
+      errors.push(`Vị trí đáp án đúng phải là số từ 0 đến ${maxIdx}`);
       return null;
     }
     if (options && !options[index]) {

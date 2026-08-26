@@ -29,16 +29,22 @@ export function LoginFormFields({
   handleLogin,
 }: LoginFormFieldsProps) {
   return (
-    <form onSubmit={handleLogin} className="flex flex-col gap-5">
-      <Input
-        type="email"
-        placeholder={t("login.email")}
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+    <form onSubmit={handleLogin} className="flex flex-col gap-4">
+      {/* Email */}
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-semibold text-muted ml-1">{t("login.email")}</label>
+        <Input
+          type="email"
+          placeholder={t("login.email")}
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </div>
 
-      <div className="flex flex-col gap-2">
+      {/* Password */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-muted ml-1">{t("login.password")}</label>
         <Input
           type="password"
           placeholder={t("login.password")}
@@ -46,23 +52,27 @@ export function LoginFormFields({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer select-none">
+        <div className="flex items-center justify-between pt-1">
+          <label className="flex items-center gap-2 text-xs sm:text-sm text-foreground cursor-pointer select-none">
             <input
               type="checkbox"
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
-              className="accent-primary h-4 w-4"
+              className="accent-[#0D766E] h-4 w-4 rounded"
             />
-            {t("login.remember")}
+            <span>{t("login.remember")}</span>
           </label>
-          <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+          <Link href="/forgot-password" className="text-xs sm:text-sm font-semibold text-primary hover:underline">
             {t("login.forgot")}
           </Link>
         </div>
       </div>
 
-      <Button type="submit" disabled={loading} className="sd-btn-gradient mt-2 h-12 text-sm font-bold rounded-full">
+      <Button
+        type="submit"
+        disabled={loading}
+        className="sd-btn-gradient w-full mt-2 h-12 text-sm font-bold rounded-full shadow-card active:scale-[0.98] transition-all cursor-pointer"
+      >
         {loading ? t("login.submitting") : t("login.submit")}
       </Button>
     </form>

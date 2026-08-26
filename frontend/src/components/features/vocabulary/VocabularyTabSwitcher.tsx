@@ -19,25 +19,27 @@ export function VocabularyTabSwitcher({
   totalCount,
 }: VocabularyTabSwitcherProps) {
   return (
-    <div className="flex items-center bg-surface p-1.5 rounded-2xl border border-border shadow-2xs">
+    <div className="flex items-center bg-surface p-1.5 rounded-full border border-border shadow-card max-w-md mx-auto">
       <button
+        type="button"
         onClick={() => setActiveTab("quiz")}
         className={cn(
-          "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+          "flex-1 py-2.5 px-4 rounded-full text-xs sm:text-sm font-extrabold transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-95",
           activeTab === "quiz"
-            ? "bg-primary !text-white text-white shadow-2xs"
+            ? "bg-slate-900 text-white shadow-card"
             : "text-muted hover:text-foreground hover:bg-surface-2",
         )}
       >
-        <Brain className="w-4 h-4" />
+        <Brain className="w-4 h-4 text-teal-400" />
         <span>{t("tab_quiz")}</span>
       </button>
       <button
+        type="button"
         onClick={() => setActiveTab("notebook")}
         className={cn(
-          "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+          "flex-1 py-2.5 px-4 rounded-full text-xs sm:text-sm font-extrabold transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-95",
           activeTab === "notebook"
-            ? "bg-primary !text-white text-white shadow-2xs"
+            ? "bg-slate-900 text-white shadow-card"
             : "text-muted hover:text-foreground hover:bg-surface-2",
         )}
       >

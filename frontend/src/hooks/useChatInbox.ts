@@ -11,6 +11,7 @@ import { useCall } from "@/components/call/CallProvider";
 import type { CallMessagePayload } from "@/lib/webrtc/callContract";
 import { useLocale, useTranslations } from "next-intl";
 import { compressImage } from "@/lib/utils";
+import { ReplyToInfo } from "@/components/features/chat/MessageReplyQuote";
 
 export const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "👏"] as const;
 
@@ -29,14 +30,31 @@ export type SchedulePayload = {
   slotId?: string;
   myTimeLabel?: string;
   partnerTimeLabel?: string;
-  status: "pending" | "accepted" | "declined" | "expired" | "cancelled";
+  status?: "pending" | "accepted" | "declined" | "expired" | "cancelled";
   cancelReason?: string;
+};
+
+export type MessagePayload = {
+  replyTo?: ReplyToInfo | null;
+  isEdited?: boolean;
+  editedAt?: string | null;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
+  requestId?: number;
+  timeUtc?: string;
+  slotId?: string;
+  myTimeLabel?: string;
+  partnerTimeLabel?: string;
+  status?: "pending" | "accepted" | "declined" | "expired" | "cancelled";
+  cancelReason?: string;
+  durationSec?: number;
+  kind?: "audio" | "video";
 };
 
 export type Conversation = {
   id: number;
   partner: Partner;
-  lastMessage: { content: string; sentAt: string; senderId: number; type?: string } | null;
+  lastMessage: { content: string; sentAt: string; senderId: number; type?: string; payload?: MessagePayload | null } | null;
   unreadCount: number;
   createdAt: string;
   isConnected?: boolean;
@@ -48,7 +66,7 @@ export type Message = {
   senderId: number;
   type: "text" | "image" | "schedule" | "call";
   content: string;
-  payload?: SchedulePayload | CallMessagePayload | null;
+  payload?: MessagePayload | null;
   reactions?: Record<string, number[]> | null;
   sentAt: string;
   readAt: string | null;
@@ -77,6 +95,9 @@ export function formatBubbleTime(iso: string): string {
 export function previewText(m: Conversation["lastMessage"], mine: boolean, t: any): string {
   if (!m) return t("chat.say_hi");
   const prefix = mine ? t("chat.you") : "";
+  if (m.payload?.isDeleted) {
+    return mine ? t("chat.you_deleted_message") : t("chat.partner_deleted_message", { name: "" }).replace(/^:\s*/, "");
+  }
   if (m.type === "image") return `${prefix}${t("chat.photo")}`;
   if (m.type === "schedule") return `${prefix}${t("chat.schedule_invite")}`;
   if (m.type === "call") return m.content;
@@ -116,7 +137,6 @@ export function useChatInbox() {
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const [translationOpen, setTranslationOpen] = React.useState(false);
   const [translationInitialText, setTranslationInitialText] = React.useState("");
-  const [wordSaveTarget, setWordSaveTarget] = React.useState<string | null>(null);
   const [translations, setTranslations] = React.useState<Record<number, string>>({});
   const [showTranslationFor, setShowTranslationFor] = React.useState<Record<number, boolean>>({});
   const [translating, setTranslating] = React.useState<Record<number, boolean>>({});
@@ -125,12 +145,11 @@ export function useChatInbox() {
   const [cancellingRequestId, setCancellingRequestId] = React.useState<number | null>(null);
   const [cancellingLoading, setCancellingLoading] = React.useState(false);
 
-  const [selectionSave, setSelectionSave] = React.useState<{
-    text: string;
-    top: number;
-    left: number;
-  } | null>(null);
   const [reactionPickerFor, setReactionPickerFor] = React.useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = React.useState<ReplyToInfo | null>(null);
+  const [editingMessage, setEditingMessage] = React.useState<Message | null>(null);
+  const [highlightedMsgId, setHighlightedMsgId] = React.useState<number | null>(null);
+  const highlightTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const socketRef = React.useRef<Socket | null>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
@@ -279,7 +298,7 @@ export function useChatInbox() {
   }, [messages]);
 
   const sendMessage = React.useCallback(
-    (content: string, type: Message["type"], payload?: SchedulePayload) => {
+    (content: string, type: Message["type"], payload?: MessagePayload) => {
       if (!selectedId || !me) return;
       const tempId = -Date.now();
       const temp: Message = {
@@ -313,6 +332,7 @@ export function useChatInbox() {
                 sentAt: ack.sentAt,
                 senderId: ack.senderId,
                 type: ack.type,
+                payload: ack.payload,
               },
             };
             return [conv, ...prev.filter((c) => String(c.id) !== String(selectedId))];
@@ -323,13 +343,86 @@ export function useChatInbox() {
     [selectedId, me],
   );
 
+  const handleReply = React.useCallback((m: Message) => {
+    setEditingMessage(null);
+    setReplyingTo({
+      id: m.id,
+      content: m.content,
+      senderId: m.senderId,
+      senderName: m.senderId === meRef.current ? t("chat.replied_yourself") : (selected?.partner.displayName || "Partner"),
+      type: m.type,
+    });
+    inputRef.current?.focus();
+  }, [selected, t]);
+
+  const handleStartEdit = React.useCallback((m: Message) => {
+    setReplyingTo(null);
+    setEditingMessage(m);
+    setDraft(m.content);
+    inputRef.current?.focus();
+  }, []);
+
+  const handleCancelReplyOrEdit = React.useCallback(() => {
+    if (editingMessage) setDraft("");
+    setEditingMessage(null);
+    setReplyingTo(null);
+  }, [editingMessage]);
+
+  const handleDeleteMessage = React.useCallback((messageId: number) => {
+    socketRef.current?.emit("message:delete", { messageId });
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? {
+              ...m,
+              content: "",
+              payload: { ...(m.payload as any), isDeleted: true, deletedAt: new Date().toISOString() },
+            }
+          : m,
+      ),
+    );
+  }, []);
+
+  const scrollToMessage = React.useCallback((id: number) => {
+    const el = document.getElementById(`message-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedMsgId(id);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightedMsgId(null);
+      }, 1500);
+    }
+  }, []);
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     const content = draft.trim();
     if (!content) return;
+
+    if (editingMessage) {
+      socketRef.current?.emit("message:edit", { messageId: editingMessage.id, content });
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === editingMessage.id
+            ? {
+                ...m,
+                content,
+                payload: { ...(m.payload as any), isEdited: true, editedAt: new Date().toISOString() },
+              }
+            : m,
+        ),
+      );
+      setEditingMessage(null);
+      setDraft("");
+      return;
+    }
+
+    const payload = replyingTo ? { replyTo: replyingTo } : undefined;
     setDraft("");
     setShowEmoji(false);
-    sendMessage(content, "text");
+    setReplyingTo(null);
+    sendMessage(content, "text", payload);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -423,32 +516,6 @@ export function useChatInbox() {
     }
   };
 
-  const handleTextSelection = (e: React.SyntheticEvent) => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed) {
-      setSelectionSave(null);
-      return;
-    }
-    const text = sel.toString().trim();
-    if (!text || text.length < 2 || text.length > 50) {
-      setSelectionSave(null);
-      return;
-    }
-    try {
-      const range = sel.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      const containerRect = messagesContainerRef.current?.getBoundingClientRect();
-      if (!containerRect) return;
-      setSelectionSave({
-        text,
-        top: rect.top - containerRect.top - 36,
-        left: Math.max(8, rect.left - containerRect.left + rect.width / 2 - 40),
-      });
-    } catch {
-      setSelectionSave(null);
-    }
-  };
-
   const handleReport = async (reason: string, details?: string) => {
     if (!selected) return;
     try {
@@ -514,8 +581,6 @@ export function useChatInbox() {
     setTranslationOpen,
     translationInitialText,
     setTranslationInitialText,
-    wordSaveTarget,
-    setWordSaveTarget,
     translations,
     showTranslationFor,
     translating,
@@ -524,10 +589,11 @@ export function useChatInbox() {
     cancellingLoading,
     handleCancelSchedule,
     openCancelDialog,
-    selectionSave,
-    setSelectionSave,
     reactionPickerFor,
     setReactionPickerFor,
+    replyingTo,
+    editingMessage,
+    highlightedMsgId,
     socketRef,
     bottomRef,
     messagesContainerRef,
@@ -540,7 +606,11 @@ export function useChatInbox() {
     handleSchedule,
     respondScheduleRequest,
     handleToggleReaction,
-    handleTextSelection,
+    handleReply,
+    handleStartEdit,
+    handleCancelReplyOrEdit,
+    handleDeleteMessage,
+    scrollToMessage,
     handleReport,
     handleBlock,
   };

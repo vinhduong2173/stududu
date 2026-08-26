@@ -69,7 +69,10 @@ type AttemptRow = Pick<
 >;
 
 /** Phần của bộ đề cần để hiển thị đề — không kèm `answerIndex` */
-type AttemptSet = Pick<QuestionSet, 'id' | 'title' | 'framework' | 'level'> & {
+type AttemptSet = Pick<
+  QuestionSet,
+  'id' | 'title' | 'framework' | 'level' | 'timePerQuestionSec'
+> & {
   language: { id: number; code: string; name: string };
   topic: { id: number; name: string };
   questions: Pick<
@@ -101,6 +104,11 @@ export class AttemptsService {
       include: {
         language: { select: { id: true, code: true, name: true } },
         topic: { select: { id: true, name: true } },
+        _count: {
+          select: {
+            questions: { where: { status: 'active' } },
+          },
+        },
         attempts: {
           where: { userId, finishedAt: { not: null } },
           orderBy: { finishedAt: 'desc' },
@@ -136,16 +144,38 @@ export class AttemptsService {
       userAttemptsMap[row.setId] = row._count.id;
     }
 
-    return sets.map(({ attempts, ...set }) => {
+    const now = new Date();
+
+    return sets.map(({ attempts, _count, ...set }) => {
       const lastAttempt = attempts[0] ?? null;
       const takerCount = takerCountMap[set.id] || 0;
       const userAttemptsCount = userAttemptsMap[set.id] || 0;
 
-      const isExpired = false;
-      const isNotStarted = false;
-      const isLimitReached = false;
-      const diffDays: number | null = null;
-      const expiryText = 'Không giới hạn';
+      let isExpired = false;
+      let isNotStarted = false;
+      let diffDays: number | null = null;
+      let expiryText = 'Không giới hạn';
+
+      if (set.startsAt && new Date(set.startsAt) > now) {
+        isNotStarted = true;
+        expiryText = 'Sắp mở';
+      } else if (set.endsAt) {
+        const endsDate = new Date(set.endsAt);
+        if (endsDate < now) {
+          isExpired = true;
+          expiryText = 'Đã kết thúc';
+        } else {
+          diffDays = Math.ceil((endsDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          expiryText = diffDays > 0 ? `Còn ${diffDays} ngày` : 'Hết hạn hôm nay';
+        }
+      }
+
+      const isLimitReached =
+        Boolean(set.maxAttempts && set.maxAttempts > 0 && userAttemptsCount >= set.maxAttempts);
+
+      const questionCount = _count?.questions ?? set.questionCount ?? 20;
+      const timePerQuestionSec = set.timePerQuestionSec || 15;
+      const timePerQuestion = `${timePerQuestionSec}s/câu`;
 
       const score = lastAttempt
         ? (lastAttempt.score && lastAttempt.score > 0
@@ -157,8 +187,9 @@ export class AttemptsService {
 
       return {
         ...set,
-        timePerQuestionSec: 15,
-        timePerQuestion: '15s/câu',
+        questionCount,
+        timePerQuestionSec,
+        timePerQuestion,
         takerCount,
         userAttemptsCount,
         isExpired,
@@ -294,7 +325,7 @@ export class AttemptsService {
         level: set.level,
         language: set.language,
         topic: set.topic,
-        timePerQuestionSec: 15,
+        timePerQuestionSec: set.timePerQuestionSec || 15,
       },
       questions: attempt.questionOrder
         // Câu bị retire sau khi lượt này bắt đầu thì bỏ khỏi đề — `submit` cũng bỏ
@@ -392,7 +423,7 @@ export class AttemptsService {
     const durationSec = Math.round(
       (finishedAt.getTime() - attempt.startedAt.getTime()) / 1000,
     );
-    const timePerQuestionSec = 15;
+    const timePerQuestionSec = attempt.set.timePerQuestionSec || 15;
     const totalPossibleTime = answerRows.length * timePerQuestionSec;
     const timeSavedRatio =
       totalPossibleTime > 0

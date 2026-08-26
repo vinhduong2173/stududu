@@ -18,6 +18,14 @@ export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👏'
 const CHAT_HOURS_MILESTONE_STEP = 10;
 const SESSION_IDLE_MS = 30 * 60 * 1000; // BR-14
 
+export interface ReplyToPayload {
+  id: number;
+  content: string;
+  senderId: number;
+  senderName: string;
+  type?: string;
+}
+
 export interface ScheduleMessagePayload {
   // FS-28 (mới): tham chiếu SCHEDULE_REQUEST + giờ hẹn UTC
   requestId?: number;
@@ -26,7 +34,15 @@ export interface ScheduleMessagePayload {
   slotId?: string;
   myTimeLabel?: string;
   partnerTimeLabel?: string;
-  status: 'pending' | 'accepted' | 'declined' | 'expired';
+  status?: 'pending' | 'accepted' | 'declined' | 'expired';
+}
+
+export interface ChatMessagePayload extends ScheduleMessagePayload {
+  replyTo?: ReplyToPayload | null;
+  isEdited?: boolean;
+  editedAt?: string | null;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
 }
 
 @Injectable()
@@ -150,7 +166,7 @@ export class ChatService {
     conversationId: number,
     content: string,
     type: MessageType = MessageType.text,
-    payload?: ScheduleMessagePayload,
+    payload?: ChatMessagePayload,
   ) {
     // US-20 AC1 — tài khoản bị khóa không nhắn tin được (socket không qua JwtStrategy)
     const sender = await this.prisma.user.findUnique({
@@ -192,6 +208,83 @@ export class ChatService {
     }
 
     return message;
+  }
+
+  // Chỉnh sửa tin nhắn của chính mình
+  async editMessage(userId: number, messageId: number, newContent: string) {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
+    if (!message) {
+      throw new NotFoundException(
+        this.i18n.t('translation.chat.messageNotFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
+    }
+    if (message.senderId !== userId) {
+      throw new ForbiddenException('Chỉ có thể chỉnh sửa tin nhắn của chính mình');
+    }
+    const currentPayload = (message.payload as Record<string, any> | null) ?? {};
+    if (currentPayload.isDeleted) {
+      throw new BadRequestException('Không thể chỉnh sửa tin nhắn đã xóa');
+    }
+    if (message.type !== MessageType.text) {
+      throw new BadRequestException('Chỉ có thể chỉnh sửa tin nhắn văn bản');
+    }
+    const trimmed = newContent.trim();
+    if (!trimmed || trimmed.length > MAX_TEXT_LENGTH) {
+      throw new BadRequestException('Độ dài tin nhắn không hợp lệ');
+    }
+
+    const updatedPayload = {
+      ...currentPayload,
+      isEdited: true,
+      editedAt: new Date().toISOString(),
+    };
+
+    return this.prisma.message.update({
+      where: { id: messageId },
+      data: {
+        content: trimmed,
+        payload: updatedPayload as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  // Xóa / Thu hồi tin nhắn của chính mình
+  async deleteMessage(userId: number, messageId: number) {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
+    if (!message) {
+      throw new NotFoundException(
+        this.i18n.t('translation.chat.messageNotFound', {
+          lang: I18nContext.current()?.lang,
+        }),
+      );
+    }
+    if (message.senderId !== userId) {
+      throw new ForbiddenException('Chỉ có thể xóa tin nhắn của chính mình');
+    }
+    const currentPayload = (message.payload as Record<string, any> | null) ?? {};
+    if (currentPayload.isDeleted) {
+      return message;
+    }
+
+    const updatedPayload = {
+      ...currentPayload,
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    };
+
+    return this.prisma.message.update({
+      where: { id: messageId },
+      data: {
+        content: '',
+        payload: updatedPayload as Prisma.InputJsonValue,
+      },
+    });
   }
 
   // FS-14 — toggle reaction emoji trên tin nhắn (tập cố định REACTION_EMOJIS)

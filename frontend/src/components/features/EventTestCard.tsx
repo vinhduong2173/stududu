@@ -80,10 +80,9 @@ export function EventTestCard({ item }: { item: TestSetItem }) {
 
   const isBlocked = (isExpired || isLimitReached || isNotStarted) && status !== "completed";
 
-  let formattedTimePerQ = t("time_per_q", { sec: timePerQuestionSec || 15 });
-  if (timePerQuestion && !timePerQuestion.includes("s/câu")) {
-    formattedTimePerQ = timePerQuestion;
-  }
+  const formattedTimePerQ = timePerQuestionSec
+    ? t("time_per_q", { sec: timePerQuestionSec })
+    : timePerQuestion || t("time_per_q", { sec: 15 });
 
   let formattedExpiry = expiryText;
   if (diffDays && diffDays > 0) {

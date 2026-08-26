@@ -65,12 +65,23 @@ import * as path from 'path';
           const fs = require('fs');
           const candidates = [
             path.join(__dirname, '/i18n/'),
-            path.join(__dirname, '../i18n/'),
-            path.join(process.cwd(), 'src/i18n/'),
             path.join(process.cwd(), 'dist/i18n/'),
+            path.join(process.cwd(), 'src/i18n/'),
+            path.join(__dirname, '../src/i18n/'),
           ];
           return (
-            candidates.find((p: string) => fs.existsSync(p)) || candidates[0]
+            candidates.find((p: string) => {
+              try {
+                return (
+                  fs.existsSync(p) &&
+                  fs.readdirSync(p).some((f: string) =>
+                    fs.statSync(path.join(p, f)).isDirectory(),
+                  )
+                );
+              } catch {
+                return false;
+              }
+            }) || candidates[0]
           );
         })(),
         watch: true,

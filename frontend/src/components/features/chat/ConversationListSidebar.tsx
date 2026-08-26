@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Link } from "@/i18n/routing";
 import { Avatar } from "@/components/ui/Avatar";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,13 +62,13 @@ export function ConversationListSidebar({
           <div className="p-6 text-center text-xs text-muted space-y-3">
             <p>{search ? t("chat.no_result") : t("chat.no_conversations")}</p>
             {!search && (
-              <a
+              <Link
                 href="/discover"
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 bg-teal-50 px-3.5 py-1.5 rounded-full border border-teal-200 hover:bg-teal-100 transition-colors"
               >
                 <Search className="w-3.5 h-3.5" />
-                <span>Tìm bạn học ngay</span>
-              </a>
+                <span>{t("chat.find_partner_now") || t("chat.go_discover")}</span>
+              </Link>
             )}
           </div>
         ) : (

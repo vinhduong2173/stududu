@@ -11,8 +11,6 @@ import {
   Flame,
   ArrowLeft,
   RotateCcw,
-  CheckCircle2,
-  XCircle,
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/Button";
@@ -40,7 +38,7 @@ export function KahootQuizEngine({
   result,
 }: KahootQuizEngineProps) {
   const t = useTranslations("quiz");
-  const timePerQuestionSec = attempt.set.timePerQuestionSec || 15;
+  const timePerQuestionSec = attempt.set.timePerQuestionSec || 60;
   const questions = attempt.questions;
 
   // Game Stage States
@@ -50,18 +48,18 @@ export function KahootQuizEngine({
   const [isLocked, setIsLocked] = React.useState(false);
   const [streak, setStreak] = React.useState(0);
   const [maxStreak, setMaxStreak] = React.useState(0);
-  const [feedback, setFeedback] = React.useState<{
-    type: "correct" | "wrong" | "timeout";
-  } | null>(null);
 
   const currentQ = questions[currentIndex];
+
+  // Handle Timeout for current question
+  const handleTimeOut = React.useCallback(() => {
+    setIsLocked(true);
+    setStreak(0);
+  }, []);
 
   // Timer Effect
   React.useEffect(() => {
     if (result || isLocked) return;
-
-    setTimeLeft(timePerQuestionSec);
-    setFeedback(null);
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -75,15 +73,7 @@ export function KahootQuizEngine({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentIndex, isLocked, result, timePerQuestionSec]);
-
-  // Handle Timeout for current question
-  const handleTimeOut = () => {
-    if (isLocked) return;
-    setIsLocked(true);
-    setStreak(0);
-    setFeedback({ type: "timeout" });
-  };
+  }, [currentIndex, isLocked, result, handleTimeOut]);
 
   // Handle User Pick Answer
   const handleSelectOption = (optionIndex: number) => {
@@ -102,10 +92,8 @@ export function KahootQuizEngine({
         if (nextStreak > maxStreak) setMaxStreak(nextStreak);
         return nextStreak;
       });
-      setFeedback({ type: "correct" });
     } else {
       setStreak(0);
-      setFeedback({ type: "wrong" });
     }
   };
 
@@ -113,8 +101,8 @@ export function KahootQuizEngine({
   const handleNextQuestion = async () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
+      setTimeLeft(timePerQuestionSec);
       setIsLocked(false);
-      setFeedback(null);
     } else {
       await onComplete(userAnswers);
     }
@@ -129,6 +117,13 @@ export function KahootQuizEngine({
       ? "bg-amber-500 text-amber-700"
       : "bg-rose-500 text-rose-700 animate-pulse";
 
+  // Clean prompt string from legacy prefix/suffix
+  const rawPrompt = currentQ?.prompt || currentQ?.term || "";
+  const displayPrompt =
+    rawPrompt
+      .replace(/^Từ\s*['"“‘](.+?)['"”’]\s*có\s+nghĩa\s+là\s+gì\??$/i, "$1")
+      .trim() || rawPrompt;
+
   // RESULT SCREEN AFTER SUBMIT
   if (result) {
     const accuracy =
@@ -137,47 +132,47 @@ export function KahootQuizEngine({
         : 0;
 
     return (
-      <div className="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-8 animate-in fade-in zoom-in duration-300">
+      <div className="mx-auto w-full max-w-5xl space-y-8 p-4 sm:p-8 md:p-10 animate-in fade-in zoom-in duration-300">
         <div className="flex justify-between items-center">
           <Link
             href="/community?tab=events"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-2 text-base font-bold text-muted hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" /> Quay lại danh sách bài test
+            <ArrowLeft className="h-5 w-5" /> Quay lại danh sách bài test
           </Link>
-          <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
+          <span className="px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-extrabold">
             {attempt.set.framework} {attempt.set.level} • {attempt.set.topic.name}
           </span>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-surface p-6 md:p-8 text-center shadow-card">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mb-4 shadow-2xs">
-            <Trophy className="w-8 h-8 transition-transform hover:scale-105 duration-300" />
+        <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-surface p-8 sm:p-12 text-center shadow-card">
+          <div className="mx-auto w-20 h-20 rounded-3xl bg-amber-50 text-amber-600 border-2 border-amber-200 flex items-center justify-center mb-6 shadow-sm">
+            <Trophy className="w-10 h-10" />
           </div>
 
-          <h2 className="text-2xl md:text-3xl font-extrabold text-foreground font-display">
+          <h2 className="text-3xl sm:text-4xl font-black text-foreground font-display">
             Hoàn Thành Bài Test!
           </h2>
-          <p className="text-sm text-muted mt-1">{attempt.set.title}</p>
+          <p className="text-base text-muted mt-2">{attempt.set.title}</p>
 
-          <div className="grid grid-cols-3 gap-3 md:gap-4 my-6">
-            <div className="rounded-2xl border border-border/80 bg-surface/80 p-4 text-center shadow-xs">
-              <span className="text-xs font-bold text-muted uppercase tracking-wider block mb-1">
+          <div className="grid grid-cols-3 gap-4 sm:gap-6 my-8">
+            <div className="rounded-2xl border border-border/80 bg-surface/80 p-6 text-center shadow-xs">
+              <span className="text-xs sm:text-sm font-bold text-muted uppercase tracking-wider block mb-1">
                 Số Câu Đúng
               </span>
-              <span className="text-2xl md:text-3xl font-extrabold text-primary font-display">
+              <span className="text-3xl sm:text-4xl font-black text-primary font-display">
                 {result.correctCount}/{result.totalCount}
               </span>
-              <span className="text-[10px] text-muted block mt-0.5">câu trả lời đúng</span>
+              <span className="text-xs text-muted block mt-1">câu trả lời đúng</span>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-surface/80 p-4 text-center shadow-xs">
-              <span className="text-xs font-bold text-muted uppercase tracking-wider block mb-1">
+            <div className="rounded-2xl border border-border/80 bg-surface/80 p-6 text-center shadow-xs">
+              <span className="text-xs sm:text-sm font-bold text-muted uppercase tracking-wider block mb-1">
                 Độ Chính Xác
               </span>
               <span
                 className={cn(
-                  "text-2xl md:text-3xl font-extrabold font-display",
+                  "text-3xl sm:text-4xl font-black font-display",
                   accuracy >= 80
                     ? "text-emerald-600"
                     : accuracy >= 50
@@ -187,35 +182,35 @@ export function KahootQuizEngine({
               >
                 {accuracy}%
               </span>
-              <span className="text-[10px] text-muted block mt-0.5">
+              <span className="text-xs text-muted block mt-1">
                 {accuracy >= 80 ? "Xuất sắc" : accuracy >= 50 ? "Khá tốt" : "Cần cố gắng"}
               </span>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-surface/80 p-4 text-center shadow-xs">
-              <span className="text-xs font-bold text-muted uppercase tracking-wider block mb-1">
+            <div className="rounded-2xl border border-border/80 bg-surface/80 p-6 text-center shadow-xs">
+              <span className="text-xs sm:text-sm font-bold text-muted uppercase tracking-wider block mb-1">
                 Thời Gian
               </span>
-              <span className="text-2xl md:text-3xl font-extrabold text-foreground font-display">
+              <span className="text-3xl sm:text-4xl font-black text-foreground font-display">
                 {formatDuration(result.durationSec)}
               </span>
-              <span className="text-[10px] text-muted block mt-0.5">
+              <span className="text-xs text-muted block mt-1">
                 Chuỗi đúng: {maxStreak} câu
               </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <Button
               onClick={() => window.location.reload()}
               variant="outline"
-              className="gap-2 font-bold px-6 py-2.5 rounded-xl text-sm"
+              className="gap-2 font-bold px-8 py-3.5 rounded-2xl text-sm"
             >
-              <RotateCcw className="h-4 w-4" /> Làm lại bài test
+              <RotateCcw className="h-5 w-5" /> Làm lại bài test
             </Button>
             <Link href="/community?tab=events">
-              <Button className="gap-2 font-bold px-6 py-2.5 rounded-xl text-sm bg-primary text-primary-foreground shadow-md">
-                Khám phá bài test khác <ChevronRight className="h-4 w-4" />
+              <Button className="gap-2 font-bold px-8 py-3.5 rounded-2xl text-sm bg-primary text-primary-foreground shadow-md">
+                Khám phá bài test khác <ChevronRight className="h-5 w-5" />
               </Button>
             </Link>
           </div>
@@ -223,41 +218,41 @@ export function KahootQuizEngine({
 
         {/* Detailed Question Review List */}
         <div className="space-y-4 pt-4">
-          <h3 className="text-lg font-bold text-foreground font-display">
-            Xem lại chi tiết từng câu hỏi ({result.review.length})
+          <h3 className="text-xl font-extrabold text-foreground font-display">
+            Xem lại chi tiết ({result.review.length} câu)
           </h3>
 
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             {result.review.map((item, idx) => {
               const isCorrect = item.isCorrect;
               return (
                 <div
                   key={item.questionId}
                   className={cn(
-                    "p-5 rounded-2xl border transition-all text-sm space-y-3 shadow-xs",
+                    "p-6 rounded-2xl border transition-all text-sm space-y-3.5 shadow-xs",
                     isCorrect
                       ? "bg-emerald-50/30 border-emerald-200 dark:border-emerald-900/50"
                       : "bg-rose-50/30 border-rose-200 dark:border-rose-900/50"
                   )}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
                       <span
                         className={cn(
-                          "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0",
+                          "w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0",
                           isCorrect ? "bg-emerald-500" : "bg-rose-500"
                         )}
                       >
                         {idx + 1}
                       </span>
-                      <span className="font-bold text-foreground">
+                      <span className="font-extrabold text-base text-foreground">
                         {isCorrect ? "Chính xác" : "Chưa chính xác"}
                       </span>
                     </div>
 
                     <span
                       className={cn(
-                        "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase",
+                        "px-3 py-1 rounded-full text-xs font-extrabold uppercase",
                         isCorrect
                           ? "bg-emerald-100 text-emerald-700"
                           : "bg-rose-100 text-rose-700"
@@ -267,9 +262,9 @@ export function KahootQuizEngine({
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <div className="p-3 rounded-xl bg-surface border border-border/60">
-                      <span className="text-muted block font-semibold mb-1">Đáp án bạn chọn:</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3.5 rounded-xl bg-surface border border-border/60">
+                      <span className="text-muted block font-semibold text-xs mb-1">Đáp án bạn chọn:</span>
                       <p
                         className={cn(
                           "font-bold text-sm",
@@ -282,20 +277,13 @@ export function KahootQuizEngine({
                       </p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-surface border border-border/60">
-                      <span className="text-muted block font-semibold mb-1">Đáp án đúng:</span>
+                    <div className="p-3.5 rounded-xl bg-surface border border-border/60">
+                      <span className="text-muted block font-semibold text-xs mb-1">Đáp án đúng:</span>
                       <p className="font-bold text-sm text-emerald-600">
                         {OPTION_LETTERS[item.answerIndex]}. {item.options[item.answerIndex]}
                       </p>
                     </div>
                   </div>
-
-                  {item.explanation && (
-                    <div className="p-3 rounded-xl bg-muted/10 border border-border/40 text-xs text-muted">
-                      <span className="font-bold text-foreground block mb-0.5">Giải thích:</span>
-                      {item.explanation}
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -305,40 +293,39 @@ export function KahootQuizEngine({
     );
   }
 
-  // ACTIVE QUESTION VIEW
+  // ACTIVE QUESTION VIEW - LARGE, IMMERSIVE, FULL PRESENCE
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-8 select-none">
-      {/* HEADER BAR */}
-      <div className="bg-surface rounded-3xl border border-border shadow-md p-5 md:p-6 space-y-4">
-        <div className="flex items-center justify-between gap-2 text-xs md:text-sm font-bold">
-          <div className="flex items-center gap-2.5">
-            <span className="px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs md:text-sm font-extrabold">
+    <div className="mx-auto w-full max-w-5xl xl:max-w-6xl space-y-6 p-4 sm:p-8 md:p-10 select-none">
+      {/* TOP HEADER BAR */}
+      <div className="bg-surface rounded-3xl border-2 border-border shadow-md p-6 sm:p-7 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="px-4 py-2 rounded-2xl bg-primary/10 text-primary border border-primary/20 text-sm sm:text-base font-black tracking-tight">
               {t("question_num", { n: `${currentIndex + 1}/${questions.length}` })}
             </span>
-            <span className="hidden sm:inline-flex px-3 py-1.5 rounded-full bg-surface border border-border text-muted font-medium text-xs md:text-sm">
+            <span className="hidden sm:inline-flex px-4 py-2 rounded-2xl bg-surface-2 border border-border text-foreground font-bold text-sm sm:text-base">
               {attempt.set.title}
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            {streak > 1 && (
-              <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 text-xs md:text-sm font-extrabold animate-pulse">
-                <Flame className="w-4 h-4 md:w-5 md:h-5 fill-rose-500" />
-                <span>{t("streak_multiplier", { count: streak })}</span>
-              </div>
-            )}
-          </div>
+          {streak > 1 && (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-rose-500/10 text-rose-500 border border-rose-500/20 text-sm sm:text-base font-black animate-pulse">
+              <Flame className="w-5 h-5 fill-rose-500" />
+              <span>{t("streak_multiplier", { count: streak })}</span>
+            </div>
+          )}
         </div>
 
         {/* PER-QUESTION COUNTDOWN TIMER BAR */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs md:text-sm font-bold text-muted">
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-primary" />{t("remaining_time")}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm sm:text-base font-extrabold text-muted">
+            <span className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              {t("remaining_time")}
             </span>
             <span
               className={cn(
-                "px-3 py-0.5 rounded-full text-xs md:text-sm font-extrabold font-mono transition-colors",
+                "px-3.5 py-1 rounded-xl text-sm sm:text-base font-mono font-black transition-colors shadow-2xs",
                 timeLeft <= 5 ? "bg-rose-500 text-white animate-ping" : "bg-primary/10 text-primary"
               )}
             >
@@ -346,7 +333,7 @@ export function KahootQuizEngine({
             </span>
           </div>
 
-          <div className="h-3 w-full bg-muted/20 rounded-full overflow-hidden p-0.5 border border-border/50">
+          <div className="h-3.5 w-full bg-muted/20 rounded-full overflow-hidden p-0.5 border border-border/50">
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-1000 ease-linear shadow-xs",
@@ -359,82 +346,60 @@ export function KahootQuizEngine({
       </div>
 
       {/* QUESTION CARD */}
-      <div className="relative bg-surface rounded-3xl border border-border shadow-xl p-6 md:p-10 space-y-8 overflow-hidden">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="px-3.5 py-1.5 rounded-full bg-primary/10 text-primary text-xs md:text-sm font-extrabold uppercase tracking-wider">
-            {currentQ?.type === "vocabulary"
-              ? t("type_vocabulary")
-              : currentQ?.type === "grammar"
-              ? t("type_grammar")
-              : currentQ?.type === "cloze"
-              ? t("type_cloze")
-              : currentQ?.type === "reading"
-              ? t("type_reading")
-              : currentQ?.type}
-          </span>
-          {currentQ?.term && (
-            <span className="px-3.5 py-1.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 text-xs md:text-sm font-bold">
-              {t("term_label", { term: currentQ.term })}
-            </span>
-          )}
-        </div>
-
+      <div className="relative bg-surface rounded-3xl border-2 border-border shadow-xl p-8 sm:p-12 md:p-14 space-y-8 overflow-hidden">
         {currentQ?.passage && (
-          <div className="p-5 rounded-2xl bg-muted/10 border border-border/60 text-base md:text-lg leading-relaxed text-foreground/90 font-medium">
+          <div className="p-6 rounded-2xl bg-muted/10 border border-border/60 text-base md:text-lg leading-relaxed text-foreground/90 font-medium">
             {currentQ.passage}
           </div>
         )}
 
-        <h2 className="text-2xl md:text-3xl font-extrabold text-foreground leading-snug font-display">
-          {currentQ?.prompt}
+        {/* Big, legible Question Prompt */}
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-foreground leading-tight font-display tracking-tight">
+          {displayPrompt}
         </h2>
 
-        {/* 4 ANSWER OPTIONS GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 pt-2">
+        {/* 4 ANSWER OPTIONS GRID - LARGE & SPACIOUS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-2">
           {currentQ?.options.map((optText, optIdx) => {
             const isPicked = userAnswers[currentQ.id] === optIdx;
             const isCorrectOption =
               currentQ.answerIndex !== undefined && optIdx === currentQ.answerIndex;
 
             let cardStyle =
-              "bg-surface hover:bg-muted/15 border-2 border-border text-foreground hover:border-primary/50 shadow-xs";
+              "bg-surface hover:bg-muted/15 border-2 border-border text-foreground hover:border-primary/50 shadow-sm hover:shadow-md hover:scale-[1.01]";
             let iconNode = null;
 
             if (isLocked) {
               if (isPicked && isCorrectOption) {
-                // Người dùng chọn ĐÚNG -> Viền & Nền Xanh lá
                 cardStyle =
-                  "bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500 text-emerald-900 dark:text-emerald-100 ring-4 ring-emerald-300/60 scale-[1.01]";
+                  "bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500 text-emerald-950 dark:text-emerald-100 ring-4 ring-emerald-300/60 scale-[1.02] shadow-md";
                 iconNode = (
-                  <span className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md animate-in zoom-in duration-200">
+                  <span className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md">
                     <Check className="w-5 h-5 stroke-[3]" />
                   </span>
                 );
               } else if (isPicked && !isCorrectOption) {
-                // Người dùng chọn SAI -> Viền & Nền ĐỎ
                 cardStyle =
-                  "bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-500 text-rose-900 dark:text-rose-100 ring-4 ring-rose-300/60";
+                  "bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-500 text-rose-950 dark:text-rose-100 ring-4 ring-rose-300/60 scale-[1.02] shadow-md";
                 iconNode = (
-                  <span className="w-8 h-8 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-md animate-in zoom-in duration-200">
+                  <span className="w-9 h-9 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-md">
                     <X className="w-5 h-5 stroke-[3]" />
                   </span>
                 );
               } else if (!isPicked && isCorrectOption) {
-                // Hiển thị ĐÁP ÁN ĐÚNG chuẩn màu Xanh lá để người học biết đáp án đúng
                 cardStyle =
-                  "bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500 text-emerald-900 dark:text-emerald-100 ring-4 ring-emerald-300/40";
+                  "bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500 text-emerald-950 dark:text-emerald-100 ring-4 ring-emerald-300/40 shadow-sm";
                 iconNode = (
-                  <span className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md">
+                  <span className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md">
                     <Check className="w-5 h-5 stroke-[3]" />
                   </span>
                 );
               } else {
-                // Các đáp án sai khác không được chọn -> Làm mờ
                 cardStyle =
                   "bg-muted/10 text-muted/50 border border-border/40 opacity-40 grayscale cursor-not-allowed";
               }
             } else if (isPicked) {
-              cardStyle = "bg-primary/10 border-2 border-primary text-foreground ring-2 ring-primary/30";
+              cardStyle = "bg-primary/10 border-2 border-primary text-foreground ring-4 ring-primary/30";
             }
 
             return (
@@ -444,24 +409,24 @@ export function KahootQuizEngine({
                 disabled={isLocked}
                 onClick={() => handleSelectOption(optIdx)}
                 className={cn(
-                  "relative min-h-[85px] md:min-h-[100px] p-5 md:p-6 rounded-2xl font-bold text-left transition-all transform active:scale-98 flex items-center justify-between gap-4 cursor-pointer",
+                  "relative min-h-[90px] sm:min-h-[110px] md:min-h-[125px] p-6 sm:p-7 md:p-8 rounded-2xl md:rounded-3xl font-bold text-left transition-all transform active:scale-98 flex items-center justify-between gap-4 cursor-pointer",
                   cardStyle
                 )}
               >
-                <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className="flex items-center gap-4 sm:gap-5 flex-1 min-w-0">
                   <span
                     className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0 border shadow-xs transition-colors",
+                      "w-11 h-11 sm:w-13 sm:h-13 md:w-14 md:h-14 rounded-2xl flex items-center justify-center text-base sm:text-lg md:text-xl font-black shrink-0 border-2 shadow-xs transition-colors",
                       isLocked && isCorrectOption
                         ? "bg-emerald-500 text-white border-emerald-600"
                         : isLocked && isPicked && !isCorrectOption
                         ? "bg-rose-500 text-white border-rose-600"
-                        : "bg-muted/20 text-foreground border-border/60"
+                        : "bg-muted/20 text-foreground border-border/70"
                     )}
                   >
                     {OPTION_LETTERS[optIdx % 4]}
                   </span>
-                  <span className="text-base md:text-lg leading-snug font-bold">
+                  <span className="text-base sm:text-lg md:text-xl leading-snug font-bold">
                     {optText}
                   </span>
                 </div>
@@ -472,43 +437,22 @@ export function KahootQuizEngine({
           })}
         </div>
 
-        {/* INSTANT FEEDBACK BAR */}
+        {/* BOTTOM ACTION BUTTON */}
         {isLocked && (
-          <div className="pt-4 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {feedback?.type === "correct" ? (
-              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-bold text-sm md:text-base">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                <span>Chính xác!</span>
-              </div>
-            ) : feedback?.type === "timeout" ? (
-              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/20 font-bold text-sm md:text-base">
-                <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
-                <span>
-                  Hết giờ! {currentQ?.answerIndex !== undefined && `Đáp án đúng là: ${OPTION_LETTERS[currentQ.answerIndex]}. ${currentQ.options[currentQ.answerIndex]}`}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-rose-500/10 text-rose-600 border border-rose-500/20 font-bold text-sm md:text-base">
-                <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
-                <span>
-                  Chưa chính xác! {currentQ?.answerIndex !== undefined && `Đáp án đúng là: ${OPTION_LETTERS[currentQ.answerIndex]}. ${currentQ.options[currentQ.answerIndex]}`}
-                </span>
-              </div>
-            )}
-
+          <div className="pt-6 border-t border-border/60 flex justify-end animate-in fade-in slide-in-from-bottom-2 duration-300">
             <Button
               disabled={submitting}
               onClick={handleNextQuestion}
-              className="w-full sm:w-auto px-7 py-3 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-md flex items-center justify-center gap-2 text-sm cursor-pointer"
+              className="w-full sm:w-auto px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl font-black bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl flex items-center justify-center gap-3 text-base md:text-lg cursor-pointer transition-all"
             >
               {currentIndex < questions.length - 1 ? (
                 <>
                   <span>{t("next_question")}</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-5 h-5" />
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-5 h-5" />
                   <span>{submitting ? t("submitting") : t("submit_attempt")}</span>
                 </>
               )}

@@ -39,6 +39,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: stududu-backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - ./backend/.env
     expose:
@@ -48,4 +50,5 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - DATABASE_URL=postgresql://postgres:2605@host.docker.internal:5432/stududu?schema=public
     restart: always

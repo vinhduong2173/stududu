@@ -13,6 +13,8 @@ interface GroupListItemProps {
 
 export function GroupListItem({ group, onOpenInfo }: GroupListItemProps) {
   const isPrivate = group.privacy === "private";
+  const [imgError, setImgError] = React.useState(false);
+  const showImage = Boolean(group.avatarUrl || group.coverUrl) && !imgError;
 
   return (
     <div
@@ -21,10 +23,11 @@ export function GroupListItem({ group, onOpenInfo }: GroupListItemProps) {
     >
       {/* Left: Square Thumbnail / Avatar */}
       <div className="relative shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-primary/10 border border-border/50 flex items-center justify-center">
-        {group.avatarUrl || group.coverUrl ? (
+        {showImage ? (
           <img
-            src={group.avatarUrl || group.coverUrl!}
+            src={(group.avatarUrl || group.coverUrl)!}
             alt={group.name}
+            onError={() => setImgError(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
           />
         ) : (

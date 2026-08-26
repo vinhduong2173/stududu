@@ -7,11 +7,9 @@ import {
   Award,
   CheckCircle2,
   Clock,
-  Flame,
   HelpCircle,
   Loader2,
   RotateCcw,
-  Sparkles,
   Trophy,
   UserCheck,
   XCircle,
@@ -168,18 +166,12 @@ export default function QuizResultPage() {
           <div className="relative overflow-hidden bg-surface rounded-2xl border border-emerald-200 shadow-card p-6 md:p-8">
             <div className="flex flex-wrap items-center justify-between gap-6">
               <div className="space-y-1">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> {t("excellent_completed")}
-                </span>
-                <div className="flex items-baseline gap-2 pt-1">
+                <div className="flex items-baseline gap-2">
                   <h2 className="text-3xl md:text-4xl font-extrabold text-foreground font-display">
                     {score.toLocaleString()}{" "}
                     <span className="text-sm font-bold text-muted uppercase">{t("points")}</span>
                   </h2>
                 </div>
-                <p className="text-xs font-semibold text-muted">
-                  {t("score_detail", { correct: correctCount, total: totalCount, percent: accuracyPercent })}
-                </p>
               </div>
 
               {/* Quick Stats Badges */}
@@ -295,17 +287,6 @@ export default function QuizResultPage() {
                         );
                       })}
                     </div>
-
-                    {/* Explanation Box */}
-                    {item.explanation && (
-                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs space-y-1">
-                        <div className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-300">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>{t("explanation_title")}</span>
-                        </div>
-                        <p className="leading-relaxed text-xs">{item.explanation}</p>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -331,10 +312,6 @@ export default function QuizResultPage() {
                   </p>
                 </div>
               </div>
-
-              <span className="px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 fill-current text-teal-600" /> BXH Quiz
-              </span>
             </div>
 
             {/* My Rank Highlight Banner */}

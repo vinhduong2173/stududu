@@ -22,7 +22,7 @@ import type {
   CallInvitePayload,
   CallMediaStatePayload,
 } from '../calls/calls.types';
-import { ChatService, type ScheduleMessagePayload } from './chat.service';
+import { ChatService, type ChatMessagePayload } from './chat.service';
 
 interface AuthedSocket extends Socket {
   data: { user: JwtPayload };
@@ -108,7 +108,7 @@ export class ChatGateway
       conversationId: number;
       content: string;
       type?: 'text' | 'image' | 'schedule';
-      payload?: ScheduleMessagePayload;
+      payload?: ChatMessagePayload;
     },
   ) {
     const message = await this.chatService.createMessage(
@@ -132,6 +132,55 @@ export class ChatGateway
         conversationId: body.conversationId,
         message,
       });
+    }
+    return message;
+  }
+
+  // Chỉnh sửa tin nhắn văn bản của chính mình
+  @SubscribeMessage('message:edit')
+  async editMessage(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { messageId: number; content: string },
+  ) {
+    const message = await this.chatService.editMessage(
+      client.data.user.sub,
+      body.messageId,
+      body.content,
+    );
+    this.server
+      .to(this.room(message.conversationId))
+      .emit('message:update', message);
+
+    const partnerId = await this.chatService.getPartnerId(
+      message.conversationId,
+      client.data.user.sub,
+    );
+    if (partnerId) {
+      this.server.to(`user:${partnerId}`).emit('message:update', message);
+    }
+    return message;
+  }
+
+  // Xóa / Thu hồi tin nhắn của chính mình
+  @SubscribeMessage('message:delete')
+  async deleteMessage(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { messageId: number },
+  ) {
+    const message = await this.chatService.deleteMessage(
+      client.data.user.sub,
+      body.messageId,
+    );
+    this.server
+      .to(this.room(message.conversationId))
+      .emit('message:update', message);
+
+    const partnerId = await this.chatService.getPartnerId(
+      message.conversationId,
+      client.data.user.sub,
+    );
+    if (partnerId) {
+      this.server.to(`user:${partnerId}`).emit('message:update', message);
     }
     return message;
   }

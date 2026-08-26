@@ -13,35 +13,37 @@ export default function RegisterPage() {
   const r = useRegister();
 
   return (
-    <div className="flex min-h-screen bg-background relative">
-      <div className="absolute top-4 right-4 z-10">
-        <LanguageSwitcher />
-      </div>
-
-      {/* Cột minh hoạ (chỉ hiện trên desktop) */}
+    <div className="grid min-h-screen lg:grid-cols-2 bg-background text-foreground relative">
+      {/* Brand Hero (Desktop) */}
       <RegisterHeroColumn t={r.t} />
 
-      {/* Cột form đăng ký */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-md">
-          {/* Logo trên mobile */}
-          <div className="lg:hidden mb-6 flex justify-start">
-            <Logo size="sm" href="/" />
+      {/* Register Form Main */}
+      <main className="relative flex items-center justify-center px-5 py-12 sm:px-10 lg:px-12">
+        <div className="absolute top-5 right-5 z-10">
+          <div className="bg-white/80 backdrop-blur-sm rounded-full p-0.5 border border-border/70 shadow-2xs">
+            <LanguageSwitcher />
+          </div>
+        </div>
+
+        <div className="w-full max-w-md py-6">
+          {/* Logo on Mobile */}
+          <div className="lg:hidden mb-8 flex justify-start">
+            <Logo size="md" href="/" />
           </div>
 
-          <div className="mb-6">
+          <div className="mb-8">
             <h1 className="text-2xl sm:text-3xl font-extrabold font-display tracking-tight text-foreground">
               {r.t("register.title")}
             </h1>
-            <p className="mt-1 text-muted text-xs sm:text-sm">
+            <p className="mt-2 text-xs sm:text-sm text-muted leading-relaxed">
               {r.t("register.subtitle")}
             </p>
           </div>
 
           {r.error && (
-            <div className="mb-6 rounded-xl bg-rose-50 border border-rose-200/80 p-3.5 text-xs sm:text-sm text-rose-700 flex items-start gap-2.5">
+            <div className="mb-6 rounded-2xl bg-rose-50 border border-rose-200/90 p-4 text-xs sm:text-sm text-rose-800 flex items-start gap-3 shadow-2xs">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-              <span>{r.error}</span>
+              <span className="font-medium leading-relaxed">{r.error}</span>
             </div>
           )}
 
@@ -80,7 +82,7 @@ export default function RegisterPage() {
 
           <SocialRegisterButtons t={r.t} handleGoogleClick={r.handleGoogleClick} />
         </div>
-      </div>
+      </main>
     </div>
   );
 }
