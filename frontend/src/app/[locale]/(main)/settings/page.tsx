@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input";
 import { api, ApiError } from "@/lib/api";
 import { disconnectSocket } from "@/lib/socket";
 import { useToast } from "@/components/features/TrustDialogs";
+import { SubscriptionSettingsCard } from "@/components/features/pricing/SubscriptionSettingsCard";
 
 type Locale = "vi" | "en";
 
@@ -147,6 +148,10 @@ export default function SettingsPage() {
             ))}
           </div>
         </section>
+
+        {/* Gói dịch vụ Pro / Subscription */}
+        <SubscriptionSettingsCard />
+
         {/* Đổi mật khẩu */}
         <section className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
           <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">

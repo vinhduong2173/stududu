@@ -427,5 +427,276 @@
     "game": "Gaming",
     "culture": "Culture",
     "exams": "Exams (IELTS/TOEIC...)"
+<<<<<<< Updated upstream
+=======
+  },
+  "call": {
+    "start_audio": "Voice call",
+    "start_video": "Video call",
+    "start_tooltip": "Voice call",
+    "start_video_tooltip": "Video call",
+    "calling": "Calling…",
+    "incoming_title": "{name} is calling",
+    "incoming_audio": "Incoming voice call",
+    "incoming_video": "Incoming video call",
+    "accept": "Accept",
+    "accept_audio_only": "Answer without camera",
+    "decline": "Decline",
+    "hang_up": "Hang up",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "camera_off": "Turn camera off",
+    "camera_on": "Turn camera on",
+    "switch_camera": "Switch front/back camera",
+    "partner_camera_off": "Your partner turned their camera off",
+    "network_unstable": "Weak connection…",
+    "rejected": "Your partner declined the call",
+    "no_answer": "No answer",
+    "partner_busy": "{name} is on another call",
+    "partner_offline": "{name} is not online",
+    "failed": "Connection lost, the call ended",
+    "ended_max_duration": "The call reached the 30-minute limit",
+    "timeout_warning": "The call will end automatically in {minutes} minutes",
+    "error_insecure": "Your browser blocked the microphone because the page is not on HTTPS",
+    "error_permission": "Allow microphone access in your browser settings",
+    "error_no_device": "No microphone found",
+    "error_camera_busy": "Camera is currently used by another app or tab — continuing with audio call",
+    "error_camera_permission": "Camera is blocked — the call continues, your partner just won't see you",
+    "error_unknown": "Could not start the call",
+    "log_ended": "Voice call · {duration}",
+    "log_ended_video": "Video call · {duration}",
+    "log_rejected": "Call declined",
+    "log_missed_outgoing": "You called but nobody answered",
+    "log_missed_incoming": "Missed call"
+  },
+  "group": {
+    "join_pending": "Pending Approval",
+    "join_pending_msg": "Your join request is awaiting Admin/Owner approval",
+    "request_join": "Request to Join",
+    "report_member": "Report Member",
+    "report_member_title": "Report Member Violation",
+    "report_reason_placeholder": "Select violation reason...",
+    "reason_spam": "Spam / Unsolicited Ads",
+    "reason_harassment": "Harassment / Insults",
+    "reason_hate_speech": "Hate Speech / Inappropriate Behavior",
+    "reason_inappropriate": "Inappropriate Content",
+    "reason_other": "Other Reason",
+    "submit_report": "Submit Report",
+    "report_success": "Report submitted successfully",
+    "pending_join_requests": "Pending Join Requests",
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "quiz": {
+    "title": "Practice tests",
+    "subtitle": "Multiple-choice sets by topic and level, written by the admin team.",
+    "all_topics": "All topics",
+    "quota": "Today: {used}/{limit} sets",
+    "quota_exhausted": "Your quota resets at 00:00 in your timezone.",
+    "no_sets": "No published sets yet",
+    "no_sets_hint": "Check back soon — the admins are writing more.",
+    "start": "Start",
+    "retry": "Try again",
+    "last_score": "Last attempt: {correct}/{total} correct",
+    "history": "Attempt history",
+    "back": "Back to test list",
+    "cannot_start": "Could not start this attempt.",
+    "challenge_mode": "Challenge",
+    "question_count": "{count} questions · question and answer order is shuffled each time",
+    "answered": "{answered}/{total} answered",
+    "submit": "Submit",
+    "submitting": "Submitting…",
+    "submit_failed": "Could not submit your answers, please try again.",
+    "duration": "Time taken: {time}",
+    "level_up": "Nicely done — try a set one level up.",
+    "level_down": "This one was tough — a level down may build a firmer base.",
+    "level_stay": "Solid result — keep practising at this level.",
+    "review_hint": "Scroll down to see the correct answers and explanations.",
+    "type_vocabulary": "Vocabulary",
+    "type_grammar": "Grammar",
+    "type_cloze": "Fill in the blank",
+    "type_reading": "Reading",
+    "explanation_label": "Explanation:",
+    "preview_hint": "Tap an option to see the result — preview mode does not score or save anything.",
+    "remaining_time": "Time remaining:",
+    "streak_multiplier": "STREAK x{count}",
+    "excellent_added": "Excellent! +{pts} PTS",
+    "wrong_added": "Oops! 0 PTS",
+    "timeout_added": "Time's up! 0 PTS",
+    "term_label": "Vocabulary: {term}",
+    "next_question": "Next question →",
+    "submit_attempt": "Submit test →",
+    "back_to_events": "Back to tests list",
+    "loading_result": "Loading results & leaderboard...",
+    "not_found_result": "Test result not found",
+    "start_quiz": "Start test",
+    "retry_quiz": "Practice again",
+    "excellent_completed": "Outstanding completion",
+    "points": "PTS",
+    "score_detail": "{correct}/{total} questions correct ({percent}%)",
+    "duration_label": "Duration",
+    "rank_label": "Rank",
+    "answer_review_title": "Detailed answer breakdown ({count} questions)",
+    "question_num": "Question {n}",
+    "correct_badge": "Correct",
+    "wrong_badge": "Incorrect",
+    "correct_answer": "Correct answer",
+    "user_choice": "Your answer",
+    "explanation_title": "Detailed explanation:",
+    "leaderboard_title": "Top 10 Leaderboard",
+    "leaderboard_subtitle": "Ranked by points & completion speed",
+    "my_rank": "Your Rank",
+    "leaderboard_row_desc": "{correct}/{total} correct · {sec}s",
+    "no_leaderboard_attempts": "No completed attempts recorded yet.",
+    "not_started": "Not started",
+    "completed": "Completed",
+    "in_progress": "In progress",
+    "expired": "Ended",
+    "limit_reached": "Limit reached",
+    "upcoming": "Upcoming",
+    "questions_count": "{count} questions",
+    "time_per_q": "{sec}s/q",
+    "your_score_label": "Your Score:",
+    "correct_ratio": "{correct}/{total} correct",
+    "progress": "Progress",
+    "days_left": "{count} days left",
+    "unlimited": "Unlimited",
+    "view_results": "View Results",
+    "resume": "Resume"
+  },
+  "challenge": {
+    "title": "Challenges",
+    "subtitle": "Take the same test within a time window and compare results with everyone.",
+    "no_challenges": "No open challenges right now.",
+    "join": "Join",
+    "leaderboard": "Leaderboard",
+    "hide_board": "Hide leaderboard",
+    "board_empty": "Nobody has finished this challenge yet.",
+    "board_failed": "Could not load the leaderboard.",
+    "board_scope_note": "Ranking applies to this challenge only — there are no cumulative points or profile ranks.",
+    "participants": "{count} participants",
+    "once_only": "One attempt per person; your first result is the one that counts.",
+    "my_result": "Your result: {correct}/{total} correct in {time}",
+    "phase_upcoming": "Upcoming",
+    "phase_running": "Running",
+    "phase_ended": "Ended",
+    "resume": "Continue"
+  },
+  "pricing": {
+    "title": "Pro Subscription",
+    "loading": "Loading plan details...",
+    "nav": {
+      "upgrade": "Upgrade Pro",
+      "upgradeHint": "Upgrade to Pro to unlock all features"
+    },
+    "plan": {
+      "free": "Free",
+      "pro": "Pro"
+    },
+    "current": {
+      "title": "YOUR CURRENT PLAN",
+      "free": "Free Account",
+      "pro": "Pro Account",
+      "pro_desc": "You are currently on the Pro plan with full advanced filters & unlimited interactions.",
+      "manage": "Manage Subscription",
+      "grace": "Pro payment past due. Privileges active until {date}.",
+      "canceling": "Pro plan will automatically cancel on {date}.",
+      "priceNote": "Pro plan is only {price}/month. Cancel anytime."
+    },
+    "status": {
+      "free": "Basic features access",
+      "pending_payment": "Processing payment...",
+      "active": "Active",
+      "past_due": "Payment Past Due",
+      "canceling": "Canceling (Active until period end)"
+    },
+    "cta": {
+      "upgrade": "Upgrade to Pro ({price})",
+      "cancel": "Cancel Pro Plan",
+      "resume": "Resume Pro Plan"
+    },
+    "principle": {
+      "line1": "Stududu is committed to a transparent Tandem model — no fee for messaging or matching.",
+      "line2": "Pro plan offers extended support tools such as advanced translation, deep filters, and image attachments."
+    },
+    "table": {
+      "feature": "Feature"
+    },
+    "usage": {
+      "today": "Used {used}/{limit} today",
+      "total": "Used {used}/{limit} words"
+    },
+    "features": {
+      "translate_lookup": {
+        "label": "Instant Translation & Lookup",
+        "basis": "Highlighted text translations in chat",
+        "free": "30 lookups / day",
+        "pro": "Unlimited"
+      },
+      "vocabulary_save": {
+        "label": "Save Words to Vocabulary",
+        "basis": "Total saved words in personal notebook",
+        "free": "Up to 100 words",
+        "pro": "Unlimited"
+      },
+      "chat_image_upload": {
+        "label": "Send Images in Chat",
+        "basis": "Attach images in 1:1 chat",
+        "free": "Not supported",
+        "pro": "Unlimited"
+      },
+      "match_like": {
+        "label": "Like & Express Interest",
+        "basis": "Daily likes for potential partners",
+        "free": "10 likes / day",
+        "pro": "Unlimited"
+      },
+      "match_advanced_filter": {
+        "label": "Advanced Partner Filters",
+        "basis": "Filter by deep topics, gender, learning goals",
+        "free": "Basic filters",
+        "pro": "Advanced filters"
+      }
+    },
+    "notForSale": {
+      "title": "What Stududu Strictly DOES NOT Sell",
+      "intro": "To ensure a fair and transparent Tandem exchange, the following are always 100% free for everyone:",
+      "items": {
+        "ranking": {
+          "what": "Leaderboards / Ratings",
+          "why": "We do not rate learners or sell rankings."
+        },
+        "badge": {
+          "what": "VIP Badges on Profile",
+          "why": "No discrimination between members."
+        },
+        "calls": {
+          "what": "1:1 Voice Calls",
+          "why": "Voice calls are free for all members."
+        },
+        "messages": {
+          "what": "Text Messaging",
+          "why": "Messaging and conversation are always free."
+        },
+        "safety": {
+          "what": "Safety & Reporting Features",
+          "why": "Block and report tools are available to 100% of users."
+        }
+      }
+    },
+    "checkout": {
+      "canceled": "You canceled the checkout process.",
+      "activated": "Congratulations! Your Pro plan has been activated.",
+      "confirming": "Confirming payment with the server...",
+      "confirmingSlow": "Confirming... Please refresh in a few moments."
+    },
+    "quota": {
+      "title": "Quota Exceeded",
+      "body": "You have reached your limit of {limit} for this feature today.",
+      "resetAt": "Your quota will reset at {time}.",
+      "dismiss": "Got it",
+      "seePlans": "See Pro Plans"
+    }
+>>>>>>> Stashed changes
   }
 }

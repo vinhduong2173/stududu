@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Bell, BookOpen, Compass, LogOut, MessageCircle, Settings, User, UserRound, Users } from "lucide-react";
+import { Bell, BookOpen, Compass, LogOut, MessageCircle, Settings, Sparkles, User, UserRound, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { disconnectSocket, getSocket } from "@/lib/socket";
@@ -12,6 +12,11 @@ import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/features/LanguageSwitcher";
 import { TextSelectionPopup } from "@/components/features/TextSelectionPopup";
 import { Logo } from "@/components/ui/Logo";
+<<<<<<< Updated upstream
+=======
+import { CallProvider } from "@/components/call/CallProvider";
+import { ProNavButton } from "@/components/features/pricing/ProNavButton";
+>>>>>>> Stashed changes
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations();
@@ -114,6 +119,84 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="flex h-screen flex-col bg-background">
+      {/* Mobile Top Nav */}
+      <header className="md:hidden flex h-14 items-center justify-between app-header px-4 sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur-xs">
+        <Logo size="sm" href="/discover" />
+        <div className="flex items-center gap-2">
+          <ProNavButton />
+          <NotificationDropdown
+            notifications={notifications}
+            notificationsOpen={notificationsOpen}
+            setNotificationsOpen={setNotificationsOpen}
+            onCloseOtherMenus={() => setMenuOpen(false)}
+            onMarkAllAsRead={handleMarkAllAsRead}
+            onNotificationClick={handleNotificationClick}
+            t={t}
+            locale={locale}
+          />
+          <div className="relative">
+            <button
+              onClick={() => { setMenuOpen((v) => !v); setNotificationsOpen(false); }}
+              className="rounded-full focus-visible:outline-none"
+            >
+              <Avatar
+                src={me?.avatarUrl ?? undefined}
+                fallback={me?.displayName?.charAt(0) ?? "?"}
+                size="sm"
+              />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-10 z-20 w-52 rounded-2xl border border-border bg-surface shadow-xl py-2 animate-in fade-in zoom-in-95 duration-150">
+                  {me && (
+                    <div className="px-4 py-2 border-b border-border mb-1">
+                      <p className="font-semibold text-foreground truncate">{me.displayName}</p>
+                    </div>
+                  )}
+                  <Link
+                    href="/profile/me"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <UserRound className="h-4 w-4 text-muted" /> {t("menu.profile")}
+                  </Link>
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Settings className="h-4 w-4 text-muted" /> {t("menu.settings")}
+                  </Link>
+                  <Link
+                    href="/pricing"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Sparkles className="h-4 w-4 text-amber-500" /> {t("pricing.title") || "Gói dịch vụ Pro"}
+                  </Link>
+                  {me?.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <Compass className="h-4 w-4 text-muted" /> {t("menu.admin")}
+                    </Link>
+                  )}
+                  <button
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-error hover:bg-error/5"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4" /> {t("menu.logout")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </header>
+
       {/* Desktop Top Nav */}
       <header className="hidden md:flex h-16 items-center justify-between border-b border-border bg-surface px-8 shadow-sm">
         <Logo size="md" href="/discover" />
@@ -135,7 +218,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             );
           })}
         </nav>
+<<<<<<< Updated upstream
         <div className="flex items-center gap-4">
+=======
+        <div className="flex items-center gap-3">
+          <ProNavButton />
+>>>>>>> Stashed changes
           <LanguageSwitcher />
           
           <div className="relative">
@@ -211,6 +299,45 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                       ))}
                     </div>
                   )}
+<<<<<<< Updated upstream
+=======
+                  <Link
+                    href="/profile/me"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <UserRound className="h-4 w-4 text-muted" /> {t("menu.profile")}
+                  </Link>
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Settings className="h-4 w-4 text-muted" /> {t("menu.settings")}
+                  </Link>
+                  <Link
+                    href="/pricing"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Sparkles className="h-4 w-4 text-amber-500" /> {t("pricing.title") || "Gói dịch vụ Pro"}
+                  </Link>
+                  {me?.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted/10"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <Compass className="h-4 w-4 text-muted" /> {t("menu.admin")}
+                    </Link>
+                  )}
+                  <button
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-error hover:bg-error/5"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4" /> {t("menu.logout")}
+                  </button>
+>>>>>>> Stashed changes
                 </div>
               </>
             )}
