@@ -1,7 +1,17 @@
-// typeof-guard: file này còn được bundle ngoài Next (design-sync) — nơi không có `process`
-const API_URL =
-  (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined) ??
-  'https://api.stududu.io.vn';
+export function getApiUrl(): string {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      const envUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+        return envUrl.replace(/\/+$/, '');
+      }
+      return '/api';
+    }
+  }
+  const envUrl = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined;
+  return envUrl ? envUrl.replace(/\/+$/, '') : 'http://localhost:3001';
+}
 
 export class ApiError extends Error {
   constructor(
@@ -25,7 +35,10 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     activeToken = localStorage.getItem('accessToken') || undefined;
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const baseUrl = getApiUrl();
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  const res = await fetch(`${baseUrl}${normalizedPath}`, {
     ...rest,
     headers: {
       'Content-Type': 'application/json',
