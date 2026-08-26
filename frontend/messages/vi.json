@@ -427,5 +427,276 @@
     "game": "Game",
     "culture": "Văn hóa",
     "exams": "Thi cử (IELTS/TOEIC...)"
+<<<<<<< Updated upstream
+=======
+  },
+  "call": {
+    "start_audio": "Gọi thoại",
+    "start_video": "Gọi video",
+    "start_tooltip": "Gọi thoại",
+    "start_video_tooltip": "Gọi video",
+    "calling": "Đang gọi…",
+    "incoming_title": "{name} đang gọi",
+    "incoming_audio": "Cuộc gọi thoại đến",
+    "incoming_video": "Cuộc gọi video đến",
+    "accept": "Nhận",
+    "accept_audio_only": "Nhận nhưng không bật camera",
+    "decline": "Từ chối",
+    "hang_up": "Cúp máy",
+    "mute": "Tắt micro",
+    "unmute": "Bật micro",
+    "camera_off": "Tắt camera",
+    "camera_on": "Bật camera",
+    "switch_camera": "Đổi camera trước/sau",
+    "partner_camera_off": "Đối phương đã tắt camera",
+    "network_unstable": "Mạng chập chờn…",
+    "rejected": "Đối phương đã từ chối cuộc gọi",
+    "no_answer": "Không có trả lời",
+    "partner_busy": "{name} đang bận",
+    "partner_offline": "{name} không online",
+    "failed": "Mất kết nối, cuộc gọi đã kết thúc",
+    "ended_max_duration": "Cuộc gọi đã đạt giới hạn 30 phút",
+    "timeout_warning": "Còn {minutes} phút nữa cuộc gọi sẽ tự ngắt",
+    "error_insecure": "Trình duyệt chặn micro vì trang không dùng HTTPS",
+    "error_permission": "Bạn cần cho phép truy cập micro trong cài đặt trình duyệt",
+    "error_no_device": "Không tìm thấy micro nào",
+    "error_camera_busy": "Camera đang được ứng dụng hoặc tab khác sử dụng — chuyển sang cuộc gọi thoại",
+    "error_camera_permission": "Camera bị chặn — cuộc gọi vẫn tiếp tục, chỉ không có hình của bạn",
+    "error_unknown": "Không bắt đầu được cuộc gọi",
+    "log_ended": "Cuộc gọi thoại · {duration}",
+    "log_ended_video": "Cuộc gọi video · {duration}",
+    "log_rejected": "Cuộc gọi bị từ chối",
+    "log_missed_outgoing": "Bạn đã gọi nhưng không ai bắt máy",
+    "log_missed_incoming": "Cuộc gọi nhỡ"
+  },
+  "group": {
+    "join_pending": "Đang chờ duyệt",
+    "join_pending_msg": "Yêu cầu gia nhập của bạn đang chờ Admin/Owner phê duyệt",
+    "request_join": "Xin gia nhập nhóm",
+    "report_member": "Báo cáo thành viên",
+    "report_member_title": "Báo cáo thành viên vi phạm",
+    "report_reason_placeholder": "Chọn lý do vi phạm...",
+    "reason_spam": "Spam / Quảng cáo rác",
+    "reason_harassment": "Quấy rối / Xúc phạm",
+    "reason_hate_speech": "Ngôn từ thù hận / Vi phạm văn hóa",
+    "reason_inappropriate": "Nội dung không phù hợp",
+    "reason_other": "Lý do khác",
+    "submit_report": "Gửi báo cáo",
+    "report_success": "Đã gửi báo cáo thành viên thành công",
+    "pending_join_requests": "Yêu cầu gia nhập chờ duyệt",
+    "approve": "Duyệt",
+    "reject": "Từ chối"
+  },
+  "quiz": {
+    "title": "Luyện đề",
+    "subtitle": "Bộ đề trắc nghiệm theo chủ đề và trình độ, do quản trị viên biên soạn.",
+    "all_topics": "Tất cả chủ đề",
+    "quota": "Hôm nay: {used}/{limit} bộ",
+    "quota_exhausted": "Hạn mức làm mới sau 00:00 theo múi giờ của bạn.",
+    "no_sets": "Chưa có bộ đề nào được phát hành",
+    "no_sets_hint": "Quay lại sau nhé — quản trị viên đang soạn thêm.",
+    "start": "Bắt đầu làm",
+    "retry": "Làm lại",
+    "last_score": "Lần gần nhất: {correct}/{total} câu đúng",
+    "history": "Lịch sử làm bài",
+    "back": "Về danh sách bộ đề",
+    "cannot_start": "Không bắt đầu được lượt làm bài này.",
+    "challenge_mode": "Thử thách",
+    "question_count": "{count} câu · thứ tự câu và đáp án được đảo mỗi lần làm",
+    "answered": "Đã chọn {answered}/{total} câu",
+    "submit": "Nộp bài",
+    "submitting": "Đang nộp…",
+    "submit_failed": "Không nộp được bài, thử lại giúp mình nhé.",
+    "duration": "Thời gian làm: {time}",
+    "level_up": "Bạn làm rất tốt — thử bộ đề ở trình độ cao hơn xem sao.",
+    "level_down": "Bộ này hơi khó — thử lùi một bậc để chắc nền tảng hơn.",
+    "level_stay": "Kết quả ổn — cứ tiếp tục ở trình độ này nhé.",
+    "review_hint": "Kéo xuống để xem đáp án đúng và giải thích từng câu.",
+    "type_vocabulary": "Từ vựng",
+    "type_grammar": "Ngữ pháp",
+    "type_cloze": "Điền từ",
+    "type_reading": "Đọc hiểu",
+    "explanation_label": "Giải thích:",
+    "preview_hint": "Bấm thử một đáp án để xem kết quả — chế độ xem trước không chấm điểm và không lưu gì cả.",
+    "remaining_time": "Thời gian còn lại:",
+    "streak_multiplier": "STREAK x{count}",
+    "excellent_added": "Xuất sắc! +{pts} PTS",
+    "wrong_added": "Tiếc quá! 0 PTS",
+    "timeout_added": "Hết giờ! 0 PTS",
+    "term_label": "Từ vựng: {term}",
+    "next_question": "Câu tiếp theo →",
+    "submit_attempt": "Nộp bài →",
+    "back_to_events": "Quay lại danh sách bài test",
+    "loading_result": "Đang tải kết quả & bảng xếp hạng...",
+    "not_found_result": "Không tìm thấy kết quả làm bài",
+    "start_quiz": "Bắt đầu làm bài",
+    "retry_quiz": "Luyện tập lại",
+    "excellent_completed": "Hoàn thành xuất sắc",
+    "points": "Điểm",
+    "score_detail": "Đúng {correct}/{total} câu hỏi ({percent}%)",
+    "duration_label": "Thời gian",
+    "rank_label": "Thứ hạng",
+    "answer_review_title": "Chi tiết đáp án bài làm ({count} câu)",
+    "question_num": "Câu {n}",
+    "correct_badge": "Chính xác",
+    "wrong_badge": "Chưa đúng",
+    "correct_answer": "Đáp án đúng",
+    "user_choice": "Bạn đã chọn",
+    "explanation_title": "Giải thích chi tiết:",
+    "leaderboard_title": "Bảng Xếp Hạng Top 10",
+    "leaderboard_subtitle": "Xếp theo điểm & thời gian hoàn thành",
+    "my_rank": "Vị trí của bạn",
+    "leaderboard_row_desc": "{correct}/{total} câu đúng · {sec}s",
+    "no_leaderboard_attempts": "Chưa có lượt làm bài nào được ghi nhận.",
+    "not_started": "Chưa làm",
+    "completed": "Đã hoàn thành",
+    "in_progress": "Đang làm dở",
+    "expired": "Đã kết thúc",
+    "limit_reached": "Hết lượt làm",
+    "upcoming": "Chưa mở",
+    "questions_count": "{count} câu",
+    "time_per_q": "{sec}s/câu",
+    "your_score_label": "Điểm của bạn:",
+    "correct_ratio": "{correct}/{total} câu đúng",
+    "progress": "Tiến độ",
+    "days_left": "Còn {count} ngày",
+    "unlimited": "Không giới hạn",
+    "view_results": "Xem kết quả",
+    "resume": "Làm tiếp"
+  },
+  "challenge": {
+    "title": "Thử thách",
+    "subtitle": "Cùng làm một bộ đề trong thời gian giới hạn và so kết quả với mọi người.",
+    "no_challenges": "Chưa có thử thách nào đang mở.",
+    "join": "Tham gia",
+    "leaderboard": "Bảng xếp hạng",
+    "hide_board": "Ẩn bảng xếp hạng",
+    "board_empty": "Chưa ai hoàn thành thử thách này.",
+    "board_failed": "Không tải được bảng xếp hạng.",
+    "board_scope_note": "Xếp hạng chỉ áp dụng trong thử thách này — không có điểm tích luỹ hay cấp bậc trên hồ sơ.",
+    "participants": "{count} người tham gia",
+    "once_only": "Mỗi người chỉ được làm một lần, kết quả tính ngay lần đầu.",
+    "my_result": "Kết quả của bạn: {correct}/{total} câu đúng trong {time}",
+    "phase_upcoming": "Sắp diễn ra",
+    "phase_running": "Đang diễn ra",
+    "phase_ended": "Đã kết thúc",
+    "resume": "Làm tiếp"
+  },
+  "pricing": {
+    "title": "Gói dịch vụ Pro",
+    "loading": "Đang tải thông tin gói dịch vụ...",
+    "nav": {
+      "upgrade": "Nâng cấp Pro",
+      "upgradeHint": "Nâng cấp Pro để mở khóa đầy đủ tính năng"
+    },
+    "plan": {
+      "free": "Miễn phí",
+      "pro": "Pro"
+    },
+    "current": {
+      "title": "GÓI HIỆN TẠI CỦA BẠN",
+      "free": "Tài khoản Miễn phí",
+      "pro": "Tài khoản Pro",
+      "pro_desc": "Bạn đang sở hữu gói Pro với đầy đủ đặc quyền mở rộng bộ lọc & không giới hạn lượt tương tác.",
+      "manage": "Quản lý gói dịch vụ",
+      "grace": "Gói Pro đang quá hạn thanh toán. Quyền lợi vẫn duy trì đến {date}.",
+      "canceling": "Gói Pro sẽ tự động hủy vào ngày {date}.",
+      "priceNote": "Gói Pro chỉ {price}/tháng. Hủy bất cứ lúc nào."
+    },
+    "status": {
+      "free": "Sử dụng các tính năng cơ bản",
+      "pending_payment": "Đang xử lý thanh toán...",
+      "active": "Đang hoạt động",
+      "past_due": "Quá hạn thanh toán",
+      "canceling": "Đã báo hủy (còn hiệu lực)"
+    },
+    "cta": {
+      "upgrade": "Nâng cấp Pro ({price})",
+      "cancel": "Hủy gói Pro",
+      "resume": "Tiếp tục sử dụng Pro"
+    },
+    "principle": {
+      "line1": "Stududu cam kết mô hình Tandem minh bạch — không thu phí để nhắn tin hoặc ghép đôi.",
+      "line2": "Gói Pro mở rộng các công cụ hỗ trợ như tra từ nâng cao, bộ lọc sâu và đính kèm hình ảnh."
+    },
+    "table": {
+      "feature": "Hạng mục tính năng"
+    },
+    "usage": {
+      "today": "Đã dùng {used}/{limit} hôm nay",
+      "total": "Đã dùng {used}/{limit} từ"
+    },
+    "features": {
+      "translate_lookup": {
+        "label": "Tra từ & dịch tức thì",
+        "basis": "Lượt tra từ bôi đen trong hội thoại",
+        "free": "30 lượt / ngày",
+        "pro": "Không giới hạn"
+      },
+      "vocabulary_save": {
+        "label": "Lưu từ vào Sổ từ vựng",
+        "basis": "Tổng số từ lưu trong sổ cá nhân",
+        "free": "Tối đa 100 từ",
+        "pro": "Không giới hạn"
+      },
+      "chat_image_upload": {
+        "label": "Gửi hình ảnh trong chat",
+        "basis": "Đính kèm ảnh khi nhắn tin 1:1",
+        "free": "Không hỗ trợ",
+        "pro": "Không giới hạn"
+      },
+      "match_like": {
+        "label": "Thích & Bày tỏ quan tâm",
+        "basis": "Lượt thả tim/thích đối tác mỗi ngày",
+        "free": "10 lượt / ngày",
+        "pro": "Không giới hạn"
+      },
+      "match_advanced_filter": {
+        "label": "Bộ lọc đối tác nâng cao",
+        "basis": "Lọc theo chủ đề sâu, giới tính, mục tiêu",
+        "free": "Bộ lọc cơ bản",
+        "pro": "Bộ lọc chuyên sâu"
+      }
+    },
+    "notForSale": {
+      "title": "Những điều Stududu Tuyệt Đối KHÔNG Bán",
+      "intro": "Để bảo đảm mô hình Tandem công bằng và minh bạch, các tính năng sau luôn hoàn toàn miễn phí cho tất cả mọi người:",
+      "items": {
+        "ranking": {
+          "what": "Bảng xếp hạng / Điểm số",
+          "why": "Không chấm điểm người học hay bán thứ hạng."
+        },
+        "badge": {
+          "what": "Huy hiệu VIP trên hồ sơ",
+          "why": "Không phân biệt đối xử giữa các thành viên."
+        },
+        "calls": {
+          "what": "Gọi thoại 1:1",
+          "why": "Mọi thành viên đều được gọi thoại miễn phí."
+        },
+        "messages": {
+          "what": "Gửi tin nhắn văn bản",
+          "why": "Nhắn tin trao đổi luôn luôn miễn phí."
+        },
+        "safety": {
+          "what": "Tính năng An toàn & Báo cáo",
+          "why": "Quyền chặn và báo cáo dành cho 100% người dùng."
+        }
+      }
+    },
+    "checkout": {
+      "canceled": "Bạn đã hủy quá trình thanh toán.",
+      "activated": "Chúc mừng! Gói Pro của bạn đã được kích hoạt thành công.",
+      "confirming": "Đang xác nhận thanh toán với hệ thống...",
+      "confirmingSlow": "Đang xác nhận... Bạn có thể tải lại trang sau ít phút."
+    },
+    "quota": {
+      "title": "Đã đạt giới hạn lượt dùng",
+      "body": "Bạn đã sử dụng hết hạn mức {limit} lượt cho tính năng này hôm nay.",
+      "resetAt": "Hạn mức sẽ được làm mới vào lúc {time}.",
+      "dismiss": "Đã hiểu",
+      "seePlans": "Xem gói Pro"
+    }
+>>>>>>> Stashed changes
   }
 }

@@ -11,9 +11,18 @@ import { TIME_SLOTS, getTimezone } from "@/lib/timezones";
 import { ageFromDob } from "@/lib/utils";
 import { ChatStats, EndorsementBadges } from "@/components/features/Endorsements";
 import { useTranslations } from "next-intl";
+<<<<<<< Updated upstream
 import { getTopicTranslation, getIntentTranslation } from "@/lib/i18nHelper";
 
 /** MÀN 12 — Hồ sơ của tôi (US-06): xem hồ sơ + thanh % hoàn thiện + lối vào chỉnh sửa/Cài đặt. */
+=======
+import { getTopicTranslation, getIntentTranslation, getGenderTranslation } from "@/lib/i18nHelper";
+import { PostCard, FeedPost } from "@/components/features/PostCard";
+import { ReportDialog, useToast } from "@/components/features/TrustDialogs";
+import { Avatar } from "@/components/ui/Avatar";
+import { ProfileHeader } from "@/components/features/profile/ProfileHeader";
+import { ProfileSubscriptionCard } from "@/components/features/pricing/ProfileSubscriptionCard";
+>>>>>>> Stashed changes
 
 type Me = {
   id: number;
@@ -80,12 +89,136 @@ export default function MyProfilePage() {
   const learnLangs = me.languages.filter((l) => l.role === "learning");
 
   return (
+<<<<<<< Updated upstream
     <div className="max-w-3xl mx-auto p-4 md:p-8 pb-24">
       {/* Header — cover banner + avatar đè mép */}
       <div className="bg-surface rounded-3xl border border-border shadow-sm overflow-hidden mb-6">
         <div className="sd-cover relative h-32 md:h-44">
           <div className="pointer-events-none absolute -top-16 -right-10 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 left-8 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+=======
+    <div className="max-w-6xl mx-auto p-4 md:p-8 pb-24">
+      {/* Profile Header (Banner, Avatar, Info, Tabs) */}
+      <ProfileHeader
+        me={me}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        t={t}
+      />
+
+      {/* Grid Layout — Sidebar (Left) & Feed (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column — Sidebar */}
+        <div className={cn(
+          "lg:col-span-5 space-y-6",
+          activeTab === "posts" && "block",
+          activeTab === "about" && "block lg:col-span-12"
+        )}>
+          {/* Subscription / Pro Plan Status */}
+          <ProfileSubscriptionCard />
+
+          {/* Trust Signals */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+              <Award className="w-5 h-5 text-primary" />
+              <span>{t("trust_activity")}</span>
+            </h2>
+            <div className="space-y-3">
+              <EndorsementBadges userId={me.id} />
+              <ChatStats userId={me.id} />
+            </div>
+          </div>
+
+          {/* Intro Box */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <User className="w-5 h-5 text-primary" />
+                <span>{t("intro")}</span>
+              </span>
+              <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
+                {t("edit_btn")}
+              </Link>
+            </h2>
+
+            <p className="text-foreground leading-relaxed whitespace-pre-wrap text-sm italic bg-surface-2/60 p-4 rounded-2xl border border-border/50 mb-4">
+              {me.bio ? `"${me.bio}"` : t("no_intro_me")}
+            </p>
+
+            <div className="space-y-3 text-sm text-foreground">
+              {me.intent && (
+                <div className="flex items-center gap-3">
+                  <Target className="w-4 h-4 text-muted shrink-0" />
+                  <div>
+                    <span className="font-semibold text-muted text-xs block uppercase">{t("intent")}</span>
+                    <span className="font-medium text-foreground">{getIntentTranslation(me.intent, tRoot)}</span>
+                  </div>
+                </div>
+              )}
+
+              {me.city && (
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-4 h-4 text-muted shrink-0" />
+                  <div>
+                    <span className="font-semibold text-muted text-xs block uppercase">{t("lives_in")}</span>
+                    <span className="font-medium text-foreground">{me.city}</span>
+                  </div>
+                </div>
+              )}
+
+              {me.gender && (
+                <div className="flex items-center gap-3">
+                  <User className="w-4 h-4 text-muted shrink-0" />
+                  <div>
+                    <span className="font-semibold text-muted text-xs block uppercase">{t("gender_label")}</span>
+                    <span className="font-medium text-foreground">{getGenderTranslation(me.gender, tRoot)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <Clock className="w-4 h-4 text-muted shrink-0" />
+                <div>
+                  <span className="font-semibold text-muted text-xs block uppercase">{t("timezone_label_short")}</span>
+                  <span className="font-medium text-foreground">
+                    {getTimezone(me.timezone).name}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Languages Card */}
+          <LanguagesCard languages={me.languages} editHref="/profile/me/edit" />
+
+          {/* Availability Card */}
+          <ProfileAvailabilityCard
+            availableSlots={me.availableSlots}
+            timezone={me.timezone}
+            editHref="/profile/me/edit"
+          />
+
+          {/* Interests Card */}
+          <div className="bg-surface rounded-3xl p-6 shadow-sm border border-border">
+            <h2 className="text-lg font-bold text-foreground mb-4 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <span>{t("interests")}</span>
+              </span>
+              <Link href="/profile/me/edit" className="text-xs font-semibold text-primary hover:underline">
+                {t("edit_btn")}
+              </Link>
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {me.interests.length === 0 && <p className="text-xs text-muted">{t("none")}</p>}
+              {me.interests.map((i) => (
+                <Chip key={i.id} variant="outline" className="text-xs py-1 px-3 rounded-xl">
+                  {getTopicTranslation(i.topic.name, tRoot)}
+                </Chip>
+              ))}
+            </div>
+          </div>
+>>>>>>> Stashed changes
         </div>
         <div className="px-6 pb-6">
           <div className="flex items-end justify-between -mt-12 mb-4">
