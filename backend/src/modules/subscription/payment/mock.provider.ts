@@ -7,7 +7,6 @@ import {
   PaymentProvider,
   ProviderWebhookEvent,
   RenewalResult,
-  SessionCheckResult,
 } from './payment-provider.interface';
 
 /**
@@ -91,9 +90,5 @@ export class MockPaymentProvider implements PaymentProvider {
       cardNumber === TEST_CARDS.success ||
       cardNumber === TEST_CARDS.renewalFails
     );
-  }
-
-  checkSessionPaid(_sessionId: string): Promise<SessionCheckResult> {
-    return Promise.resolve({ isPaid: false });
   }
 }

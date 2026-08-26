@@ -39,11 +39,6 @@ export interface RenewalResult {
  * SRS §7.1 — adapter thanh toán. Đổi sang cổng Việt Nam sau này là viết thêm
  * một class, không đụng vào vòng đời subscription.
  */
-export interface SessionCheckResult {
-  isPaid: boolean;
-  realSubId?: string;
-}
-
 export interface PaymentProvider {
   readonly name: string;
 
@@ -75,9 +70,6 @@ export interface PaymentProvider {
     amount: number;
     attemptNumber: number;
   }): Promise<RenewalResult>;
-
-  /** Kiểm tra phiên checkout đã hoàn tất thanh toán chưa (hỗ trợ môi trường local không nhận được webhook). */
-  checkSessionPaid?(sessionId: string): Promise<SessionCheckResult>;
 }
 
 export const PAYMENT_PROVIDER = Symbol('PAYMENT_PROVIDER');

@@ -67,31 +67,9 @@ export class StripePaymentProvider implements PaymentProvider {
 
   /** BR-42 — huỷ ở cuối chu kỳ, không cắt ngay phần người dùng đã trả tiền. */
   async cancelSubscription(providerSubId: string): Promise<void> {
-    let targetSubId = providerSubId;
-
-    // Nếu providerSubId là Checkout Session ID (cs_...), quy đổi ra Subscription ID thật (sub_...)
-    if (providerSubId.startsWith('cs_')) {
-      try {
-        const session = await this.stripe.checkout.sessions.retrieve(providerSubId);
-        const subId =
-          typeof session.subscription === 'string'
-            ? session.subscription
-            : session.subscription?.id;
-        if (subId) {
-          targetSubId = subId;
-        }
-      } catch (err) {
-        this.logger.warn(`Không thể lấy Subscription ID từ session ${providerSubId}: ${String(err)}`);
-      }
-    }
-
-    try {
-      await this.stripe.subscriptions.update(targetSubId, {
-        cancel_at_period_end: true,
-      });
-    } catch (err) {
-      this.logger.warn(`Lỗi khi yêu cầu Stripe huỷ gói (${targetSubId}): ${String(err)}`);
-    }
+    await this.stripe.subscriptions.update(providerSubId, {
+      cancel_at_period_end: true,
+    });
   }
 
   verifyWebhook(rawBody: Buffer, signature?: string): ProviderWebhookEvent {
@@ -143,24 +121,6 @@ export class StripePaymentProvider implements PaymentProvider {
         product_data: { name: 'Stududu Pro' },
       },
     };
-  }
-
-  /** Kiểm tra trạng thái phiên thanh toán Stripe khi môi trường dev không có webhook. */
-  async checkSessionPaid(
-    sessionId: string,
-  ): Promise<{ isPaid: boolean; realSubId?: string }> {
-    try {
-      const session = await this.stripe.checkout.sessions.retrieve(sessionId);
-      const isPaid = session.payment_status === 'paid';
-      const realSubId =
-        typeof session.subscription === 'string'
-          ? session.subscription
-          : session.subscription?.id;
-      return { isPaid, realSubId: realSubId ?? undefined };
-    } catch (err) {
-      this.logger.warn(`Không thể kiểm tra phiên Stripe ${sessionId}: ${String(err)}`);
-      return { isPaid: false };
-    }
   }
 
   private frontendUrl(): string {

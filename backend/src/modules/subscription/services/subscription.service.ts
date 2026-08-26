@@ -28,26 +28,7 @@ export class SubscriptionService {
 
   /** US-37 — trạng thái gói + mức dùng hiện tại cho trang /pricing. */
   async getState(userId: number, tzOffsetMinutes?: number) {
-    let subscription = await this.billing.ensure(userId);
-
-    // Tự động đồng bộ trạng thái thanh toán từ cổng nếu môi trường dev không nhận được Webhook
-    if (
-      subscription.status === SubscriptionStatus.pending_payment &&
-      subscription.providerSubId &&
-      this.provider.checkSessionPaid
-    ) {
-      const res = await this.provider.checkSessionPaid(
-        subscription.providerSubId,
-      );
-      if (res.isPaid) {
-        subscription = await this.billing.activate(subscription, {
-          providerName: this.provider.name,
-          providerSubId: res.realSubId ?? subscription.providerSubId,
-        });
-        await this.notifier.activated(userId);
-      }
-    }
-
+    const subscription = await this.billing.ensure(userId);
     const [entitlements] = await Promise.all([
       this.entitlements.summary(userId, tzOffsetMinutes),
     ]);

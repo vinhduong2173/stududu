@@ -15,6 +15,9 @@ import { VocabularyModule } from './modules/vocabulary/vocabulary.module';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 
+import { EntitlementsModule } from './modules/entitlements/entitlements.module';
+import { SubscriptionModule } from './modules/subscription/subscription.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -81,6 +84,8 @@ import * as path from 'path';
     TranslateModule,
     CommunityModule, // FS-25
     ScheduleModule, // FS-28
+    EntitlementsModule,
+    SubscriptionModule,
   ],
 })
 export class AppModule {}
