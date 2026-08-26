@@ -427,8 +427,6 @@
     "game": "Gaming",
     "culture": "Culture",
     "exams": "Exams (IELTS/TOEIC...)"
-<<<<<<< Updated upstream
-=======
   },
   "call": {
     "start_audio": "Voice call",
@@ -697,6 +695,5 @@
       "dismiss": "Got it",
       "seePlans": "See Pro Plans"
     }
->>>>>>> Stashed changes
   }
 }

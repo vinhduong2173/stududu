@@ -427,8 +427,6 @@
     "game": "Game",
     "culture": "Văn hóa",
     "exams": "Thi cử (IELTS/TOEIC...)"
-<<<<<<< Updated upstream
-=======
   },
   "call": {
     "start_audio": "Gọi thoại",
@@ -697,6 +695,5 @@
       "dismiss": "Đã hiểu",
       "seePlans": "Xem gói Pro"
     }
->>>>>>> Stashed changes
   }
 }
